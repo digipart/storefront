@@ -1,0 +1,16 @@
+{
+  "name": "digipart-storefront",
+  "private": true,
+  "type": "module",
+  "description": "The site engine of Digipart Commerce: draws the online shops built in Digipart (site builder, themes) from api/storefront.",
+  "scripts": {
+    "dev": "nuxt dev --port 3100",
+    "build": "nuxt build",
+    "start": "PORT=3100 HOST=127.0.0.1 node .output/server/index.mjs",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "nuxt": "4.2.1",
+    "vue": "3.5.25"
+  }
+}

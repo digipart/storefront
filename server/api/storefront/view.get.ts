@@ -1,0 +1,104 @@
+// What a page address shows, in this order: the home page; a product (`<category>/<name>-<id>`); a content page of the shop (its text and the design of its page template); a category of the catalogue
+// (its products, a page of them, sorted). Each comes with the design that draws it, written in the site builder of Digipart. 404 when the address is nothing of the site.
+const SORTS: Record<string, Record<string, string>> = { newest: { SortByNewest: 'DESC' }, price_asc: { SortByPrice: 'ASC' }, price_desc: { SortByPrice: 'DESC' } }
+
+export default defineEventHandler(async (event) => {
+  const query = getQuery(event)
+  const rest = String(query.rest ?? '').replace(/^\/+|\/+$/g, '')
+  const { lang, prefix } = langOf(event)
+  const language = { LanguageIsoCode: lang }
+  const preview = previewQuery(event)
+  // the address of the product in every language of the site (for the search engines): asked once per product page
+  const withPaths = async (product: any) => { const found = await digipart(event, 'products.php', { Mode: 'paths', IdProduct: product.Id }).catch(() => null); const paths = found?.Paths && typeof found.Paths === 'object' ? found.Paths : {}; return { ...product, Alternates: { ...product.Alternates, ...paths }, Canonical: paths[lang] || product.Canonical } }
+  const design = (key: string) => digipart(event, 'design.php', { ...preview, ...language, Key: key })
+  if (rest === '') { return { Kind: 'home', Design: await design('home'), Page: null } }
+  const segments = rest.split('/')
+  if (segments.length > 3 || segments.some(segment => !/^[\p{L}\p{N}_.-]{1,200}$/u.test(segment))) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
+  const site = await digipart(event, '', preview)
+  const priceBase = site?.PriceBaseType || 'retail'
+
+  // the customer account, the favourites and the page of the « forgotten password » e-mail (its link is <site>/<language>/reset)
+  const account = rest.match(/^(?:compte|account)(?:\/([a-z-]{2,20}))?(?:\/(\d{1,10}))?$/)
+  if (account) { return { Kind: 'account', Design: null, Page: null, Section: account[1] || '', Id: Number(account[2] || 0) } }
+  if (rest === 'favoris' || rest === 'wishlist') { return { Kind: 'favorites', Design: null, Page: null } }
+  if (/^(?:[a-z]{2,3}\/)?reset$/.test(rest)) { return { Kind: 'reset', Design: null, Page: null } }
+
+  // a lookbook of the shop, with the products pinned on its pictures
+  const look = rest.match(/^lookbook\/([\p{L}\p{N}_.-]{1,200})$/u)
+  if (look) {
+    const book = await digipart(event, 'lookbook.php', { ...preview, ...language, Slug: look[1] })
+    if (!book) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
+    const pinned: Record<number, any> = {}
+    await Promise.all(((book.ProductIds as number[]) || []).slice(0, 60).map(async (id) => { const product = await loadProduct(event, id, lang, prefix, 'EUR', priceBase); if (product) { pinned[id] = product } }))
+    return { Kind: 'lookbook', Design: null, Page: null, Lookbook: { Alternates: Object.fromEntries(Object.entries(book.Slugs || {}).map(([iso, slug]) => [iso, 'lookbook/' + slug])), Title: String(book.Title || ''), SeoTitle: String(book.SeoTitle || book.Title || ''), SeoDescription: String(book.SeoDescription || ''), Blocks: book.Blocks || [], Products: pinned } }
+  }
+
+  // the search: the products whose name or reference holds the words typed (api/storefront/search.php)
+  if (rest === 'recherche' || rest === 'search') {
+    const term = String(query.q ?? '').trim().slice(0, 80)
+    const size = 24, pageNumber = Math.max(1, Math.min(200, Number(query.page) || 1))
+    const found = term ? await digipart(event, 'search.php', { ...language, Term: term, Limit: size, Offset: (pageNumber - 1) * size }).catch(() => null) : null
+    const products = (await Promise.all(((found?.ProductIds as number[]) || []).map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean)
+    return { Kind: 'search', Design: null, Page: null, Search: { Term: term, Total: Number(found?.Total || 0), Products: products, Page: pageNumber, Pages: Math.max(1, Math.ceil(Number(found?.Total || 0) / size)) } }
+  }
+
+  // the page after a payment
+  if (rest === 'commande/merci' || rest === 'checkout/thanks') { return { Kind: 'thanks', Design: null, Page: null } }
+
+  // a product: its address ends with its id
+  const idProduct = Number((segments[segments.length - 1].match(/-(\d{1,10})$/) || [])[1] || 0)
+  if (segments.length >= 2 && idProduct > 0) {
+    const product = await loadProduct(event, idProduct, lang, prefix, 'EUR', priceBase)
+    if (!product) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
+    return { Kind: 'product', Design: await design('product'), Page: null, Product: await withPaths(product) }
+  }
+  // the addresses Digipart itself writes to a product, without its id: <category>/<name> and products/<name>
+  if (segments.length === 2) {
+    const found = await digipart(event, 'products.php', { Mode: 'slug', Slug: segments[1] }).catch(() => null)
+    const product = found?.ProductIds?.[0] ? await loadProduct(event, Number(found.ProductIds[0]), lang, prefix, 'EUR', priceBase) : null
+    if (product) { return { Kind: 'product', Design: await design('product'), Page: null, Product: await withPaths(product) } }
+  }
+  if (segments.length !== 1) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
+
+  // the cart of the visitor (its articles are read by the browser: the page is the same for everyone)
+  if (rest === 'panier' || rest === 'cart') { return { Kind: 'cart', Design: (await design('cart')) || { Sections: [{ Id: 'cart', Type: 'main_cart', Settings: { Width: 'page', PaddingTop: 32, PaddingBottom: 48, PaddingMobile: 60, ShowPromoCode: true }, Texts: {}, Blocks: [] }] }, Page: null } }
+
+  // the order page (what it shows is read by the browser, for this visitor only)
+  if (rest === 'commande' || rest === 'checkout') { return { Kind: 'checkout', Design: await design('checkout'), Page: null } }
+
+  // a content page of the shop
+  const page = await digipart(event, 'page.php', { ...preview, ...language, Slug: rest })
+  if (page) { return { Kind: 'page', Design: await design(page.DesignKey), Page: page } }
+
+  // a category of the catalogue
+  const category = await shopApi(event, 'category/', { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase() })
+  if (!category || !category.IdCategory || category.Active === 0) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
+  const catalog = await design('catalog')
+  const settings = (catalog?.Sections || []).find((section: any) => section.Type === 'main_catalog')?.Settings || {}
+  const perPage = Math.max(4, Math.min(60, Number(settings.PerPage) || 24))
+  const pageNumber = Math.max(1, Math.min(500, Number(query.page) || 1))
+  const sort = Object.prototype.hasOwnProperty.call(SORTS, String(query.sort)) ? String(query.sort) : ''
+  // what the visitor filtered on: sizes and colours (ids of the filter API), a price range
+  const attributes = /^\d{1,9}(,\d{1,9}){0,19}$/.test(String(query.attr ?? '')) ? String(query.attr) : ''
+  const priceMin = Math.max(0, Math.floor(Number(query.min) || 0)), priceMax = Math.max(0, Math.floor(Number(query.max) || 0))
+  const filtered = { ...(attributes ? { FilterAttribute: attributes } : {}), ...(priceMax > priceMin ? { FilterPrice: priceMin + ',' + priceMax } : {}) }
+  const same = { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR' }
+  const [listing, filterAttributes, filterPrice] = await Promise.all([
+    shopApi(event, 'category/product', { ...same, Offset: (pageNumber - 1) * perPage, Limit: perPage, ...(SORTS[sort] || {}), ...filtered }),
+    shopApi(event, 'category/filterAttribute', same), shopApi(event, 'category/filterPrice', same),
+  ])
+  const groups = (Array.isArray(filterAttributes?.AttributeGroup) ? filterAttributes.AttributeGroup : []).map((group: any) => ({ Name: String(group.AttributeGroupName || ''), Values: (Array.isArray(group.Attribute) ? group.Attribute : []).map((a: any) => ({ Id: Number(a.IdAttribute), Name: String(a.AttributeName || '') })).filter((a: any) => a.Id > 0 && a.Name) })).filter((group: any) => group.Name && group.Values.length)
+  const filters = { Groups: groups, PriceMin: Math.floor(Number(filterPrice?.RegularPrice?.MinPriceTaxIncl || 0)), PriceMax: Math.ceil(Number(filterPrice?.RegularPrice?.MaxPriceTaxIncl || 0)), Attributes: attributes ? attributes.split(',').map(Number) : [], Min: priceMax > priceMin ? priceMin : 0, Max: priceMax > priceMin ? priceMax : 0 }
+  const seo = (Array.isArray(category.SEO) ? category.SEO : []).find((s: any) => String(s.LanguageIsoCode || '').toLowerCase() === lang) || category.SEO?.[0] || {}
+  const total = Number(listing?.TotalProduct || 0)
+  let products = await shapeListed(event, (listing?.Products || []).filter(Boolean), lang, prefix, 'EUR', priceBase)
+  if (!products.length && total > 0 && !attributes && !filters.Max) {   // the listing named products it could not describe (a development server, another language): each is read on its own
+    const ids: number[] = ((await digipart(event, 'products.php', { Mode: 'category', IdCategory: Number(category.IdCategory), Limit: perPage }).catch(() => null))?.ProductIds as number[]) || []
+    products = (await Promise.all(ids.map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean) as any[]
+  }
+  return {
+    Kind: 'catalog', Design: catalog, Page: null,
+    Category: { Alternates: Object.fromEntries((Array.isArray(category.SEO) ? category.SEO : []).map((s: any) => [String(s.LanguageIsoCode || '').toLowerCase(), String(s.URL || '').replace(/^\/+|\/+$/g, '')]).filter(([iso, url]: string[]) => /^[a-z]{2,3}$/.test(iso) && url)), Id: Number(category.IdCategory), Slug: rest, Name: String(category.Description?.Title || seo.MetaTitle || rest), Description: String(category.Description?.Description || ''), SeoTitle: String(seo.MetaTitle || ''), SeoDescription: String(seo.MetaDescription || '') },
+    Listing: { Products: products, Total: total, Page: pageNumber, Pages: Math.max(1, Math.ceil(total / perPage)), Sort: sort, Filters: filters },
+  }
+})

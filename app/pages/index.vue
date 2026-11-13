@@ -1,0 +1,3 @@
+<template>
+  <SfView />
+</template>

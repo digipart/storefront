@@ -1,0 +1,8 @@
+# LOCAL MAMP ONLY. This folder is the document root of the sub-domain AND holds the source of the engine: nothing in it is ever served as a file. Every request goes to proxy.php, which hands it to
+# the Node server of the engine (127.0.0.1:3100). On a real server the engine lives OUTSIDE the document root and the web server proxies to it directly.
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/proxy\.php$
+RewriteRule ^ proxy.php [L]
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
