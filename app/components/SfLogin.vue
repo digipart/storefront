@@ -5,11 +5,12 @@ const { send, busy } = useAccount()
 const mode = ref<'login' | 'register' | 'forgot'>('login')
 const site = inject<Ref<any>>('sfSite', ref(null))
 const pro = computed(() => !!site.value?.Pro)   // a professional site: the account is a company's
-const form = reactive({ Email: '', Password: '', Firstname: '', Lastname: '', Newsletter: false, CompanyName: '', CompanyNumber: '', TaxNumber: '', Phone: '' })
+const loyalty = computed(() => !pro.value && !!site.value?.Features?.Loyalty)   // the shop has a loyalty programme: joining is offered at sign-up
+const form = reactive({ Email: '', Password: '', Firstname: '', Lastname: '', Newsletter: false, Loyalty: true, CompanyName: '', CompanyNumber: '', TaxNumber: '', Phone: '' })
 const error = ref(''), note = ref(''), show = ref(false)
 async function submit() {
   error.value = ''; note.value = ''
-  const answer = await send({ Action: mode.value, ...form, Business: pro.value && mode.value === 'register' })
+  const answer = await send({ Action: mode.value, ...form, Loyalty: loyalty.value && form.Loyalty, Business: pro.value && mode.value === 'register' })
   error.value = answer.Error; note.value = answer.Note
   if (!answer.Error) { form.Password = '' }
 }
@@ -38,6 +39,7 @@ const to = (next: 'login' | 'register' | 'forgot') => { mode.value = next; error
       <span class="sf-login-pass"><input v-model="form.Password" :type="show ? 'text' : 'password'" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" :minlength="mode === 'register' ? 8 : undefined" maxlength="200" required><button type="button" :aria-pressed="show" @click="show = !show">{{ w(show ? 'Masquer' : 'Afficher') }}</button></span>
       <small v-if="mode === 'register'">{{ w('8 caractères au moins.') }}</small>
     </label>
+    <label v-if="mode === 'register' && loyalty" class="sf-check"><input v-model="form.Loyalty" type="checkbox"><span>{{ w('Rejoindre le programme de fidélité et cumuler des points') }}</span></label>
     <label v-if="mode === 'register'" class="sf-check"><input v-model="form.Newsletter" type="checkbox"><span>{{ w('Recevoir les nouveautés et les offres par e-mail') }}</span></label>
     <button type="submit" class="sf-btn" :disabled="busy">{{ w(mode === 'login' ? 'Se connecter' : mode === 'register' ? 'Créer mon compte' : 'Envoyer le lien') }}</button>
     <button v-if="mode === 'login'" type="button" class="sf-btn is-outline" @click="to('register')">{{ w(pro ? 'Créer mon compte professionnel' : 'S\'inscrire') }}</button>

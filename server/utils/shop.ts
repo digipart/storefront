@@ -42,7 +42,10 @@ export function shapeProduct(raw: any, lang: string, prefix: string): ShopProduc
   const images = (Array.isArray(set) ? set : []).map((image: any) => String(image?.Src || '')).filter((src: string) => /^https?:\/\//.test(src))
   // the same picture in the sizes Digipart made of it: the browser takes the one that fits the place and the screen (`srcset`)
   const sizes = ['product_small', 'product_medium', 'product_large', 'product_xlarge'].map(name => (Array.isArray(sets[name]) ? sets[name] : []))
-  const imageSets = images.map((_: string, index: number) => sizes.map(list => list[index]).filter((image: any) => image && /^https?:\/\//.test(String(image.Src || '')) && Number(image.Width) > 0).map((image: any) => String(image.Src).replace(/ /g, '%20') + ' ' + Number(image.Width) + 'w').join(', '))
+  const imageSets = images.map((_: string, index: number) => sizes.map(list => list[index]).filter((image: any) => image && /^https?:\/\//.test(String(image.Src || '')) && Number(image.Width) > 0)
+    // the very large file (3000 px, about a megabyte) is left to the zoom: on the page a picture never needs more than the 1500 px one, even on a large high-density screen
+    .filter((image: any, _at: number, all: any[]) => Number(image.Width) <= 2000 || !all.some((other: any) => Number(other.Width) >= 1200 && Number(other.Width) <= 2000))
+    .map((image: any) => String(image.Src).replace(/ /g, '%20') + ' ' + Number(image.Width) + 'w').join(', '))
   // its address in each language of its description (for the search engines): <category address>/<product address>, without the language
   const alternates: Record<string, string> = {}
   for (const row of (Array.isArray(raw.SEO) ? raw.SEO : [])) {

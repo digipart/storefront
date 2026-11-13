@@ -1,17 +1,22 @@
 <script setup lang="ts">
 // The customer account: the menu on the left, the chosen part on the right (overview, profile, orders and one order, loyalty). A visitor who is not logged in sees the login forms.
-const props = defineProps<{ section: string, id: number }>()
+const props = defineProps<{ section: string, id: string }>()
 const site = inject<Ref<any>>('sfSite')!
 const w = useWords()
 const { customer, loaded, busy, url, favoritesUrl, favorites, load, send, query } = useAccount()
 const lang = computed(() => site.value?.Route?.LanguageIsoCode || 'fr')
 const french = computed(() => lang.value === 'fr')
-const names = computed(() => (french.value ? { profile: 'profil', orders: 'commandes', loyalty: 'fidelite', addresses: 'adresses' } : { profile: 'profile', orders: 'orders', loyalty: 'loyalty', addresses: 'addresses' }))
+const names = computed(() => (french.value ? { profile: 'profil', orders: 'commandes', loyalty: 'fidelite', addresses: 'adresses', service: 'service-client', referral: 'parrainage' } : { profile: 'profile', orders: 'orders', loyalty: 'loyalty', addresses: 'addresses', service: 'customer-service', referral: 'referral' }))
 const part = computed(() => { const found = Object.entries(names.value).find(([, slug]) => slug === props.section); return found ? found[0] : 'home' })
 const menu = computed(() => [
   { key: 'home', label: 'Mon compte', href: url.value }, { key: 'profile', label: 'Mon profil', href: url.value + '/' + names.value.profile }, { key: 'orders', label: 'Mes commandes', href: url.value + '/' + names.value.orders }, { key: 'addresses', label: 'Mes adresses', href: url.value + '/' + names.value.addresses },
   { key: 'favorites', label: 'Mes favoris', href: favoritesUrl.value }, { key: 'loyalty', label: 'Fidélité', href: url.value + '/' + names.value.loyalty },
+  { key: 'service', label: 'Service client', href: url.value + '/' + names.value.service },
+  ...(site.value?.Features?.Referral ? [{ key: 'referral', label: 'Parrainage', href: url.value + '/' + names.value.referral }] : []),
 ])
+const tracking = ref(false)
+const birthday = ref('')
+async function loyaltyAct(action: string) { error.value = ''; const answer = await send({ Action: action, Birthday: birthday.value }); error.value = answer.Error; if (!answer.Error) { await read('loyalty') } }
 const data = ref<any>(null)
 const waiting = ref(false)
 const error = ref(''), note = ref('')
@@ -26,7 +31,8 @@ async function open() {
   if (!customer.value) { return }
   Object.assign(form, { Firstname: customer.value.Firstname, Lastname: customer.value.Lastname, Phone: customer.value.Phone, Birthday: '' })
   if (part.value === 'orders') { await read(props.id ? 'order' : 'orders', props.id ? { id: props.id } : {}) }
-  if (part.value === 'loyalty' || part.value === 'home') { await read('loyalty') }
+  if (part.value === 'loyalty') { await read('loyalty') }
+  if (part.value === 'home') { await read('home') }
   if (part.value === 'addresses') { editing.value = null; await read('addresses') }
 }
 async function save() { error.value = ''; note.value = ''; const answer = await send({ Action: 'profile', ...form }); error.value = answer.Error; note.value = answer.Note }
@@ -60,7 +66,12 @@ watch(() => [customer.value?.Email, props.section, props.id], open)
           <h1>{{ w('Mon compte') }}</h1>
           <div class="sf-acc-cards">
             <a :href="menu[1].href" class="sf-acc-card"><h2>{{ w('Mon profil') }}</h2><span>{{ customer.Firstname }} {{ customer.Lastname }}</span><span>{{ customer.Email }}</span></a>
-            <a :href="menu[2].href" class="sf-acc-card"><h2>{{ w('Mes commandes') }}</h2><span>{{ w('Suivre une commande, revoir un achat') }}</span></a>
+            <a v-if="data?.LastOrder" :href="menu[2].href + '/' + data.LastOrder.Id" class="sf-acc-card is-order">
+              <h2>{{ w('Ma dernière commande') }}</h2>
+              <span class="sf-acc-card-order"><img v-if="data.LastOrder.Images[0]" :src="data.LastOrder.Images[0]" alt="" loading="lazy"><span><strong>{{ w('Commande n° {a}', { a: data.LastOrder.Id }) }}</strong><span>{{ data.LastOrder.Date }}</span><span class="sf-acc-state">{{ data.LastOrder.State }}</span></span></span>
+              <span>{{ money(data.LastOrder.Total, data.Currency, lang) }}</span>
+            </a>
+            <a :href="menu[2].href" class="sf-acc-card"><h2>{{ w('Mes commandes') }}</h2><span>{{ w(data?.Orders ? (data.Orders > 1 ? '{a} commandes' : '{a} commande') : 'Suivre une commande, revoir un achat', { a: data?.Orders || 0 }) }}</span></a>
             <a v-if="data?.Loyalty" :href="menu[5].href" class="sf-acc-card"><h2>{{ w('Fidélité') }}</h2><span class="sf-acc-points">{{ data.Loyalty.Points }} {{ w('points') }}</span><span v-if="data.Loyalty.Tier">{{ data.Loyalty.Tier }}</span></a>
             <a :href="menu[4].href" class="sf-acc-card"><h2>{{ w('Mes favoris') }}</h2><span>{{ w(favorites.length > 1 ? '{a} articles' : '{a} article', { a: favorites.length }) }}</span></a>
           </div>
@@ -123,6 +134,8 @@ watch(() => [customer.value?.Email, props.section, props.id], open)
               <div class="sf-acc-where">
                 <template v-if="data.Order.DeliveryAddress"><h2>{{ w('Livraison') }}</h2><p>{{ data.Order.DeliveryAddress.Name }}<br>{{ data.Order.DeliveryAddress.Line }}<br>{{ data.Order.DeliveryAddress.City }}<br>{{ data.Order.DeliveryAddress.Country }}</p></template>
                 <p v-if="data.Order.Carrier">{{ data.Order.Carrier }}<template v-if="data.Order.TrackingNumber"> · {{ w('Suivi') }} {{ data.Order.TrackingNumber }}</template></p>
+                <p><button type="button" class="sf-btn is-outline" aria-haspopup="dialog" @click="tracking = true">{{ w('Suivre ma livraison') }}</button></p>
+                <LazySfTracking v-if="tracking" :order="data.Order.Id" @close="tracking = false" />
                 <template v-if="data.Order.Return.Available">
                   <h2>{{ w('Retour') }}</h2>
                   <p>{{ data.Order.Return.Until ? w('Vous pouvez retourner cette commande jusqu\'au {a}.', { a: data.Order.Return.Until }) : w('Vous pouvez retourner cette commande.') }}</p>
@@ -169,7 +182,13 @@ watch(() => [customer.value?.Email, props.section, props.id], open)
         <template v-else-if="part === 'loyalty'">
           <h1>{{ w('Fidélité') }}</h1>
           <p v-if="waiting" class="sf-muted">{{ w('Chargement…') }}</p>
-          <p v-else-if="!data?.Loyalty" class="sf-muted">{{ w('Vous n\'êtes pas encore inscrit au programme de fidélité.') }}</p>
+          <template v-else-if="!data?.Loyalty">
+            <p>{{ w('Rejoignez le programme de fidélité : chaque commande vous rapporte des points, à échanger contre des récompenses.') }}</p>
+            <form class="sf-form sf-acc-join" @submit.prevent="loyaltyAct('loyalty-join')">
+              <label>{{ w('Date de naissance') }}<input v-model="birthday" type="date" autocomplete="bday" required></label>
+              <div><button type="submit" class="sf-btn" :disabled="busy">{{ w('Rejoindre le programme') }}</button></div>
+            </form>
+          </template>
           <template v-else>
             <div class="sf-acc-loyal">
               <div class="sf-acc-ring"><strong>{{ data.Loyalty.Points }}</strong><span>{{ w('points') }}</span><em v-if="data.Loyalty.Tier">{{ data.Loyalty.Tier }}</em></div>
@@ -182,13 +201,19 @@ watch(() => [customer.value?.Email, props.section, props.id], open)
                 <p v-if="data.Loyalty.RewardMissing" class="sf-total-note">{{ w('Plus que {a} points avant la prochaine récompense !', { a: data.Loyalty.RewardMissing }) }}</p>
                 <button v-if="data.Loyalty.Barcode" type="button" class="sf-btn" :aria-expanded="card" @click="card = !card">{{ w(card ? 'Masquer ma carte fidélité' : 'Afficher ma carte fidélité') }}</button>
                 <div v-if="card && data.Loyalty.Barcode" class="sf-acc-cardbox"><img :src="data.Loyalty.Barcode" :alt="w('Code-barres de la carte {a}', { a: data.Loyalty.CardNumber })"><span>N° {{ data.Loyalty.CardNumber }}</span></div>
+                <a v-if="data.Wallet" :href="data.Wallet" target="_blank" rel="noopener" class="sf-btn is-outline">{{ w('Ajouter à Google Wallet') }}</a>
               </div>
             </div>
+            <LazySfRewards v-if="data.Rewards?.Member" :rewards="data.Rewards" @changed="read('loyalty')" />
             <h2 class="sf-acc-sub">{{ w('Historique') }}</h2>
             <p v-if="!data.Loyalty.History.length" class="sf-muted">{{ w('Aucun mouvement de points pour le moment.') }}</p>
             <ul v-else class="sf-acc-history"><li v-for="(item, index) in data.Loyalty.History" :key="index"><span>{{ item.Label }}<small>{{ item.Date }}</small></span><strong>{{ item.Points > 0 ? '+' : '' }}{{ item.Points }}</strong></li></ul>
+            <p class="sf-acc-leave"><button type="button" class="sf-link" :disabled="busy" @click="loyaltyAct('loyalty-leave')">{{ w('Quitter le programme de fidélité') }}</button></p>
           </template>
         </template>
+
+        <LazySfService v-else-if="part === 'service'" :id="id" :base="menu[6].href" />
+        <LazySfReferral v-else-if="part === 'referral'" />
       </div>
     </div>
   </div>

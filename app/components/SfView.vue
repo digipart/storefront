@@ -55,6 +55,12 @@ useHead(() => {
     script: structured.value.map(item => ({ type: 'application/ld+json', innerHTML: JSON.stringify(item).replace(/</g, '\\u003c') })),
   }
 })
+// the pictures come from the media host of the shop: its connection is opened while the page is read, before the first picture is asked for
+const mediaOrigin = computed(() => {
+  const first = view.value?.Product?.Images?.[0] || view.value?.Category?.Listing?.Products?.[0]?.Images?.[0] || site.value?.Logo?.Src || ''
+  try { const origin = new URL(first).origin; return origin !== site.value?.Origin ? origin : '' } catch { return '' }
+})
+useHead(() => ({ link: mediaOrigin.value ? [{ rel: 'preconnect', href: mediaOrigin.value, crossorigin: 'anonymous' }, { rel: 'dns-prefetch', href: mediaOrigin.value }] : [] }))
 const prefs = computed(() => site.value?.Preferences || {})
 useHead(() => view.value?.Kind === 'product'
   ? { title: view.value.Product.SeoTitle, meta: [{ name: 'description', content: view.value.Product.SeoDescription || view.value.Product.DescriptionShort }] }
@@ -64,6 +70,10 @@ useHead(() => view.value?.Kind === 'product'
   ? { title: view.value.Lookbook.SeoTitle, meta: [{ name: 'description', content: view.value.Lookbook.SeoDescription }] }
   : view.value?.Kind === 'search'
   ? { title: w('Recherche'), meta: [{ name: 'robots', content: 'noindex' }] }
+  : view.value?.Kind === 'whatsapp'
+  ? { title: 'WhatsApp', meta: [{ name: 'description', content: w('Nouveautés, ventes privées et conseils, directement sur WhatsApp.') }] }
+  : view.value?.Kind === 'referral'
+  ? { title: w('Parrainage'), meta: [{ name: 'robots', content: 'noindex' }] }
   : ['account', 'favorites', 'reset'].includes(view.value?.Kind)
   ? { title: w(view.value.Kind === 'favorites' ? 'Mes favoris' : 'Mon compte'), meta: [{ name: 'robots', content: 'noindex' }] }
   : view.value?.Kind === 'thanks'
@@ -79,13 +89,15 @@ useHead(() => view.value?.Kind === 'product'
 
 <template>
   <main>
-    <SfCheckout v-if="view?.Kind === 'checkout'" :design="view.Design" />
-    <SfAccount v-else-if="view?.Kind === 'account'" :section="view.Section" :id="view.Id" />
-    <SfFavorites v-else-if="view?.Kind === 'favorites'" />
-    <SfReset v-else-if="view?.Kind === 'reset'" />
-    <SfLookbook v-else-if="view?.Kind === 'lookbook'" :lookbook="view.Lookbook" />
-    <SfSearch v-else-if="view?.Kind === 'search'" :key="route.fullPath" :search="view.Search" />
-    <SfThanks v-else-if="view?.Kind === 'thanks'" />
+    <LazySfCheckout v-if="view?.Kind === 'checkout'" :design="view.Design" />
+    <LazySfAccount v-else-if="view?.Kind === 'account'" :section="view.Section" :id="view.Id" />
+    <LazySfFavorites v-else-if="view?.Kind === 'favorites'" />
+    <LazySfReset v-else-if="view?.Kind === 'reset'" />
+    <LazySfLookbook v-else-if="view?.Kind === 'lookbook'" :lookbook="view.Lookbook" />
+    <LazySfSearch v-else-if="view?.Kind === 'search'" :key="route.fullPath" :search="view.Search" />
+    <LazySfThanks v-else-if="view?.Kind === 'thanks'" />
+    <LazySfReferralLanding v-else-if="view?.Kind === 'referral'" :code="view.Code" />
+    <div v-else-if="view?.Kind === 'whatsapp'" class="sf-thanks sf-wa-page"><h1>{{ w('Rejoignez-nous sur WhatsApp') }}</h1><p>{{ w('Nouveautés, ventes privées et conseils, directement sur WhatsApp.') }}</p><LazySfWhatsapp /></div>
     <template v-else-if="view?.Design">
       <SfSection v-for="(section, index) in view.Design.Sections" :key="section.Id" :section="section" :first="index === 0" />
     </template>

@@ -2,8 +2,11 @@
 // while the payment has not reached Digipart yet (the order is made when the payment provider confirms, a few seconds later).
 export default defineEventHandler(async (event) => {
   const { lang } = langOf(event)
-  const after = Math.floor(Number(getQuery(event).after) || 0)
+  const after = String(getQuery(event).after ?? '')
   setResponseHeader(event, 'Cache-Control', 'private, no-store')
+  await localNotify(event)   // development only: does nothing on a real site
   const order = await newestOrder(event, lang)
-  return { Order: order && order.Id !== after ? order : null }
+  const made = order && order.Id !== after ? order : null
+  if (made) { forgetPayment(event); forget(event) }   // the paid cart is gone: what was kept for this visitor is dropped
+  return { Order: made }
 })

@@ -44,8 +44,12 @@ const reopen = computed(() => (closedPage.value?.ShowReopenAt && closedPage.valu
 const style = computed(() => Object.entries(site.value?.Theme?.Variables || {}).map(([name, value]) => name + ':' + value).join(';'))
 useHead(() => ({
   htmlAttrs: { lang: site.value?.Route?.LanguageIsoCode || 'fr', style: style.value },
-  // the fonts of the theme, served by this site (server/routes/fonts.css.get.ts)
-  link: (site.value?.Theme?.Fonts || []).length ? [{ rel: 'stylesheet', href: '/fonts.css?' + site.value.Theme.Fonts.map((font: any) => 'f=' + encodeURIComponent(font.Name)).join('&') }] : [],
+  // the fonts of the theme, served by this site: their rules are written in the page (nothing to fetch before it is drawn) and their files are asked for at once (server/utils/fonts.ts)
+  style: site.value?.FontCss ? [{ key: 'sf-fonts', innerHTML: site.value.FontCss }] : [],
+  link: (site.value?.FontFiles || []).map((href: string) => ({ rel: 'preload', as: 'font', type: 'font/woff2', href, crossorigin: 'anonymous' })),
+  // the next page is prepared while the visitor points at its link (browsers that know « speculation rules »: Chrome, Edge): the click then shows it at once. Never for what belongs to
+  // one visitor or does something (cart, order, account, short links), nor in a theme preview.
+  script: site.value?.Preview ? [] : [{ key: 'sf-speculation', type: 'speculationrules', innerHTML: JSON.stringify({ prerender: [{ where: { and: [{ href_matches: '/*' }, { not: { href_matches: ['/*panier*', '/*cart*', '/*commande*', '/*checkout*', '/*compte*', '/*account*', '/*favoris*', '/*wishlist*', '/s/*', '/*parrainage*', '/*referral*', '/*reset*', '/*\\?*'] } }, { not: { selector_matches: '[target], [download], [rel~=nofollow]' } }] }, eagerness: 'moderate' }] }) }],
   titleTemplate: (title?: string) => (title ? title + ' · ' : '') + (site.value?.Name || ''),
   meta: (closed.value && closedPage.value?.NoIndex !== false) || site.value?.Preview ? [{ name: 'robots', content: 'noindex, nofollow' }] : [],
 }))
@@ -85,7 +89,7 @@ if (import.meta.server && closed.value) {
     <header v-if="ordering" class="sf-cohead"><a :href="site.Route.Prefix || '/'">‹ {{ words(site.Route.LanguageIsoCode, 'Continuer mes achats') }}</a><a :href="site.Route.Prefix || '/'" class="sf-logo">{{ site.Name }}</a><span /></header>
     <header v-else-if="site.Header" ref="headerBox" :class="{ 'sf-sticky': stickyHeader }"><SfSection v-for="section in site.Header.Sections" :key="section.Id" :section="section" /></header>
     <NuxtPage />
-    <ClientOnly><SfCart /></ClientOnly>
+    <ClientOnly><LazySfCart /></ClientOnly>
     <footer v-if="site.Footer && !ordering"><SfSection v-for="section in site.Footer.Sections" :key="section.Id" :section="section" /></footer>
     <!-- the bar of a preview: which theme is shown, in which language, and the way out. Only whoever holds a preview link sees it. -->
     <aside v-if="site.Preview && !barHidden" class="sf-pbar" aria-label="Aperçu du thème">

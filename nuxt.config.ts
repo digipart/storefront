@@ -20,4 +20,7 @@ export default defineNuxtConfig({
   },
   app: { head: { meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }] } },
   nitro: { compressPublicAssets: true },
+  // no « manifest of the build » asked by the page: a tab left open across an update of the site used to ask for the file of the old build and show a 404 page. A piece of script
+  // of an old build that is gone makes the page reload itself (Nuxt's own behaviour), which is all an update needs.
+  experimental: { appManifest: false },
 })

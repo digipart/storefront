@@ -50,15 +50,15 @@ const w = useWords()
     </fieldset>
     <template v-else-if="block.Type === 'p_sizeguide' && t.Text">
       <button v-if="Number(s.IdPage) > 0" type="button" class="sf-link sf-guide" aria-haspopup="dialog" @click="guideOpen = true">{{ t.Text }}</button>
-      <SfPagePanel v-if="guideOpen" :id="Number(s.IdPage)" :title="t.Text" @close="guideOpen = false" />
+      <LazySfPagePanel v-if="guideOpen" :id="Number(s.IdPage)" :title="t.Text" @close="guideOpen = false" />
     </template>
     <div v-else-if="block.Type === 'p_buy'" class="sf-buy" :class="{ 'is-full': s.Full }">
       <button v-if="locked" type="button" class="sf-btn" :class="'is-' + (s.Style || 'solid')" :disabled="product.PriceState === 'pending'" @click="showPanel('account')">{{ w(product.PriceState === 'pending' ? 'Compte en cours de validation' : product.PriceState === 'business' ? 'Prix réservés aux professionnels' : 'Se connecter pour commander') }}</button>
       <button v-else type="button" class="sf-btn" :class="'is-' + (s.Style || 'solid')" :disabled="!product.Available || cartBusy" @click="buy">{{ w(product.Available ? (cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) : 'Épuisé') }}</button>
       <button type="button" class="sf-heart" :class="{ 'is-on': isFavorite(product.Id) }" :aria-pressed="isFavorite(product.Id)" :aria-label="w(isFavorite(product.Id) ? 'Retirer de mes favoris' : 'Ajouter à mes favoris')" @click="toggleFavorite(product.Id)">{{ isFavorite(product.Id) ? '♥' : '♡' }}</button>
       <button v-if="product.TaxExcl && locked" type="button" class="sf-prohelp" aria-haspopup="dialog" @click="proOpen = true"><strong>{{ w('Nouveau client professionnel ?') }}</strong><span>{{ w('Découvrez les étapes pour commander') }}</span></button>
-      <SfLot v-if="lotOpen" :product="product" @close="lotOpen = false" />
-      <SfProSteps v-if="proOpen" @close="proOpen = false" />
+      <LazySfLot v-if="lotOpen" :product="product" @close="lotOpen = false" />
+      <LazySfProSteps v-if="proOpen" @close="proOpen = false" />
       <p v-if="ask" class="sf-buy-ask" role="alert">{{ w('Choisissez une taille.') }}</p>
       <p v-else-if="cartError" class="sf-buy-ask" role="alert">{{ w(cartError) }}</p>
     </div>
@@ -68,7 +68,7 @@ const w = useWords()
       <div class="sf-rte" v-html="product.Description" />
     </details>
     <p v-else-if="block.Type === 'p_stock'" class="sf-stock">{{ w(product.Available ? 'En stock' : 'Épuisé') }}</p>
-    <SfStories v-else-if="block.Type === 'p_stories'" place="product" :product="product.Id" :size="s.Size || 64" :gap="14" />
+    <LazySfStories v-else-if="block.Type === 'p_stories'" place="product" :product="product.Id" :size="s.Size || 64" :gap="14" />
     <!-- p_express, p_details, p_reviews: served with the payment and the reviews -->
   </template>
 </template>

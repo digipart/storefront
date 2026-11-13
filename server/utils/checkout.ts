@@ -13,10 +13,10 @@ async function customer(event: H3Event): Promise<any | null> {
   const answer = await cartCall(event, 'GET', 'customer', {})
   const found = answer?.AuthData?.Customer
   if (!found || !found.Id) { setSession(event, ''); return null }   // the token is no longer accepted
-  return { Email: String(found.Email || ''), Firstname: String(found.Firstname || ''), Lastname: String(found.Lastname || ''), Guest: found.Guest === true || found.Guest === 1 || found.Guest === '1' }
+  return { Email: String(found.Email || ''), Firstname: String(found.Firstname || ''), Lastname: String(found.Lastname || ''), Guest: (found.Guest === true || found.Guest === 1 || found.Guest === '1') && !loggedIn(event) }
 }
 
-async function addresses(event: H3Event): Promise<CheckoutAddress[]> {
+export async function addresses(event: H3Event): Promise<CheckoutAddress[]> {
   const list = await cartCall(event, 'GET', 'customer/address', {})
   return (Array.isArray(list) ? list : []).map((a: any) => ({
     IdAddress: Number(a.IdAddress), Firstname: String(a.Firstname || ''), Lastname: String(a.Lastname || ''), Company: String(a.Company || ''), Address1: String(a.Address1 || ''), Address2: String(a.Address2 || ''),
@@ -27,7 +27,7 @@ async function addresses(event: H3Event): Promise<CheckoutAddress[]> {
 
 export async function readCheckout(event: H3Event, lang: string, prefix: string, askedCountry: string) {
   const upper = lang.toUpperCase()
-  const [who, countryAnswer, site, last] = await Promise.all([customer(event), cartCall(event, 'GET', 'country', { LanguageIsoCode: lang }), digipart(event, '', {}).catch(() => null), newestOrder(event, lang)])
+  const [who, countryAnswer, site, last, pay] = await Promise.all([customer(event), cartCall(event, 'GET', 'country', { LanguageIsoCode: lang }), digipart(event, '', {}).catch(() => null), newestOrder(event, lang), payConfig(event)])
   const countries = (Array.isArray(countryAnswer?.ActiveCountries) ? countryAnswer.ActiveCountries : []).map((c: any) => ({ IsoCode: String(c.CountryIsoCode || '').toUpperCase(), Name: String(c.CountryName || '') })).filter((c: any) => c.IsoCode)
   const list = who ? await addresses(event) : []
   const address = (list.find((a: any) => a.IsDelivery) || list[0] || null) as CheckoutAddress | null
@@ -48,13 +48,14 @@ export async function readCheckout(event: H3Event, lang: string, prefix: string,
     }
   }
   const total = cart.ToPay
+  const giftCards = who && cart.Count ? await readGiftCards(event, total) : null
   const payments: CheckoutPayment[] = (Array.isArray(paymentAnswer?.PaymentMethods) ? paymentAnswer.PaymentMethods : []).map((p: any) => ({
     IdPayment: Number(p.IdPayment), Code: String(p.PaymentCode || ''), Provider: String(p.PaymentProvider || p.PaymentName || ''), Title: String(p.PaymentTitle || p.PaymentName || ''), Description: String(p.PaymentDescription || ''),
     Available: !(Number(p.AmountMin) > 0 && total < Number(p.AmountMin)) && !(Number(p.AmountMax) > 0 && total > Number(p.AmountMax)),
   })).filter((p: CheckoutPayment) => p.IdPayment > 0)
   return {
     Mode: site?.Preferences?.CheckoutMode === 'steps' ? 'steps' : 'onepage', TaxExcl: (await pricing(event)).wholesale,
-    LastOrder: last?.Id || 0, Customer: who, Address: address, Countries: countries, CountryIsoCode: iso, Cart: cart, Carriers: carriers, Payments: payments,
+    LastOrder: last?.Id || '', Pay: pay, GiftCards: giftCards, Customer: who, Address: address, Countries: countries, CountryIsoCode: iso, Cart: cart, Carriers: carriers, Payments: payments,
   }
 }
 
@@ -95,14 +96,14 @@ export async function readRelays(event: H3Event, lang: string, idCarrier: number
 }
 
 /** The newest order of the customer (what the confirmation page shows once the payment made it), or null. */
-export async function newestOrder(event: H3Event, lang: string): Promise<{ Id: number, Date: string, State: string, Total: number, Currency: string } | null> {
+export async function newestOrder(event: H3Event, lang: string): Promise<{ Id: string, Date: string, State: string, Total: number, Currency: string } | null> {
   if (!sessionToken(event)) { return null }
   const answer = await cartCall(event, 'GET', 'order/list', { Limit: 1, Offset: 0, CurrencyIsoCode: 'EUR', LanguageIsoCode: lang.toUpperCase() })
   const order = Array.isArray(answer?.Orders) ? answer.Orders[0] : null
   if (!order || !order.IdOrder) { return null }
   const total = order.Total || {}
   const toPay = Number(total.ToPay?.TaxIncl ?? (Number(total.Product?.TaxIncl || 0) + Number(total.Shipping?.TaxIncl || 0) - Number(total.Discount?.TaxIncl || 0)))
-  return { Id: Number(order.IdOrder), Date: String(order.DateAdd || ''), State: String(order.State?.Label || ''), Total: Math.round(toPay * 100) / 100, Currency: String(answer.Currency?.IsoCode || 'EUR') }
+  return { Id: String(order.IdOrder), Date: String(order.DateAdd || ''), State: String(order.State?.Label || ''), Total: Math.round(toPay * 100) / 100, Currency: String(answer.Currency?.IsoCode || 'EUR') }
 }
 
 const NAME = /^[\p{L}\p{M}' .-]{1,60}$/u

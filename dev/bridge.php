@@ -32,6 +32,9 @@ $answer = match ($argv[2]) {
     'shipping.php' => $api->freeShipping($idMarketPlace, $text('CountryIsoCode')),
     'search.php' => $api->search($idMarketPlace, $text('Term'), $language, (int) ($text('Limit') ?: 24), (int) $text('Offset')),
     'version.php' => $api->version($idMarketPlace),
+    'payment.php' => $api->payment($idMarketPlace),
+    'paypal-notify.php' => (require __DIR__ . '/paypal-notify.php')($pdo, $text('IdCapture'), (int) $text('IdCart'), (string) ($rootUrl ?? '')),   // local development only: see that file
+    'stripe-notify.php' => (require __DIR__ . '/stripe-notify.php')($pdo, $text('ClientSecret'), (string) ($rootUrl ?? '')),   // local development only: see that file
     'sitemap.php' => $api->sitemap($idMarketPlace, in_array($text('Type'), ['product', 'category', 'page'], true) ? $text('Type') : null, $language, max(1, (int) $text('Page'))),
     default => null,
 };

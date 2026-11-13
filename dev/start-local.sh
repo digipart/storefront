@@ -15,7 +15,7 @@ fi
 export NUXT_LOCAL_PHP="/Applications/MAMP/bin/php/php8.3.36/bin/php"
 export NUXT_LOCAL_URL="https://local.digipart.fr"
 export NUXT_ID_MARKET_PLACE="${1:-1}"
-export NUXT_CACHE_SECONDS=2
+export NUXT_CACHE_SECONDS=30   # what Digipart answers is kept 30 s (a publication in the builder still shows at once); a change of product or menu shows within 30 s
 export NODE_TLS_REJECT_UNAUTHORIZED=0   # the local Digipart has a self-signed certificate: never set this on a real server
 export PORT=3100 HOST=127.0.0.1
 exec node .output/server/index.mjs

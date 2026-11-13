@@ -23,6 +23,7 @@ function keepFav(event: H3Event, id: number) {
 function enter(event: H3Event, auth: any): boolean {
   const token = String(auth?.Token || '')
   if (!token) { return false }
+  event.context.sfProfile = undefined   // who the visitor is changes: asked again
   setSession(event, token)
   if (Number(auth.Customer?.IdCart) > 0) { setCartId(event, Number(auth.Customer.IdCart)) }
   if (Number(auth.Customer?.IdFavorite) > 0) { keepFav(event, Number(auth.Customer.IdFavorite)) }
@@ -33,20 +34,41 @@ export async function signIn(event: H3Event, body: any): Promise<string> {
   const email = clean(body?.Email, 150), password = String(body?.Password ?? '')
   if (!EMAIL.test(email) || password === '' || password.length > 200) { return 'E-mail ou mot de passe incorrect.' }
   const answer = await cartCall(event, 'POST', 'authentification/email', { Email: email, Password: password, IdCart: cartId(event) || '', IdFavorite: favId(event) || '' })
-  return enter(event, answer?.AuthData) ? '' : 'E-mail ou mot de passe incorrect.'
+  if (!enter(event, answer?.AuthData)) { return 'E-mail ou mot de passe incorrect.' }
+  setLoggedIn(event, true)   // the password was given: logged in, even on a row Digipart still marks as guest
+  return ''
 }
 
-export function signOut(event: H3Event) { setSession(event, ''); keepFav(event, 0); setCartId(event, 0); deleteCookie(event, 'sf_cart', { path: '/' }); event.context.sfCart = 0 }
+/**
+ * The link « Se connecter à sa place » of a customer page of Digipart (`/account/autologin?token=…&email=…`): a member of the shop sees the site as that customer does. Digipart made the token
+ * for this one link and checks it (api/customer/autologin). Whoever was logged in on this browser is logged out first: nothing of that visit (its cart, its favourites) goes to the customer.
+ */
+export async function autoLogin(event: H3Event, email: string, token: string): Promise<boolean> {
+  email = clean(email, 150)
+  if (!EMAIL.test(email) || token.length < 10 || token.length > 200 || /[\u0000-\u001f]/.test(token)) { return false }
+  signOut(event)
+  const answer = await cartCall(event, 'POST', 'customer/autologin', { Email: email, Token: token })
+  const entered = enter(event, answer?.AuthData)
+  if (entered) { setLoggedIn(event, true) }
+  return entered
+}
+
+export function signOut(event: H3Event) { setLoggedIn(event, false); event.context.sfProfile = undefined; setSession(event, ''); keepFav(event, 0); setCartId(event, 0); deleteCookie(event, 'sf_cart', { path: '/' }); event.context.sfCart = 0 }
 
 /** The profile of the logged-in customer, or null. */
-export async function profile(event: H3Event): Promise<any | null> {
+export function profile(event: H3Event): Promise<any | null> {
+  // asked once per request, however many parts of the answer need it
+  event.context.sfProfile = event.context.sfProfile || readProfile(event)
+  return event.context.sfProfile
+}
+async function readProfile(event: H3Event): Promise<any | null> {
   if (!sessionToken(event)) { return null }
   const found = (await cartCall(event, 'GET', 'customer', {}))?.AuthData?.Customer
   if (!found || !found.Id) { setSession(event, ''); return null }
   if (Number(found.IdFavorite) > 0 && !favId(event)) { keepFav(event, Number(found.IdFavorite)) }
   return {
     Email: String(found.Email || ''), Firstname: String(found.Firstname || ''), Lastname: String(found.Lastname || ''), Birthday: String(found.Birthday || ''), Phone: String(found.Phone || ''),
-    LanguageIsoCode: String(found.LanguageIsoCode || ''), CurrencyIsoCode: String(found.CurrencyIsoCode || 'EUR'), Guest: yes(found.Guest), Newsletter: yes(found.NewsletterSubscribe), Loyalty: yes(found.LoyaltySubscribe), Business: found.Type === 'business', Active: yes(found.Active), Company: String(found.Company?.CompanyName || found.Company?.Name || (typeof found.Company === 'string' ? found.Company : '') || ''),
+    LanguageIsoCode: String(found.LanguageIsoCode || ''), CurrencyIsoCode: String(found.CurrencyIsoCode || 'EUR'), Guest: yes(found.Guest) && !loggedIn(event), Newsletter: yes(found.NewsletterSubscribe), Loyalty: yes(found.LoyaltySubscribe), Business: found.Type === 'business', Active: yes(found.Active), Company: String(found.Company?.CompanyName || found.Company?.Name || (typeof found.Company === 'string' ? found.Company : '') || ''),
   }
 }
 
@@ -73,8 +95,9 @@ export async function changeAccount(event: H3Event, body: any, lang: string, ori
       if (!/^\+?[0-9 ().-]{6,30}$/.test(phone)) { return { error: 'Indiquez un numéro de téléphone.' } }
       business = { Type: 'business', CompanyName: company, CompanyNumber: number, ...(tax ? { TaxNumber: tax } : {}), MobilePhone: phone, IsMainContact: 'true' }
     }
-    const made = await cartCall(event, 'POST', 'customer', { ...f, ...business, Password: password, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR', IdCart: cartId(event) || '', IdFavorite: favId(event) || '', ...(body?.Newsletter ? { NewsletterSubscribe: '1' } : {}) })
+    const made = await cartCall(event, 'POST', 'customer', { ...f, ...business, Password: password, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR', IdCart: cartId(event) || '', IdFavorite: favId(event) || '', ...(body?.Newsletter ? { NewsletterSubscribe: '1' } : {}), ...(body?.Loyalty && !body?.Business ? { LoyaltySubscribe: 'true' } : {}) })
     if (!enter(event, made?.AuthData)) { return { error: 'Votre compte n\'a pas pu être créé.' } }
+    setLoggedIn(event, true)
     return { error: '', note: body?.Business ? 'Votre demande de compte professionnel est enregistrée. Notre équipe l\'active dans les plus brefs délais ; vous verrez alors les prix.' : '' }
   }
   if (action === 'forgot') {
@@ -83,8 +106,9 @@ export async function changeAccount(event: H3Event, body: any, lang: string, ori
     return { error: '', note: 'Si un compte existe avec cette adresse, un e-mail vient de vous être envoyé pour choisir un nouveau mot de passe.' }   // the same words whether the account exists or not
   }
   if (action === 'reset') {
-    const email = clean(body?.Email, 150), token = clean(body?.Token, 100), password = String(body?.Password ?? '')
-    if (!EMAIL.test(email) || !/^[A-Za-z0-9_-]{10,100}$/.test(token)) { return { error: 'Ce lien n\'est plus valable : demandez-en un nouveau.' } }
+    const email = clean(body?.Email, 150), token = String(body?.Token ?? '').trim(), password = String(body?.Password ?? '')
+    // the token of Digipart is 30 printable characters, punctuation included (« ! », « $ »...)
+    if (!EMAIL.test(email) || !/^[\x21-\x7e]{10,200}$/.test(token)) { return { error: 'Ce lien n\'est plus valable : demandez-en un nouveau.' } }
     if (password.length < 8 || password.length > 200) { return { error: 'Choisissez un mot de passe d\'au moins 8 caractères.' } }
     const answer = await cartCall(event, 'POST', 'customer/password/reset', { Email: email, Token: token, Password: password })
     if (answer?.Status !== 'success') { return { error: 'Ce lien n\'est plus valable : demandez-en un nouveau.' } }
@@ -164,6 +188,15 @@ const slugOf = (seo: any): string => String((Array.isArray(seo) ? seo[0] : seo)?
 const amount = (value: any): number => Math.round(Number(value || 0) * 100) / 100
 
 /** The favourites of the visitor (logged in or not). */
+/** Only the ids of the favourite products (the hearts of the product cards and the counter of the header): one light call, asked beside the profile when the list is already known. */
+export async function favoriteIds(event: H3Event, lang: string): Promise<number[]> {
+  let id = favId(event)
+  if (!id && sessionToken(event)) { await profile(event); id = favId(event) }
+  if (!id) { return [] }
+  const answer = await cartCall(event, 'GET', 'favorite', { IdFavorite: id, CurrencyIsoCode: 'EUR', LanguageIsoCode: lang.toUpperCase(), ResponseLevel: 'summary' })
+  return (Array.isArray(answer?.Products) ? answer.Products : []).map((p: any) => Number(p.IdProduct)).filter((n: number) => n > 0)
+}
+
 export async function readFavorites(event: H3Event, lang: string, prefix: string): Promise<{ Ids: number[], Products: any[] }> {
   let id = favId(event)
   if (!id && sessionToken(event)) { await profile(event); id = favId(event) }
@@ -195,25 +228,24 @@ function returnOf(event: H3Event, order: any, email: string) {
   return { Available: available, Until: available ? String(state.MaxDate || '') : '', Url: url }
 }
 
-export async function readOrders(event: H3Event, lang: string, page: number, email = '') {
-  const size = 10
+export async function readOrders(event: H3Event, lang: string, page: number, email = '', size = 10) {
   const answer = await cartCall(event, 'GET', 'order/list', { Limit: size, Offset: (Math.max(1, page) - 1) * size, CurrencyIsoCode: 'EUR', LanguageIsoCode: lang.toUpperCase() })
   const orders = (Array.isArray(answer?.Orders) ? answer.Orders : []).map((o: any) => ({
-    Id: Number(o.IdOrder), Date: String(o.DateAdd || ''), State: String(o.State?.Label || ''), Total: amount(o.Total?.Paid?.TaxIncl ?? (Number(o.Total?.Product?.TaxIncl || 0) + Number(o.Total?.Shipping?.TaxIncl || 0) - Number(o.Total?.Discount?.TaxIncl || 0))),
+    Id: String(o.IdOrder), Date: String(o.DateAdd || ''), State: String(o.State?.Label || ''), Total: amount(o.Total?.Paid?.TaxIncl ?? (Number(o.Total?.Product?.TaxIncl || 0) + Number(o.Total?.Shipping?.TaxIncl || 0) - Number(o.Total?.Discount?.TaxIncl || 0))),
     Return: returnOf(event, o, email), Images: (Array.isArray(o.Products) ? o.Products : []).map((p: any) => picture(p.Media)).filter(Boolean).slice(0, 4), Count: Array.isArray(o.Products) ? o.Products.length : 0,
-  })).filter((o: any) => o.Id > 0)
+  })).filter((o: any) => o.Id !== '' && o.Id !== 'undefined' && o.Id !== 'null')   // a number, or the code of the shop and a number (« SHOP-12 »)
   const total = Number(answer?.TotalOrders || orders.length)
   return { Orders: orders, Total: total, Page: Math.max(1, page), Pages: Math.max(1, Math.ceil(total / size)), Currency: String(answer?.Currency?.IsoCode || 'EUR') }
 }
 
-export async function readOrder(event: H3Event, lang: string, prefix: string, idOrder: number, email = '') {
-  if (idOrder <= 0) { return null }
+export async function readOrder(event: H3Event, lang: string, prefix: string, idOrder: string, email = '') {
+  if (!/^[A-Za-z0-9_-]{1,40}$/.test(idOrder)) { return null }   // a number, or the code of the shop and a number
   const o = await cartCall(event, 'GET', 'order/detail', { IdOrder: idOrder, CurrencyIsoCode: 'EUR', LanguageIsoCode: lang.toUpperCase() })
   if (!o || !o.IdOrder || o.status === 'error') { return null }   // not this customer's order, or no such order
   const where = (a: any) => (a && (a.Address1 || a.City) ? { Name: [a.Firstname, a.Lastname].filter(Boolean).join(' '), Company: String(a.Company || ''), Line: [a.Address1, a.Address2].filter(Boolean).join(', '), City: [a.Postcode, a.City].filter(Boolean).join(' '), Country: String(a.Country || '') } : null)
   const tracking = String(o.Shipping?.Tracking?.URL || '')
   return {
-    Id: Number(o.IdOrder), Date: String(o.DateAdd || ''), State: String(o.State?.Label || ''), Currency: String(o.Currency?.IsoCode || 'EUR'),
+    Id: String(o.IdOrder), Date: String(o.DateAdd || ''), State: String(o.State?.Label || ''), Currency: String(o.Currency?.IsoCode || 'EUR'),
     Lines: (Array.isArray(o.Products) ? o.Products : []).map((p: any) => {
       const attributes = p.Variant?.Combination?.Attributes || p.Variant?.Attributes || []
       return { Name: String(p.Title || p.Reference || ''), Reference: String(p.Reference || ''), Variant: (Array.isArray(attributes) ? attributes : []).map((a: any) => String(a.AttributeName || '')).filter(Boolean).join(' / '), Quantity: Number(p.Quantity || 0), Total: amount(Number(p.Price?.Paid?.TaxIncl || 0)), Image: picture(p.Media), Url: prefix + '/p/' + slugOf(p.SEO) + '-' + Number(p.IdProduct) }

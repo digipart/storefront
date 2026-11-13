@@ -41,7 +41,7 @@ export async function cartCall(event: H3Event, method: 'GET' | 'POST' | 'PUT' | 
   // the customer of this visit (server/utils/session.ts): Digipart then knows whose cart, addresses and prices these are
   const token = sessionToken(event)
   const headers: Record<string, string> = token ? { Authorization: 'Bearer ' + token } : {}
-  if (method !== 'GET') { headers['Content-Type'] = 'application/x-www-form-urlencoded' }
+  if (method !== 'GET') { headers['Content-Type'] = 'application/x-www-form-urlencoded'; forget(event) }   // this visitor changes something: what was kept for them is dropped (server/utils/visitor.ts)
   try {
     const raw = await $fetch<string>(root + '/api/' + path, {
       method, responseType: 'text', retry: 0, timeout: 15000, ignoreResponseError: true, headers,
@@ -56,10 +56,14 @@ export async function cartCall(event: H3Event, method: 'GET' | 'POST' | 'PUT' | 
 export async function readCart(event: H3Event, lang: string, prefix: string, country = 'FR'): Promise<ShopCart> {
   const id = cartId(event)
   if (!id) { return emptyCart() }
-  const raw = await cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: 'EUR', CountryIsoCode: country, LanguageIsoCode: lang.toUpperCase() })
+  // the cart, how prices are shown to this visitor and the free delivery step of the country are asked at the same time
+  const [raw, policy, freeAsked] = await Promise.all([
+    cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: 'EUR', CountryIsoCode: country, LanguageIsoCode: lang.toUpperCase() }),
+    pricing(event),   // a professional site shows its prices without tax
+    digipart(event, 'shipping.php', { CountryIsoCode: country }).catch(() => null),
+  ])
   if (!raw || !raw.IdCart || raw.status === 'error') { return emptyCart() }
   keep(event, Number(raw.IdCart))   // an ordered cart is replaced by a new one by Digipart
-  const policy = await pricing(event)   // a professional site shows its prices without tax
   const tax = policy.wholesale ? 'PriceTaxExcl' : 'PriceTaxIncl'
   let lines: CartLine[] = (Array.isArray(raw.Products) ? raw.Products : []).map((line: any) => {
     const variants = Array.isArray(line.Variant) ? line.Variant : []
@@ -88,7 +92,8 @@ export async function readCart(event: H3Event, lang: string, prefix: string, cou
   const carrier = raw.Shipping?.Carrier || null
   const point = carrier?.IdRelayPoint ? { ...(carrier.RelayPoint || {}), Name: carrier.RelayPoint?.Name || 'Point relais ' + carrier.IdRelayPoint } : null   // a carrier that cannot describe its point still has one chosen
   // from which amount the delivery to the country of the cart is free (api/storefront/shipping.php), for the « livraison offerte dans X € » bar
-  const free = await digipart(event, 'shipping.php', { CountryIsoCode: String(raw.Country?.CountryIsoCode || country) }).catch(() => null)
+  const cartCountry = String(raw.Country?.CountryIsoCode || country).toUpperCase()
+  const free = cartCountry === country.toUpperCase() ? freeAsked : await digipart(event, 'shipping.php', { CountryIsoCode: cartCountry }).catch(() => null)
   return {
     TaxExcl: policy.wholesale, FreeFrom: typeof free?.FreeShippingFrom === 'number' ? free.FreeShippingFrom : null, Relay: point ? { Name: String(point.Name), Address: [point.Address1, [point.Postcode, point.City].filter(Boolean).join(' ')].filter(Boolean).join(', ') } : null,
     IdCarrier: Number(carrier?.IdCarrier || 0), IdRelayPoint: String(carrier?.IdRelayPoint || ''), CarrierTitle: String(carrier?.Title || carrier?.Name || ''),

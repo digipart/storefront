@@ -8,9 +8,9 @@ const lang = computed(() => site.value?.Route?.LanguageIsoCode || 'fr')
 const order = ref<any>(null)
 const waiting = ref(true)
 onMounted(async () => {
-  let before = -1
-  try { const kept = sessionStorage.getItem('sf-order-before'); if (kept !== null) { before = Number(kept) || 0 } } catch { /* no order number then */ }
-  for (let attempt = 0; before >= 0 && attempt < 8 && !order.value; attempt++) {
+  let before: string | null = null
+  try { before = sessionStorage.getItem('sf-order-before') } catch { /* no order number then */ }
+  for (let attempt = 0; before !== null && attempt < 8 && !order.value; attempt++) {
     try { order.value = (await $fetch<any>('/api/storefront/order', { query: { lang: lang.value, after: before } })).Order } catch { break }
     if (!order.value) { await new Promise(resolve => setTimeout(resolve, 2500)) }
   }

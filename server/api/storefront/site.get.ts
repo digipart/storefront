@@ -17,5 +17,7 @@ export default defineEventHandler(async (event) => {
   }
   // a preview: where its theme is edited in Digipart (shown in the bar of the preview, to whoever holds the link)
   const edit = site?.Preview ? String(useRuntimeConfig(event).digipartUrl || useRuntimeConfig(event).localUrl).replace(/\/+$/, '') + '/index.php?module=storefront/builder&idMarketPlace=' + site.IdMarketPlace + '&theme=' + site.Theme.IdTheme : ''
-  return { ...site, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, Route: { LanguageIsoCode: language, Rest: (prefixed ? segments.slice(1) : segments).join('/'), Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
+  // the fonts of the theme, ready for the head of the page: their CSS and the files to load at once (server/utils/fonts.ts)
+  const fonts = await themeFonts((site?.Theme?.Fonts || []).map((font: any) => font?.Name)).catch(() => ({ css: '', files: [] }))
+  return { ...site, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, Route: { LanguageIsoCode: language, Rest: (prefixed ? segments.slice(1) : segments).join('/'), Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
 })

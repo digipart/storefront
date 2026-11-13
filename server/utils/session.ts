@@ -15,6 +15,19 @@ export function setSession(event: H3Event, token: string) {
   if (token) { setCookie(event, COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', secure: getRequestProtocol(event, { xForwardedProto: true }) === 'https', maxAge: 60 * 60 * 23 }) } else { deleteCookie(event, COOKIE, { path: '/' }) }
 }
 
+// A customer who gave a password (or came by the « log in as » link of Digipart) is LOGGED IN, even when Digipart still holds the row as a « guest »: someone who first ordered without an
+// account, then chose a password with « Mot de passe oublié », has a password and is still marked guest. A visitor who only typed an address on the order page is a guest and nothing more.
+const LOGIN = 'sf_login'
+
+export function loggedIn(event: H3Event): boolean {
+  return event.context.sfLogin !== undefined ? !!event.context.sfLogin : getCookie(event, LOGIN) === '1'
+}
+
+export function setLoggedIn(event: H3Event, on: boolean) {
+  event.context.sfLogin = on
+  if (on) { setCookie(event, LOGIN, '1', { path: '/', httpOnly: true, sameSite: 'lax', secure: getRequestProtocol(event, { xForwardedProto: true }) === 'https', maxAge: 60 * 60 * 23 }) } else { deleteCookie(event, LOGIN, { path: '/' }) }
+}
+
 /** Only the pages of this site may change something (a form of another site cannot act for a visitor). */
 export function sameSiteOnly(event: H3Event) {
   const origin = getRequestHeader(event, 'origin') || ''

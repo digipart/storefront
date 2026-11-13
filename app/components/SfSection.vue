@@ -44,7 +44,7 @@ const afterBanners = computed(() => { const at = blocks.value.findIndex((b: any)
 const split = computed(() => { const w = s.value.ImageWidth || 50; return { '--cols': s.value.Side === 'right' ? (100 - w) + 'fr ' + w + 'fr' : w + 'fr ' + (100 - w) + 'fr', '--gap': (s.value.Gap ?? 48) + 'px', alignItems: ({ top: 'start', bottom: 'end' } as Record<string, string>)[s.value.Valign] || 'center' } })
 const menuStyle = computed(() => ({ fontSize: (s.value.MenuSize || 14) + 'px', fontWeight: s.value.MenuWeight || 500, textTransform: s.value.MenuCase === 'uppercase' ? 'uppercase' : undefined, gap: (s.value.MenuGap || 28) + 'px', justifyContent: ({ left: 'flex-start', right: 'flex-end' } as Record<string, string>)[s.value.MenuAlign] || 'center' }))
 const home = computed(() => site.value?.Route?.Prefix || '/')
-const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'lookbook', 'stories', 'newsletter', 'social', 'announcement', 'main_header', 'main_footer', 'main_page', 'contact_form', 'main_catalog', 'main_product', 'main_cart']
+const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'lookbook', 'stories', 'newsletter', 'social', 'announcement', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart']
 const { cart, show: showPanel } = useCart()
 const { customer, favorites, url: accountUrl, favoritesUrl } = useAccount()
 // the filters of a category (sizes, colours, price): chosen in a panel, kept in the address so a filtered list can be shared
@@ -101,27 +101,25 @@ const w = useWords()
         <SfBlocks :blocks="afterBanners" />
       </div>
 
+      <!-- joining the WhatsApp list: a picture beside the words and the form, or the form alone -->
+      <div v-else-if="type === 'whatsapp_signup'" :class="s.Image ? ['sf-split', { 'is-reverse': s.Side === 'right' }] : 'sf-wa-alone'" :style="s.Image ? split : align">
+        <div v-if="s.Image" class="sf-split-img is-portrait"><img :src="s.Image" alt="" loading="lazy" decoding="async"></div>
+        <div :style="align"><SfBlocks :blocks="blocks"><LazySfWhatsapp :button="t.ButtonText" :success="t.Success" /></SfBlocks></div>
+      </div>
       <div v-else-if="type === 'image_text'" class="sf-split" :class="{ 'is-reverse': s.Side === 'right' }" :style="split">
         <div class="sf-split-img" :class="'is-' + (s.Ratio || 'portrait')"><img v-if="s.Image" :src="s.Image" alt="" loading="lazy" decoding="async"></div>
         <div :style="align"><SfBlocks :blocks="blocks" /></div>
       </div>
 
       <!-- sections whose own content is one block among the others -->
-      <div v-else-if="['richtext', 'products', 'lookbook', 'stories', 'newsletter', 'social', 'contact_form'].includes(type)" :style="align">
+      <div v-else-if="['richtext', 'products', 'lookbook', 'stories', 'newsletter', 'social', 'contact_form', 'store_locator'].includes(type)" :style="align">
         <SfBlocks :blocks="blocks">
           <div v-if="type === 'newsletter'" class="sf-news-wrap" :style="{ marginLeft: s.Align === 'left' ? 0 : 'auto', marginRight: s.Align === 'right' ? 0 : 'auto' }"><SfNewsletter :button="t.ButtonText" /></div>
-          <form v-else-if="type === 'contact_form'" class="sf-form" @submit.prevent>
-            <label>{{ w('Nom') }}<input type="text" name="name" autocomplete="name" required></label>
-            <label>{{ w('E-mail') }}<input type="email" name="email" autocomplete="email" required></label>
-            <label v-if="s.AskPhone">{{ w('Téléphone') }}<input type="tel" name="phone" autocomplete="tel"></label>
-            <label v-if="s.AskOrder">{{ w('Numéro de commande') }}<input type="text" name="order"></label>
-            <label v-if="s.AskSubject">{{ w('Objet') }}<input type="text" name="subject"></label>
-            <label>{{ w('Message') }}<textarea name="message" rows="6" required /></label>
-            <div><button type="submit" class="sf-btn">{{ w(t.ButtonText || 'Envoyer') }}</button></div>
-          </form>
+          <LazySfContact v-else-if="type === 'contact_form'" :settings="s" :texts="t" />
+          <LazySfStores v-else-if="type === 'store_locator'" :settings="s" />
           <SfProducts v-else-if="type === 'products'" :section="section" />
-          <SfLookbookFeature v-else-if="type === 'lookbook'" :id="Number(s.IdLookbook) || 0" :button="t.ButtonText" :height="s.Height" />
-          <SfStories v-else-if="type === 'stories'" :place="catalog ? 'catalog' : product ? 'product' : 'home'" :product="product?.Id" :size="s.Size" :gap="s.Gap" />
+          <LazySfLookbookFeature v-else-if="type === 'lookbook'" :id="Number(s.IdLookbook) || 0" :button="t.ButtonText" :height="s.Height" />
+          <LazySfStories v-else-if="type === 'stories'" :place="catalog ? 'catalog' : product ? 'product' : 'home'" :product="product?.Id" :size="s.Size" :gap="s.Gap" />
           <SfSocial v-else-if="type === 'social'" :display="s.Display" :shape="s.Shape" :size="s.Size" :gap="s.Gap" :style="{ justifyContent: justify }" />
         </SfBlocks>
       </div>
@@ -140,8 +138,8 @@ const w = useWords()
         </div>
       </div>
 
-      <SfFilters v-if="type === 'main_catalog' && catalog && filtersOpen" :filters="catalog.Listing.Filters" :currency="catalog.Listing.Products[0]?.Currency || 'EUR'" @close="filtersOpen = false" @apply="applyFilters" />
-      <ClientOnly v-if="type === 'main_header'"><SfNavDrawer v-if="navOpen" :id="s.IdMenu" @close="navOpen = false" /></ClientOnly>
+      <LazySfFilters v-if="type === 'main_catalog' && catalog && filtersOpen" :filters="catalog.Listing.Filters" :currency="catalog.Listing.Products[0]?.Currency || 'EUR'" @close="filtersOpen = false" @apply="applyFilters" />
+      <ClientOnly v-if="type === 'main_header'"><LazySfNavDrawer v-if="navOpen" :id="s.IdMenu" @close="navOpen = false" /></ClientOnly>
 
       <!-- the footer of the site: columns, then the bottom line -->
       <div v-else-if="type === 'main_footer'" class="sf-footer" :style="{ textAlign: s.Align || 'left', fontSize: (s.TextSize || 13) + 'px' }">
@@ -158,7 +156,7 @@ const w = useWords()
       </div>
 
       <!-- a category of the catalogue: its name, its description, the sort, its products, the pages -->
-      <SfCartPage v-else-if="type === 'main_cart'" :settings="s" :texts="t" />
+      <LazySfCartPage v-else-if="type === 'main_cart'" :settings="s" :texts="t" />
       <div v-else-if="type === 'main_catalog' && catalog">
         <nav class="sf-crumb" :aria-label="w('Fil d\'Ariane')"><a :href="home">{{ w('Accueil') }}</a> / {{ catalog.Category.Name }}</nav>
         <h1 class="sf-h" :style="titleStyle">{{ catalog.Category.Name }}</h1>
@@ -190,7 +188,7 @@ const w = useWords()
         <SfGallery :images="product.Images" :sets="product.ImageSets" :name="product.Name" :layout="s.GalleryLayout" :per-view="Number(s.GalleryPerView) || 2" @zoom="zoomAt = $event" />
         <!-- the column is as tall as the photos; inside it the blocks follow the scroll (when the shop asked) and stop where the section ends, before the next one -->
         <div class="sf-info-col" :class="{ 'is-sticky': s.InfoSticky !== false, 'is-center': s.InfoY === 'center' }"><div ref="infoBox" class="sf-info" :style="info"><SfBlocks :blocks="blocks" /></div></div>
-        <SfZoom v-if="zoomAt >= 0" :images="product.Images" :start="zoomAt" :name="product.Name" @close="zoomAt = -1" />
+        <LazySfZoom v-if="zoomAt >= 0" :images="product.Images" :start="zoomAt" :name="product.Name" @close="zoomAt = -1" />
       </div>
 
       <!-- a content page of the shop: its title and its text, written in the Pages tab of Digipart -->

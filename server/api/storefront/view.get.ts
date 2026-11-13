@@ -18,8 +18,10 @@ export default defineEventHandler(async (event) => {
   const priceBase = site?.PriceBaseType || 'retail'
 
   // the customer account, the favourites and the page of the « forgotten password » e-mail (its link is <site>/<language>/reset)
-  const account = rest.match(/^(?:compte|account)(?:\/([a-z-]{2,20}))?(?:\/(\d{1,10}))?$/)
-  if (account) { return { Kind: 'account', Design: null, Page: null, Section: account[1] || '', Id: Number(account[2] || 0) } }
+  const account = rest.match(/^(?:compte|account)(?:\/([a-z-]{2,20}))?(?:\/([A-Za-z0-9_-]{1,40}))?$/)
+  const referral = rest.match(/^(?:parrainage|referral)\/([A-Za-z0-9]{4,20})$/)
+  if (referral) { return { Kind: 'referral', Design: null, Page: null, Code: referral[1]!.toUpperCase() } }
+  if (account) { return { Kind: 'account', Design: null, Page: null, Section: account[1] || '', Id: String(account[2] || '') } }
   if (rest === 'favoris' || rest === 'wishlist') { return { Kind: 'favorites', Design: null, Page: null } }
   if (/^(?:[a-z]{2,3}\/)?reset$/.test(rest)) { return { Kind: 'reset', Design: null, Page: null } }
 
@@ -69,6 +71,9 @@ export default defineEventHandler(async (event) => {
   // a content page of the shop
   const page = await digipart(event, 'page.php', { ...preview, ...language, Slug: rest })
   if (page) { return { Kind: 'page', Design: await design(page.DesignKey), Page: page } }
+
+  // /whatsapp: joining the WhatsApp list of the shop. A content page of that name (with its own « Inscription WhatsApp » section) comes first; without one, the plain form is shown.
+  if (rest === 'whatsapp') { return { Kind: 'whatsapp', Design: null, Page: null } }
 
   // a category of the catalogue
   const category = await shopApi(event, 'category/', { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase() })

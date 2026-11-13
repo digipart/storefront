@@ -4,7 +4,7 @@
 // configuration untouched. Not for production (a real server proxies directly, and the engine is outside the document root).
 $target = 'http://127.0.0.1:3100' . ($_SERVER['REQUEST_URI'] ?? '/');
 $headers = ['X-Forwarded-Host: ' . ($_SERVER['HTTP_HOST'] ?? ''), 'X-Forwarded-Proto: ' . (!empty($_SERVER['HTTPS']) ? 'https' : 'http'), 'X-Forwarded-For: ' . ($_SERVER['REMOTE_ADDR'] ?? '')];
-foreach (['HTTP_ACCEPT' => 'Accept', 'HTTP_ACCEPT_LANGUAGE' => 'Accept-Language', 'HTTP_COOKIE' => 'Cookie', 'HTTP_USER_AGENT' => 'User-Agent', 'CONTENT_TYPE' => 'Content-Type', 'HTTP_IF_NONE_MATCH' => 'If-None-Match', 'HTTP_ORIGIN' => 'Origin', 'HTTP_SEC_FETCH_SITE' => 'Sec-Fetch-Site'] as $key => $name) {
+foreach (['HTTP_ACCEPT' => 'Accept', 'HTTP_ACCEPT_LANGUAGE' => 'Accept-Language', 'HTTP_COOKIE' => 'Cookie', 'HTTP_USER_AGENT' => 'User-Agent', 'CONTENT_TYPE' => 'Content-Type', 'HTTP_IF_NONE_MATCH' => 'If-None-Match', 'HTTP_ORIGIN' => 'Origin', 'HTTP_SEC_FETCH_SITE' => 'Sec-Fetch-Site', 'HTTP_ACCEPT_ENCODING' => 'Accept-Encoding'] as $key => $name) {
     if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') {
         $headers[] = $name . ': ' . $_SERVER[$key];
     }
@@ -25,7 +25,7 @@ if ($answer === false) {
 $size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
 http_response_code((int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE));
 foreach (explode("\r\n", substr($answer, 0, $size)) as $line) {
-    if (preg_match('/^(content-type|cache-control|etag|location|set-cookie|vary|last-modified|x-robots-tag|link):/i', $line) === 1) {
+    if (preg_match('/^(content-type|content-encoding|cache-control|etag|location|set-cookie|vary|last-modified|x-robots-tag|link|referrer-policy):/i', $line) === 1) {
         header($line, false);
     }
 }

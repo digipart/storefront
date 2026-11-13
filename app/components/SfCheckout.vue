@@ -115,7 +115,145 @@ async function takeSuggestion(item: any) {
   } catch { /* the customer finishes the address by hand */ }
 }
 const closeSuggestions = () => setTimeout(() => { suggestions.value = [] }, 150)
-function pay() { try { sessionStorage.setItem('sf-order-before', String(state.value?.LastOrder || 0)) } catch { /* the confirmation page then shows no order number */ } }
+// Paying by card (Stripe). The card form is Stripe's own (the card number never goes through this site); the amount and the content of the order are set by the server from the cart.
+// nothing left to pay (a promo code covers everything): no payment method, the order is made at once
+// gift cards put on the cart: each pays its part, the bank card pays what is left
+const gift = computed(() => state.value?.GiftCards || null)
+const giftCards = computed(() => gift.value?.Cards || [])
+const leftToPay = computed(() => giftCards.value.length ? Number(gift.value.ToPay) : Number(state.value?.Cart?.ToPay || 0))
+const giftForm = reactive({ CardNumber: '', Pin: '' })
+const giftOpen = ref(false)
+const giftBusy = ref(false)
+const giftError = ref('')
+async function giftCall(body: Record<string, unknown>) {
+  if (giftBusy.value) { return }
+  giftBusy.value = true
+  giftError.value = ''
+  try {
+    const answer = await $fetch<any>('/api/storefront/pay', { method: 'POST', query: query(), body: { CountryIsoCode: form.CountryIsoCode, ...body } })
+    giftError.value = answer.Error || ''
+    if (state.value) { state.value = { ...state.value, GiftCards: answer.GiftCards } }
+    if (!answer.Error) { giftForm.CardNumber = ''; giftForm.Pin = ''; giftOpen.value = false }
+  } catch { giftError.value = 'Cette carte cadeau n\'a pas pu être prise en compte, merci de réessayer.' } finally { giftBusy.value = false }
+}
+const addGift = () => giftCall({ Action: 'gift-add', ...giftForm })
+const removeGift = (id: number) => giftCall({ Action: 'gift-remove', Id: id })
+const free = computed(() => !!state.value?.Cart?.Count && !!state.value?.Cart?.IdCarrier && Math.round(leftToPay.value * 100) <= 0 && (Number(state.value.Cart.Discount) > 0 || giftCards.value.length > 0))
+const method = computed(() => (state.value?.Payments || []).find((p: any) => p.IdPayment === payment.value) || null)
+const byCard = computed(() => !free.value && method.value?.Provider === 'Stripe' && !!state.value?.Pay?.Stripe)
+const ready = computed(() => identified.value && !editing.value && !!state.value?.Cart?.IdCarrier && !(chosenCarrier.value?.Type === 'RelayPoint' && !state.value?.Cart?.Relay))
+const cardBox = ref<HTMLElement | null>(null)
+const cardReady = ref(false)
+const paying = ref(false)
+const payError = ref('')
+let stripe: any = null, elements: any = null, cardElement: any = null, stripeScript: Promise<void> | null = null
+const amountNow = () => Math.round(leftToPay.value * 100)
+function loadStripe(): Promise<void> {
+  if ((window as any).Stripe) { return Promise.resolve() }
+  stripeScript = stripeScript || new Promise<void>((resolve, reject) => {
+    const tag = document.createElement('script')
+    tag.src = 'https://js.stripe.com/v3/'; tag.async = true
+    tag.onload = () => resolve(); tag.onerror = () => { stripeScript = null; reject(new Error('stripe')) }
+    document.head.appendChild(tag)
+  })
+  return stripeScript
+}
+function unmountCard() { try { cardElement?.destroy() } catch { /* already gone */ } cardElement = null; elements = null; cardReady.value = false }
+async function mountCard() {
+  if (!byCard.value || !cardBox.value || amountNow() <= 0) { return }
+  if (elements) { elements.update({ amount: amountNow() }); return }
+  payError.value = ''
+  try {
+    await loadStripe()
+    stripe = stripe || (window as any).Stripe(state.value.Pay.Stripe.PublicKey, { locale: lang.value })
+    const a = state.value?.Address
+    elements = stripe.elements({ mode: 'payment', amount: amountNow(), currency: String(state.value.Cart.Currency || 'EUR').toLowerCase(), paymentMethodTypes: ['card'], appearance: { theme: 'stripe', variables: { borderRadius: '2px', fontSizeBase: '15px' } } })
+    cardElement = elements.create('payment', { defaultValues: { billingDetails: { name: a ? a.Firstname + ' ' + a.Lastname : '', email: state.value?.Customer?.Email || '', address: { country: a?.CountryIsoCode || form.CountryIsoCode, postal_code: a?.Postcode || '' } } } })
+    cardElement.on('ready', () => { cardReady.value = true })
+    cardElement.mount(cardBox.value)
+  } catch { unmountCard(); payError.value = 'Le formulaire de paiement n\'a pas pu s\'afficher, merci de réessayer.' }
+}
+watch([byCard, cardBox, leftToPay], () => { if (byCard.value && cardBox.value) { mountCard() } else if (!byCard.value) { unmountCard() } }, { flush: 'post' })
+async function pay() {
+  if (paying.value || !ready.value || !byCard.value || !elements) { return }
+  paying.value = true
+  payError.value = ''
+  try {
+    const checked = await elements.submit()
+    if (checked.error) { payError.value = checked.error.message || 'Vérifiez les informations de votre carte.'; return }
+    const answer = await $fetch<any>('/api/storefront/pay', { method: 'POST', query: query(), body: { IdPayment: payment.value } })
+    if (!answer.Error && answer.Order) { try { sessionStorage.setItem('sf-order-before', String(state.value?.LastOrder || '')) } catch { /* no order number then */ } location.href = (site.value?.Route?.Prefix || '') + '/commande/merci'; return }   // the gift cards covered everything
+    if (answer.Error || !answer.ClientSecret) { payError.value = answer.Error || 'Le paiement n\'a pas pu être préparé, merci de réessayer.'; return }
+    if (answer.Amount !== amountNow()) { await giftCall({ Action: 'release' }); await load(form.CountryIsoCode); payError.value = 'Le montant de votre commande a changé : vérifiez-le, puis payez à nouveau.'; return }
+    try { sessionStorage.setItem('sf-order-before', String(state.value?.LastOrder || '')) } catch { /* the confirmation page then shows no order number */ }
+    const done = await stripe.confirmPayment({ elements, clientSecret: answer.ClientSecret, confirmParams: { return_url: location.origin + (site.value?.Route?.Prefix || '') + '/commande/merci' } })
+    // the customer is sent to the confirmation page by Stripe; coming here means the payment was refused
+    if (done?.error) { payError.value = done.error.message || 'Votre paiement a été refusé.'; if (giftCards.value.length) { await giftCall({ Action: 'release' }) } }
+  } catch { payError.value = 'Le paiement ne répond pas, merci de réessayer.' } finally { paying.value = false }
+}
+async function orderFree() {
+  if (paying.value || !ready.value) { return }
+  paying.value = true
+  payError.value = ''
+  try {
+    const before = String(state.value?.LastOrder || '')
+    const answer = await $fetch<any>('/api/storefront/pay', { method: 'POST', query: query(), body: { Free: true } })
+    if (answer.Error) { payError.value = answer.Error; await load(form.CountryIsoCode); return }
+    try { sessionStorage.setItem('sf-order-before', before) } catch { /* the confirmation page then shows no order number */ }
+    location.href = (site.value?.Route?.Prefix || '') + '/commande/merci'
+  } catch { payError.value = 'Votre commande n\'a pas pu être enregistrée, merci de réessayer.' } finally { paying.value = false }
+}
+// Paying with PayPal. The button and the window are PayPal's; the PayPal order is made and its money taken by Digipart, for the amount of the cart (the browser only carries its id).
+const byPaypal = computed(() => !free.value && method.value?.Provider === 'Paypal' && !!state.value?.Pay?.Paypal)
+const paypalBox = ref<HTMLElement | null>(null)
+const paypalReady = ref(false)
+let paypalButtons: any = null, paypalScript: Promise<void> | null = null
+function loadPaypal(): Promise<void> {
+  if ((window as any).paypal?.Buttons) { return Promise.resolve() }
+  paypalScript = paypalScript || new Promise<void>((resolve, reject) => {
+    const tag = document.createElement('script')
+    tag.src = 'https://www.paypal.com/sdk/js?client-id=' + encodeURIComponent(state.value.Pay.Paypal.ClientId) + '&currency=' + encodeURIComponent(String(state.value.Cart.Currency || 'EUR')) + '&intent=capture&components=buttons'
+    tag.async = true
+    tag.onload = () => resolve(); tag.onerror = () => { paypalScript = null; reject(new Error('paypal')) }
+    document.head.appendChild(tag)
+  })
+  return paypalScript
+}
+function unmountPaypal() { try { paypalButtons?.close() } catch { /* already gone */ } paypalButtons = null; paypalReady.value = false }
+async function mountPaypal() {
+  if (!byPaypal.value || !paypalBox.value || paypalButtons) { return }
+  payError.value = ''
+  try {
+    await loadPaypal()
+    const call = (body: Record<string, unknown>) => $fetch<any>('/api/storefront/pay', { method: 'POST', query: query(), body: { IdPayment: payment.value, CountryIsoCode: form.CountryIsoCode, ...body } })
+    paypalButtons = (window as any).paypal.Buttons({
+      style: { layout: 'horizontal', color: 'black', shape: 'rect', label: 'paypal', tagline: false, height: 48 },   // black, square corners: the buttons of the theme
+      onClick: (_data: any, actions: any) => { payError.value = ''; return ready.value ? actions.resolve() : actions.reject() },
+      createOrder: async () => {
+        const answer = await call({ Action: 'paypal-create' })
+        if (answer.Error || !answer.PaypalOrder) { payError.value = answer.Error || 'Le paiement n\'a pas pu être préparé, merci de réessayer.'; throw new Error('paypal-create') }
+        try { sessionStorage.setItem('sf-order-before', String(state.value?.LastOrder || '')) } catch { /* the confirmation page then shows no order number */ }
+        return answer.PaypalOrder
+      },
+      onApprove: async (data: any) => {
+        paying.value = true
+        try {
+          const answer = await call({ Action: 'paypal-capture', PaypalOrder: String(data?.orderID || '') })
+          if (answer.Error) { payError.value = answer.Error; await load(form.CountryIsoCode); return }
+          location.href = (site.value?.Route?.Prefix || '') + '/commande/merci'
+        } catch { payError.value = 'Le paiement ne répond pas, merci de réessayer.' } finally { paying.value = false }
+      },
+      // the customer closed PayPal's window, or PayPal failed: the gift cards get their part back
+      onCancel: () => { if (giftCards.value.length) { giftCall({ Action: 'release' }) } },
+      onError: () => { if (!payError.value) { payError.value = 'Votre paiement PayPal n\'a pas abouti, merci de réessayer.' } if (giftCards.value.length) { giftCall({ Action: 'release' }) } },
+    })
+    await paypalButtons.render(paypalBox.value)
+    paypalReady.value = true
+  } catch { unmountPaypal(); payError.value = 'Le bouton PayPal n\'a pas pu s\'afficher, merci de réessayer.' }
+}
+watch([byPaypal, paypalBox], () => { if (byPaypal.value && paypalBox.value) { mountPaypal() } else if (!byPaypal.value) { unmountPaypal() } }, { flush: 'post' })
+onBeforeUnmount(unmountCard)
+onBeforeUnmount(unmountPaypal)
 const changeCountry = () => { if (!identified.value) { load(form.CountryIsoCode) } }
 const show = (n: number) => !steps.value || step.value === n
 const locked = (n: number) => !steps.value && n > 1 && !identified.value
@@ -134,6 +272,8 @@ onMounted(() => load())
           </li>
         </ol>
         <p v-if="error" class="sf-cart-error" role="alert">{{ w(error) }}</p>
+        <!-- the express payment (Apple Pay, Google Pay): not with a gift card on the cart (a wallet pays one amount), nor for an order with nothing to pay -->
+        <LazySfExpress v-if="options.ShowExpress !== false && state.Pay?.Stripe && !giftCards.length && !free && (!steps || step === 1)" :state="state" @changed="load(form.CountryIsoCode)" />
 
         <!-- 1. who orders, and where to deliver -->
         <section v-show="show(1)" class="sf-co-block" aria-labelledby="sf-co-1">
@@ -194,15 +334,53 @@ onMounted(() => load())
         <!-- 3. the payment methods of the country -->
         <section v-show="show(3)" class="sf-co-block" :class="{ 'is-locked': locked(3) }" aria-labelledby="sf-co-3">
           <div class="sf-co-head"><h2 id="sf-co-3">{{ w('Mode de paiement') }}</h2></div>
+          <!-- gift cards: a means of payment of their own; each pays its part, the rest is paid below -->
+          <div v-if="gift" class="sf-co-gift">
+            <ul v-if="giftCards.length" class="sf-co-gift-list">
+              <li v-for="card in giftCards" :key="card.Id"><span><strong>{{ w('Carte cadeau') }} {{ card.Code }}</strong><small>{{ w('Solde : {a}', { a: money(card.Balance, total.Currency, lang) }) }}</small></span>
+                <span class="sf-co-gift-side"><strong>−{{ money(card.Used, total.Currency, lang) }}</strong><button type="button" class="sf-link" :disabled="giftBusy || paying || locked(3)" @click="removeGift(card.Id)">{{ w('Retirer') }}</button></span></li>
+            </ul>
+            <button v-if="!giftOpen" type="button" class="sf-link" :disabled="locked(3)" :aria-expanded="false" @click="giftOpen = true">{{ w(giftCards.length ? 'Ajouter une autre carte cadeau' : 'Payer avec une carte cadeau') }}</button>
+            <form v-else class="sf-co-gift-form" @submit.prevent="addGift">
+              <label>{{ w('Numéro de la carte cadeau') }}<input v-model="giftForm.CardNumber" type="text" maxlength="48" autocomplete="off" autocapitalize="characters" spellcheck="false" required></label>
+              <label>{{ w('Code PIN') }}<input v-model="giftForm.Pin" type="password" inputmode="numeric" maxlength="12" autocomplete="off" required></label>
+              <div class="sf-co-actions"><button type="submit" class="sf-btn is-outline" :disabled="giftBusy">{{ w('Appliquer') }}</button><button type="button" class="sf-link" @click="giftOpen = false; giftError = ''">{{ w('Annuler') }}</button></div>
+            </form>
+            <p v-if="giftError" class="sf-cart-error" role="alert">{{ w(giftError) }}</p>
+            <p v-if="giftCards.length && !free" class="sf-total-note">{{ w('Reste à payer : {a}', { a: money(leftToPay, total.Currency, lang) }) }}</p>
+          </div>
+          <template v-if="free">
+            <p class="sf-muted">{{ w(giftCards.length ? 'Votre commande est entièrement payée par votre carte cadeau.' : 'Votre commande est entièrement couverte par votre réduction : il n\'y a rien à payer.') }}</p>
+            <p v-if="payError" class="sf-cart-error" role="alert">{{ w(payError) }}</p>
+            <button type="button" class="sf-btn sf-summary-go" :disabled="paying || !ready" @click="orderFree">{{ paying ? w('Enregistrement…') : w('Valider ma commande') }}</button>
+            <p v-if="!ready" class="sf-total-note">{{ w('Validez vos coordonnées et choisissez la livraison pour payer.') }}</p>
+          </template>
+          <template v-else>
           <p v-if="!state.Payments.length" class="sf-muted">{{ w('Aucun moyen de paiement pour ce pays pour le moment.') }}</p>
           <div v-else class="sf-co-types">
             <button v-for="method in state.Payments" :key="method.IdPayment" type="button" class="sf-co-pay" :class="{ 'is-on': payment === method.IdPayment }" :aria-pressed="payment === method.IdPayment" :disabled="!method.Available || locked(3)" @click="payment = method.IdPayment">
               <span class="sf-radio" :class="{ 'is-on': payment === method.IdPayment }" /><span class="sf-co-option-main"><strong>{{ method.Title }}</strong><small>{{ method.Available ? method.Description : w('Indisponible pour ce montant') }}</small></span>
             </button>
           </div>
-          <!-- paying is the next step of the engine: the button says so, and does not pretend to pay -->
-          <button type="button" class="sf-btn sf-summary-go" disabled :title="w('Le paiement arrive bientôt sur ce site')">{{ w('Commander') }}</button>
-          <p class="sf-total-note">{{ w('Le paiement en ligne n\'est pas encore branché sur ce site.') }}</p>
+          <!-- the card form of Stripe (the card number never goes through this site) -->
+          <div v-if="byCard" class="sf-co-card-form">
+            <p v-if="state.Pay.Stripe.TestMode" class="sf-co-test">{{ w('Mode test : aucun paiement réel. Carte de test 4242 4242 4242 4242, date future, 3 chiffres au choix.') }}</p>
+            <div ref="cardBox" class="sf-co-card-box" :aria-busy="!cardReady" />
+            <p v-if="!cardReady && !payError" class="sf-muted">{{ w('Chargement du formulaire de paiement…') }}</p>
+          </div>
+          <p v-if="payError" class="sf-cart-error" role="alert">{{ w(payError) }}</p>
+          <button v-if="byCard" type="button" class="sf-btn sf-summary-go" :disabled="paying || !ready || !cardReady" @click="pay">{{ paying ? w('Paiement en cours…') : w('Payer {a}', { a: money(leftToPay, total.Currency, lang) }) }}</button>
+          <!-- PayPal's own button: the amount is the one Digipart computes, the browser only opens PayPal's window -->
+          <div v-else-if="byPaypal" class="sf-co-paypal" :class="{ 'is-locked': !ready || paying }">
+            <p v-if="state.Pay.Paypal.TestMode" class="sf-co-test">{{ w('Mode test : aucun paiement réel. Utilisez un compte acheteur de test PayPal (sandbox).') }}</p>
+            <div ref="paypalBox" :aria-busy="!paypalReady" />
+            <p v-if="!paypalReady && !payError" class="sf-muted">{{ w('Chargement du bouton PayPal…') }}</p>
+          </div>
+          <button v-else type="button" class="sf-btn sf-summary-go" disabled>{{ w('Commander') }}</button>
+          <p v-if="(byCard || byPaypal) && !ready" class="sf-total-note">{{ w('Validez vos coordonnées et choisissez la livraison pour payer.') }}</p>
+          <p v-else-if="!payment" class="sf-total-note">{{ w('Choisissez un moyen de paiement.') }}</p>
+          <p v-else-if="!byCard && !byPaypal" class="sf-total-note">{{ w('Ce moyen de paiement n\'est pas encore disponible sur ce site.') }}</p>
+          </template>
           <p v-if="section?.Texts?.Legal" class="sf-co-legal">{{ section.Texts.Legal }}</p>
         </section>
       </div>
@@ -229,6 +407,10 @@ onMounted(() => load())
           <div class="sf-total-row"><span>{{ w('TVA') }}</span><span>{{ money(total.ToPay - total.ToPayTaxExcl, total.Currency, lang) }}</span></div>
         </template>
         <div class="sf-total-row is-main"><span>{{ w(taxExcl ? 'Total T.T.C.' : 'Total') }}</span><span>{{ money(total.ToPay, total.Currency, lang) }}</span></div>
+        <template v-if="giftCards.length">
+          <div v-for="card in giftCards" :key="card.Id" class="sf-total-row"><span>{{ w('Carte cadeau') }} {{ card.Code }}</span><span>−{{ money(card.Used, total.Currency, lang) }}</span></div>
+          <div class="sf-total-row is-main"><span>{{ w('Reste à payer') }}</span><span>{{ money(leftToPay, total.Currency, lang) }}</span></div>
+        </template>
         <ul v-if="reassurances.length" class="sf-reassure">
           <li v-for="item in reassurances" :key="item.Id">
             <button v-if="item.Texts.Text" type="button" aria-haspopup="dialog" @click="told = item"><span aria-hidden="true">{{ marks[item.Settings?.Icon] || '✓' }}</span><span>{{ item.Texts.Title }}</span><span aria-hidden="true">›</span></button>

@@ -2,5 +2,5 @@
 export default defineEventHandler(async (event) => {
   const { lang, prefix } = langOf(event)
   setResponseHeader(event, 'Cache-Control', 'private, no-store')
-  return readCart(event, lang, prefix)
+  return remember(event, 'cart:' + lang + ':' + prefix, () => readCart(event, lang, prefix))   // kept a few seconds per visitor, dropped as soon as the visitor changes something
 })
