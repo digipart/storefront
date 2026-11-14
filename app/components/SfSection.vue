@@ -22,12 +22,21 @@ const blocks = computed(() => props.section.Blocks || [])
 const type = computed(() => props.section.Type as string)
 
 // the frame every section shares: its width, the space around it (less on a phone) and its background
+// a picture behind a section or a column: the veil (dark or light) over it, the picture for a phone, and the colour of text that reads on it (the CSS picks the picture by screen width)
+const cssUrl = (src: string) => 'url("' + String(src).replace(/["\\)\s]/g, (c) => encodeURIComponent(c)) + '")'
+const bgPicture = (image: any, imageMobile: any, veil: any, tone: any, posX = 'center', posY = 'center') => {
+  if (!image) { return {} }
+  const a = Math.max(0, Math.min(90, Number(veil) || 0)) / 100, rgb = tone === 'light' ? '255,255,255' : '0,0,0'
+  return { '--bg': cssUrl(image), '--bg-m': cssUrl(imageMobile || image), '--bgv': `linear-gradient(rgba(${rgb},${a}),rgba(${rgb},${a}))`, '--bgpos': posX + ' ' + posY, color: tone === 'light' ? '#1e2129' : '#fff' }
+}
 const frame = computed(() => ({
+  ...bgPicture(s.value.BgImage, s.value.BgImageMobile, s.value.BgVeil ?? 30, s.value.BgTone, s.value.BgPosX, s.value.BgPosY),
+  borderTop: Number(s.value.BorderTop) > 0 ? s.value.BorderTop + 'px solid ' + (s.value.BorderColor || '#e6e6ee') : undefined, borderBottom: Number(s.value.BorderBottom) > 0 ? s.value.BorderBottom + 'px solid ' + (s.value.BorderColor || '#e6e6ee') : undefined,
   '--pt': (s.value.PaddingTop || 0) + 'px', '--pb': (s.value.PaddingBottom || 0) + 'px', '--pl': (s.value.PaddingLeft || 0) + 'px', '--pr': (s.value.PaddingRight || 0) + 'px', '--pm': (s.value.PaddingMobile || 60) / 100,
   background: s.value.Background === 'custom' ? s.value.BackgroundColor : undefined, color: s.value.Background === 'custom' ? s.value.TextColor : undefined,
 }))
 const wrap = computed(() => ['sf-wrap', 'is-' + (s.value.Width || 'page'), { 'is-full-mobile': s.value.FullMobile }])
-const band = computed(() => ['sf-band', 'is-' + (s.value.Background || 'none'), 'sf-s-' + type.value.replace(/_/g, '-')])   // `sf-s-`: never the class of what is inside (`sf-hero`)
+const band = computed(() => ['sf-band', { 'has-bg': !!s.value.BgImage, 'is-fixed-bg': !!s.value.BgFixed }, 'is-' + (s.value.Background || 'none'), 'sf-s-' + type.value.replace(/_/g, '-')])   // `sf-s-`: never the class of what is inside (`sf-hero`)
 const align = computed(() => ({ textAlign: s.value.Align || 'left' }))
 const justify = computed(() => ({ center: 'center', right: 'flex-end' } as Record<string, string>)[s.value.Align] || 'flex-start')
 
@@ -44,7 +53,30 @@ const afterBanners = computed(() => { const at = blocks.value.findIndex((b: any)
 const split = computed(() => { const w = s.value.ImageWidth || 50; return { '--cols': s.value.Side === 'right' ? (100 - w) + 'fr ' + w + 'fr' : w + 'fr ' + (100 - w) + 'fr', '--gap': (s.value.Gap ?? 48) + 'px', alignItems: ({ top: 'start', bottom: 'end' } as Record<string, string>)[s.value.Valign] || 'center' } })
 const menuStyle = computed(() => ({ fontSize: (s.value.MenuSize || 14) + 'px', fontWeight: s.value.MenuWeight || 500, textTransform: s.value.MenuCase === 'uppercase' ? 'uppercase' : undefined, gap: (s.value.MenuGap || 28) + 'px', justifyContent: ({ left: 'flex-start', right: 'flex-end' } as Record<string, string>)[s.value.MenuAlign] || 'center' }))
 const home = computed(() => site.value?.Route?.Prefix || '/')
-const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'lookbook', 'stories', 'newsletter', 'social', 'announcement', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart']
+// the cover of the category: its largest size is the fallback, the browser picks among all of them
+const hasCover = computed(() => s.value.ShowCover !== false && (!!catalogCover.value || !!vimeo(catalog?.value?.Category?.Cover?.Video)))
+const coverText = computed(() => hasCover.value && !!s.value.CoverDescription && s.value.ShowDescription !== false && !!catalog?.value?.Category?.Description)
+const catalogCover = computed(() => { const sizes = catalog?.value?.Category?.Cover?.Sizes || []; return sizes.length ? sizes[sizes.length - 1] : null })
+// a Vimeo video behind a banner or a slide: played silent and in a loop, without controls, over the picture (which shows while the video loads). `vimeo.com/123/abc` is an unlisted video with its key
+const vimeo = (value: unknown) => { const found = String(value || '').match(/vimeo\.com\/(?:video\/)?(\d{6,12})(?:\/([0-9a-f]{6,20}))?/i); return found ? 'https://player.vimeo.com/video/' + found[1] + '?background=1&autoplay=1&loop=1&muted=1&dnt=1' + (found[2] ? '&h=' + found[2] : '') : '' }
+// a section of columns: the ratios of the layout on a computer and on a phone ("2:1:1" = a wide column and two narrow), and the blocks of each column
+const ratios = (value: any, fallback: string) => { const v = String(value || '').replace(/\s/g, ''); return (/^(?:[1-9]|1[0-2])(?::(?:[1-9]|1[0-2])){0,5}$/.test(v) ? v : fallback).split(':').map(Number) }
+const columnsWide = computed(() => ratios(s.value.Layout, '1:1'))
+const columnList = computed(() => columnsWide.value.map((_: number, i: number) => blocks.value.filter((b: any) => Math.max(1, Math.min(columnsWide.value.length, Number(b.Col) || 1)) === i + 1)))
+const columnsStyle = computed(() => {
+  const narrow = ratios(s.value.LayoutMobile, '1')
+  return {
+    '--cols': columnsWide.value.map((r: number) => r + 'fr').join(' '), '--cols-m': narrow.map((r: number) => r + 'fr').join(' '), '--gap': (s.value.Gap ?? 32) + 'px', '--gap-m': (s.value.GapMobile ?? 20) + 'px', '--div': (s.value.ColDivider || 0) + 'px', '--div-color': s.value.ColDividerColor || '#e6e6ee',
+    alignItems: ({ center: 'center', bottom: 'end' } as Record<string, string>)[s.value.Valign] || 'start', textAlign: s.value.Align || 'left',
+  }
+})
+const columnPicture = (i: number) => {
+  const n = i + 1, v = s.value, height = Number(v['C' + n + 'Height']) || 0, pad = Number(v['C' + n + 'Pad']) || 0, align = v['C' + n + 'Valign']
+  return { ...bgPicture(v['C' + n + 'Image'], v['C' + n + 'ImageMobile'], v['C' + n + 'Veil'] ?? 30, v['C' + n + 'Tone']), '--col-h': height ? height + 'px' : undefined, padding: pad ? pad + 'px' : undefined,
+    ...(align === 'center' || align === 'bottom' ? { display: 'flex', flexDirection: 'column', justifyContent: align === 'center' ? 'center' : 'flex-end' } : {}) }
+}
+const columnsReverse = computed(() => !!s.value.ReverseMobile && ratios(s.value.LayoutMobile, '1').length === 1)
+const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'newsletter', 'social', 'announcement', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart']
 const { cart, show: showPanel } = useCart()
 const { customer, favorites, url: accountUrl, favoritesUrl } = useAccount()
 // the filters of a category (sizes, colours, price): chosen in a panel, kept in the address so a filtered list can be shared
@@ -57,6 +89,12 @@ const navOpen = ref(false)
 watch(() => route.fullPath, () => { navOpen.value = false })
 // the logo of the shop: the copy closest to twice the height it is drawn at (sharp on a dense screen), else its name is written
 const logo = computed(() => { const copies = [...(site.value?.Logo || [])].filter((c: any) => c.Src).sort((a: any, b: any) => (a.Height || 0) - (b.Height || 0)); const wanted = (s.value.LogoHeight || 28) * 2; return copies.find((c: any) => (c.Height || 0) >= wanted) || copies[copies.length - 1] || null })
+// the logo as the shop set it: an SVG when it has one (sharp at any size), and the version for dark backgrounds when the header is dark (Background « Foncé »)
+const logoFile = computed(() => {
+  const files = site.value?.LogoFiles || {}
+  const dark = s.value.Background === 'dark' || (s.value.Background === 'custom' && /^#(?:[0-3][0-9a-f]){3}$/i.test(String(s.value.BackgroundColor || '')))
+  return (dark && files.Dark?.Src ? files.Dark : files.Svg?.Src ? files.Svg : null) as { Src: string, Width: number, Height: number } | null
+})
 const searchUrl = computed(() => (site.value?.Route?.Prefix || '') + (lang.value === 'fr' ? '/recherche' : '/search'))
 const zoomAt = ref(-1)   // the photo of the product shown full screen (-1 = none)
 const w = useWords()
@@ -66,28 +104,17 @@ const w = useWords()
   <section v-if="known.includes(type)" :class="band" :style="frame" :data-section="type">
     <div :class="wrap">
       <!-- a banner: a large picture or a video, with the blocks of the shop on it -->
-      <div v-if="type === 'hero'" class="sf-hero" :class="{ 'is-screen': s.ScreenHeight, 'is-empty': !s.Image }" :style="picture">
+      <div v-if="type === 'hero'" class="sf-hero" :class="{ 'is-screen': s.ScreenHeight, 'is-empty': !s.Image && !vimeo(s.Video) }" :style="picture">
         <picture v-if="s.Image">
           <source v-if="s.ImageMobile" media="(max-width: 767px)" :srcset="s.ImageMobile">
           <img :src="s.Image" alt="" :loading="first ? 'eager' : 'lazy'" :fetchpriority="first ? 'high' : undefined" decoding="async">
         </picture>
-        <div class="sf-hero-copy"><SfBlocks :blocks="blocks" :light="!!s.Image" /></div>
+        <span v-if="vimeo(s.Video)" class="sf-hero-video"><iframe :src="vimeo(s.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
+        <div class="sf-hero-copy"><SfBlocks :blocks="blocks" :light="!!s.Image || !!vimeo(s.Video)" /></div>
       </div>
 
       <!-- a carousel: slides the visitor swipes through (scroll snap: no script is needed to read it) -->
-      <div v-else-if="type === 'slideshow'" class="sf-slides" :style="picture">
-        <div v-for="slide in slides" :key="slide.Id" class="sf-hero sf-slide" :class="{ 'is-empty': !slide.Settings.Image }">
-          <picture v-if="slide.Settings.Image">
-            <source v-if="slide.Settings.ImageMobile" media="(max-width: 767px)" :srcset="slide.Settings.ImageMobile">
-            <img :src="slide.Settings.Image" alt="" :loading="first && slide === slides[0] ? 'eager' : 'lazy'" decoding="async">
-          </picture>
-          <component :is="slide.Settings.Url && !slide.Texts.ButtonText ? 'a' : 'div'" :href="slide.Settings.Url && !slide.Texts.ButtonText ? slide.Settings.Url : undefined" class="sf-hero-copy">
-            <h2 v-if="slide.Texts.Title" class="sf-h" :style="{ '--size': (s.TitleSize || 44) + 'px' }">{{ slide.Texts.Title }}</h2>
-            <p v-if="slide.Texts.Text" class="sf-text">{{ slide.Texts.Text }}</p>
-            <a v-if="slide.Texts.ButtonText" :href="slide.Settings.Url || undefined" class="sf-btn" :class="['is-' + (s.ButtonStyle || 'solid'), { 'is-light': s.ButtonStyle === 'solid' }]">{{ slide.Texts.ButtonText }}</a>
-          </component>
-        </div>
-      </div>
+      <div v-else-if="type === 'slideshow'" :style="picture"><SfSlides :slides="slides" :settings="s" :first="first" /></div>
 
       <!-- two to four pictures side by side, each a link -->
       <div v-else-if="type === 'banners'" :style="align">
@@ -111,6 +138,11 @@ const w = useWords()
         <div :style="align"><SfBlocks :blocks="blocks" /></div>
       </div>
 
+      <!-- columns: blocks side by side on a computer, laid out as the shop chose on a phone -->
+      <div v-else-if="type === 'columns'" class="sf-cols" :class="{ 'is-reverse': columnsReverse, 'has-div': Number(s.ColDivider) > 0, 'is-stack': ratios(s.LayoutMobile, '1').length === 1 }" :style="columnsStyle">
+        <div v-for="(column, i) in columnList" :key="i" class="sf-col" :class="{ 'has-bg': !!s['C' + (i + 1) + 'Image'] }" :style="columnPicture(i)"><SfBlocks :blocks="column" /></div>
+      </div>
+
       <!-- sections whose own content is one block among the others -->
       <div v-else-if="['richtext', 'products', 'lookbook', 'stories', 'newsletter', 'social', 'contact_form', 'store_locator'].includes(type)" :style="align">
         <SfBlocks :blocks="blocks">
@@ -130,7 +162,7 @@ const w = useWords()
       </div>
       <div v-else-if="type === 'main_header'" class="sf-header" :class="{ 'has-border': s.Border, 'is-centered': s.LogoPosition === 'center', 'is-below': s.MenuPosition === 'below', 'is-drawer': s.MenuPosition === 'drawer' }" :style="{ '--h': (s.Height || 72) + 'px' }">
         <button type="button" class="sf-burger" :aria-label="w('Menu principal')" aria-haspopup="dialog" @click="navOpen = true"><span /><span /><span /></button>
-        <a :href="home" class="sf-logo" :style="{ fontSize: Math.round((s.LogoHeight || 28) * 0.62) + 'px' }"><img v-if="logo" :src="logo.Src" :alt="site?.Name" :style="{ height: (s.LogoHeight || 28) + 'px' }" :width="logo.Width || undefined" :height="logo.Height || undefined"><template v-else>{{ site?.Name }}</template></a>
+        <a :href="home" class="sf-logo" :style="{ fontSize: Math.round((s.LogoHeight || 28) * 0.62) + 'px' }"><img v-if="logoFile" :src="logoFile.Src" :alt="site?.Name" :style="{ height: (s.LogoHeight || 28) + 'px', width: 'auto' }" :width="logoFile.Width ? Math.round(logoFile.Width * (s.LogoHeight || 28) / (logoFile.Height || 1)) : undefined" :height="s.LogoHeight || 28"><img v-else-if="logo" :src="logo.Src" :alt="site?.Name" :style="{ height: (s.LogoHeight || 28) + 'px' }" :width="logo.Width || undefined" :height="logo.Height || undefined"><template v-else>{{ site?.Name }}</template></a>
         <nav class="sf-nav" :style="menuStyle" :aria-label="w('Menu principal')"><SfMenu :id="s.IdMenu" mode="nav" /></nav>
         <div class="sf-hicons">
           <a v-if="s.ShowSearch" :href="searchUrl">{{ w('Recherche') }}</a><a v-if="s.ShowAccount" :href="accountUrl" class="sf-desk" @click.prevent="showPanel('account')">{{ customer && !customer.Guest ? customer.Firstname : w('Compte') }}</a><a v-if="s.ShowWishlist" :href="favoritesUrl" class="sf-desk" @click.prevent="showPanel('favorites')">{{ w('Favoris') }}<template v-if="favorites.length"> ({{ favorites.length }})</template></a><button v-if="s.ShowCart" type="button" class="sf-cartlink" :aria-label="w('Ouvrir le panier, {a} article(s)', { a: cart.Count })" @click="showPanel('cart')">{{ w('Panier') }} ({{ cart.Count }})</button>
@@ -158,10 +190,19 @@ const w = useWords()
       <!-- a category of the catalogue: its name, its description, the sort, its products, the pages -->
       <LazySfCartPage v-else-if="type === 'main_cart'" :settings="s" :texts="t" />
       <div v-else-if="type === 'main_catalog' && catalog">
+        <div v-if="hasCover" class="sf-hero sf-catcover" :class="{ 'is-full': s.CoverFull }" :style="{ '--h': (s.CoverHeight || 280) + 'px', '--hm': (s.CoverHeightMobile || 180) + 'px', '--shade': (s.CoverVeil ?? 20) / 100, '--pad': '24px', '--jc': ({ top: 'flex-start', bottom: 'flex-end' } as Record<string, string>)[s.CoverPosition] || 'center', color: '#fff', textAlign: s.CoverAlign || 'center' }">
+          <picture v-if="catalogCover"><img :src="catalogCover.Src" :srcset="catalog.Category.Cover.Sizes.map((c: any) => c.Src + ' ' + c.Width + 'w').join(', ')" sizes="100vw" alt="" fetchpriority="high" decoding="async"></picture>
+          <span v-if="vimeo(catalog.Category.Cover?.Video)" class="sf-hero-video"><iframe :src="vimeo(catalog.Category.Cover.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
+          <div v-if="s.CoverTitle === 'over' || coverText" class="sf-hero-copy">
+            <h1 v-if="s.CoverTitle === 'over'" class="sf-h" :style="titleStyle">{{ catalog.Category.Name }}</h1>
+            <!-- eslint-disable-next-line vue/no-v-html : the description of a category is written by the shop in Digipart and comes from its category API -->
+            <div v-if="coverText" class="sf-rte" v-html="catalog.Category.Description" />
+          </div>
+        </div>
         <nav class="sf-crumb" :aria-label="w('Fil d\'Ariane')"><a :href="home">{{ w('Accueil') }}</a> / {{ catalog.Category.Name }}</nav>
-        <h1 class="sf-h" :style="titleStyle">{{ catalog.Category.Name }}</h1>
+        <h1 v-if="!(s.CoverTitle === 'over' && hasCover)" class="sf-h" :style="titleStyle">{{ catalog.Category.Name }}</h1>
         <!-- eslint-disable-next-line vue/no-v-html : the description of a category is written by the shop in Digipart and comes from its category API -->
-        <div v-if="s.ShowDescription && catalog.Category.Description" class="sf-rte sf-muted" v-html="catalog.Category.Description" />
+        <div v-if="s.ShowDescription && catalog.Category.Description && !coverText" class="sf-rte sf-muted" v-html="catalog.Category.Description" />
         <div class="sf-bar">
           <span>{{ w(catalog.Listing.Total > 1 ? '{a} produits' : '{a} produit', { a: catalog.Listing.Total }) }}</span>
           <button v-if="hasFilters" type="button" class="sf-filterbtn" aria-haspopup="dialog" @click="filtersOpen = true">{{ w('Filtrer') }}<template v-if="filterCount"> ({{ filterCount }})</template></button>
@@ -173,7 +214,17 @@ const w = useWords()
           </nav>
         </div>
         <div v-if="catalog.Listing.Products.length" class="sf-grid" :style="{ '--cols': s.Columns || 4, '--cols-m': s.ColumnsMobile || 2, '--gx': (s.GapX ?? 16) + 'px', '--gy': (s.GapY ?? 32) + 'px' }">
-          <SfProductCard v-for="(item, index) in catalog.Listing.Products" :key="item.Id" :product="item" :images="s.CardImages" :dots="s.CardDots" :eager="index < 4" />
+          <template v-if="catalog.Listing.Items">
+            <template v-for="(item, index) in catalog.Listing.Items" :key="item.Kind + (item.Id || item.Product.Id)">
+              <component :is="item.Url ? 'a' : 'div'" v-if="item.Kind === 'edito'" :href="item.Url || undefined" class="sf-edito" :class="['is-' + item.Size, { 'has-height': item.Height > 0 || item.HeightMobile > 0 }]" :style="item.Height > 0 || item.HeightMobile > 0 ? { '--eh': (item.Height || item.HeightMobile) + 'px', '--ehm': (item.HeightMobile || item.Height) + 'px' } : undefined">
+                <img v-if="item.Image" :src="item.Image" alt="" :loading="index < 4 ? 'eager' : 'lazy'" decoding="async">
+                <span v-if="vimeo(item.Video)" class="sf-hero-video"><iframe :src="vimeo(item.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
+                <span v-if="item.Title" class="sf-edito-title">{{ item.Title }}</span>
+              </component>
+              <SfProductCard v-else :product="item.Product" :count="item.Count" :images="item.Size === 'full' ? (item.Layout === 'cover' ? 'wide' : 'row') : item.Size === '2x2' ? 'carousel' : s.CardImages" :dots="item.Size === '2x2' ? true : s.CardDots" :eager="index < 4" :quick="s.QuickAdd !== false" :video="item.Video" :class="'is-' + item.Size" />
+            </template>
+          </template>
+          <SfProductCard v-for="(item, index) in catalog.Listing.Products" v-else :key="item.Id" :product="item" :images="s.CardImages" :dots="s.CardDots" :eager="index < 4" :quick="s.QuickAdd !== false" />
         </div>
         <p v-else class="sf-muted">{{ w('Aucun produit dans cette catégorie pour le moment.') }}</p>
         <nav v-if="catalog.Listing.Pages > 1" class="sf-pages" :aria-label="w('Pages de produits')">

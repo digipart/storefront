@@ -1,6 +1,6 @@
-// One file of the sitemap: /sitemap/<product|category|page>-<language>-<page>.xml. Its addresses are those of this site, in that language, for what its sales channel sells.
+// One file of the sitemap: /sitemap/<product|category|brand|page>-<language>-<page>.xml. Its addresses are those of this site, in that language, for what its sales channel sells.
 export default defineEventHandler(async (event) => {
-  const found = String(getRouterParam(event, 'name') || '').match(/^(product|category|page)-([a-z]{2,3})-(\d{1,4})\.xml$/)
+  const found = String(getRouterParam(event, 'name') || '').match(/^(product|category|brand|page)-([a-z]{2,3})-(\d{1,4})\.xml$/)
   if (!found) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
   const [, type, iso, page] = found
   const [site, plan] = await Promise.all([digipart(event, '', {}), digipart(event, 'sitemap.php', {})])

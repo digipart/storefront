@@ -26,7 +26,7 @@ export async function shopApi<T = any>(event: H3Event, path: string, query: Reco
 export interface ShopVariant { Id: number, Label: string, Size: string, Color: string, Available: boolean, Quantity: number }
 export interface ShopProduct {
   Id: number, IdCategory: number, Name: string, Reference: string, Brand: string, Slug: string, Url: string, Canonical: string, Alternates: Record<string, string>, Images: string[], ImageSets: string[], Currency: string, Price: number, PriceOld: number, Discount: number, PriceTaxExcl: number, PriceOldTaxExcl: number, TaxExcl: boolean, PriceState: 'ok' | 'login' | 'pending' | 'business',
-  Description: string, DescriptionShort: string, SeoTitle: string, SeoDescription: string, Variants: ShopVariant[], Available: boolean,
+  Description: string, DescriptionShort: string, SeoTitle: string, SeoDescription: string, Variants: ShopVariant[], Available: boolean, LookUrl?: string,
 }
 
 /** A product of the product API as the theme draws it: one flat shape, whatever the API left empty. `prefix` = the language part of the addresses of the page ('' or '/en'). */
@@ -109,19 +109,26 @@ export function priced<T extends ShopProduct | null>(product: T, policy: { whole
   return { ...product, Price: product.PriceTaxExcl, PriceOld: product.PriceOldTaxExcl, TaxExcl: true }
 }
 
+/** The products that have a look (« Shop the look »: products associated with them in Digipart): their card and their page lead to it. Asked once and kept like every answer of Digipart. */
+async function withLook<T extends ShopProduct | null>(event: H3Event, product: T, prefix: string): Promise<T> {
+  if (!product) { return product }
+  const ids: number[] = ((await digipart(event, 'looks.php', {}).catch(() => null))?.ProductIds as number[]) || []
+  return ids.includes(product.Id) ? { ...product, LookUrl: prefix + '/shop-the-look/' + product.Slug + '-' + product.Id } : product
+}
+
 export async function loadProduct(event: H3Event, id: number, lang: string, prefix: string, currency = 'EUR', priceBase = 'retail'): Promise<ShopProduct | null> {
   const policy = await pricing(event)
   if (policy.wholesale) { priceBase = 'wholesale' }
   const raw = await shopApi(event, 'product/' + id, { LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: currency, Track: 0 })
   if (!raw || raw.status === 'error') { return null }
-  return priced(shapeProduct(await complete(event, raw, currency, priceBase), lang, prefix), policy)
+  return withLook(event, priced(shapeProduct(await complete(event, raw, currency, priceBase), lang, prefix), policy), prefix)
 }
 
 export async function shapeListed(event: H3Event, products: any[], lang: string, prefix: string, currency = 'EUR', priceBase = 'retail'): Promise<ShopProduct[]> {
   const policy = await pricing(event)
   if (policy.wholesale) { priceBase = 'wholesale' }
   const shaped = await Promise.all((Array.isArray(products) ? products : []).map(async raw => priced(shapeProduct(policy.wholesale && raw ? await complete(event, { ...raw, Price: null }, currency, priceBase) : await complete(event, raw, currency, priceBase), lang, prefix), policy)))
-  return shaped.filter((product): product is ShopProduct => product !== null)
+  return (await Promise.all(shaped.map(product => withLook(event, product, prefix)))).filter((product): product is ShopProduct => product !== null)
 }
 
 /** The language of a request (two or three letters) and the language part of its addresses, as the page gave them. */

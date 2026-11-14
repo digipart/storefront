@@ -26,6 +26,9 @@ const paths = computed<Record<string, string> | null>(() => {
   if (kind === 'catalog') { return known(view.value.Category.Alternates, rest.value) }
   if (kind === 'page') { return known(view.value.Page?.Slugs, rest.value) }
   if (kind === 'lookbook') { return known(view.value.Lookbook.Alternates, rest.value) }
+  if (kind === 'brand') { return known(view.value.Brand.Alternates, rest.value) }
+  if (kind === 'brands') { return known(undefined, rest.value) }
+  if (kind === 'look') { return known(undefined, rest.value) }
   return null
 })
 const address = (iso: string, path: string) => origin.value + prefixOf(iso) + (path ? '/' + path : (prefixOf(iso) ? '' : '/'))
@@ -44,8 +47,8 @@ const structured = computed(() => {
 })
 useHead(() => {
   if (!paths.value || site.value?.Preview) { return {} }
-  const title = view.value?.Product?.SeoTitle || view.value?.Category?.SeoTitle || view.value?.Category?.Name || view.value?.Page?.SeoTitle || view.value?.Lookbook?.SeoTitle || site.value?.Preferences?.HomeTitle || site.value?.Name || ''
-  const description = view.value?.Product?.SeoDescription || view.value?.Category?.SeoDescription || view.value?.Page?.SeoDescription || view.value?.Lookbook?.SeoDescription || site.value?.Preferences?.HomeDescription || ''
+  const title = view.value?.Product?.SeoTitle || view.value?.Category?.SeoTitle || view.value?.Category?.Name || view.value?.Page?.SeoTitle || view.value?.Lookbook?.SeoTitle || view.value?.Brand?.SeoTitle || site.value?.Preferences?.HomeTitle || site.value?.Name || ''
+  const description = view.value?.Product?.SeoDescription || view.value?.Category?.SeoDescription || view.value?.Page?.SeoDescription || view.value?.Lookbook?.SeoDescription || view.value?.Brand?.SeoDescription || site.value?.Preferences?.HomeDescription || ''
   const languages = Object.keys(paths.value)
   return {
     link: [{ rel: 'canonical', href: canonical.value },
@@ -68,6 +71,12 @@ useHead(() => view.value?.Kind === 'product'
   ? { title: view.value.Category.SeoTitle || view.value.Category.Name, meta: [{ name: 'description', content: view.value.Category.SeoDescription }] }
   : view.value?.Kind === 'lookbook'
   ? { title: view.value.Lookbook.SeoTitle, meta: [{ name: 'description', content: view.value.Lookbook.SeoDescription }] }
+  : view.value?.Kind === 'brand'
+  ? { title: view.value.Brand.SeoTitle, meta: [{ name: 'description', content: view.value.Brand.SeoDescription }] }
+  : view.value?.Kind === 'look'
+  ? { title: 'Shop the look · ' + view.value.Look.Product.Name, meta: [{ name: 'description', content: view.value.Look.Product.SeoDescription || view.value.Look.Product.DescriptionShort }] }
+  : view.value?.Kind === 'brands'
+  ? { title: w('Nos marques') }
   : view.value?.Kind === 'search'
   ? { title: w('Recherche'), meta: [{ name: 'robots', content: 'noindex' }] }
   : view.value?.Kind === 'whatsapp'
@@ -94,6 +103,9 @@ useHead(() => view.value?.Kind === 'product'
     <LazySfFavorites v-else-if="view?.Kind === 'favorites'" />
     <LazySfReset v-else-if="view?.Kind === 'reset'" />
     <LazySfLookbook v-else-if="view?.Kind === 'lookbook'" :lookbook="view.Lookbook" />
+    <LazySfLook v-else-if="view?.Kind === 'look'" :look="view.Look" />
+    <LazySfBrand v-else-if="view?.Kind === 'brand'" :brand="view.Brand" />
+    <LazySfBrands v-else-if="view?.Kind === 'brands'" :brands="view.Brands" />
     <LazySfSearch v-else-if="view?.Kind === 'search'" :key="route.fullPath" :search="view.Search" />
     <LazySfThanks v-else-if="view?.Kind === 'thanks'" />
     <LazySfReferralLanding v-else-if="view?.Kind === 'referral'" :code="view.Code" />

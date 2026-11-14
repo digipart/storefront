@@ -17,6 +17,12 @@ const button = (s: any) => {
     background: custom && s.Style === 'solid' ? s.Background : undefined, color: custom ? (s.Style === 'outline' ? s.Background : s.Color) : undefined,
   }
 }
+// a whole section standing in a column (products, newsletter, contact form, shops): drawn by the section itself, without its own frame, with the settings of the block
+const embedded = (block: any) => ({
+  Id: block.Id, Type: String(block.Type).slice(2), Texts: block.Texts || {},
+  Settings: { ...(block.Settings || {}), Width: 'full', FullMobile: true, PaddingTop: 0, PaddingBottom: 0, PaddingLeft: 0, PaddingRight: 0, PaddingMobile: 100, Background: 'none' },
+  Blocks: [{ Id: block.Id + '-content', Type: 'content', Settings: {}, Texts: {} }],
+})
 const ratio = (value: string) => ({ portrait: '4 / 5', square: '1', landscape: '4 / 3', wide: '16 / 9' } as Record<string, string>)[value]
 </script>
 
@@ -24,6 +30,7 @@ const ratio = (value: string) => ({ portrait: '4 / 5', square: '1', landscape: '
   <template v-for="block in props.blocks || []" :key="block.Id">
     <div v-if="block.Type === 'content'" class="sf-blk"><slot /></div>
     <div v-else-if="block.Type.startsWith('p_')" class="sf-blk" :style="style(block)"><SfProductBlock :block="block" /></div>
+    <div v-else-if="block.Type.startsWith('e_')" class="sf-blk sf-embed"><SfSection :section="embedded(block)" /></div>
     <div v-else-if="block.Type === 'spacer'" class="sf-spacer" :style="{ '--h': (block.Settings.Height || 32) + 'px' }" />
     <div v-else class="sf-blk" :style="style(block)">
       <h2 v-if="block.Type === 'heading' && block.Texts.Text" class="sf-h" :style="heading(block.Settings)">{{ block.Texts.Text }}</h2>
@@ -35,7 +42,10 @@ const ratio = (value: string) => ({ portrait: '4 / 5', square: '1', landscape: '
           <img :src="block.Settings.Image" alt="" loading="lazy" decoding="async" :style="{ aspectRatio: ratio(block.Settings.Ratio), objectFit: ratio(block.Settings.Ratio) ? 'cover' : undefined }">
         </picture>
       </component>
-      <hr v-else-if="block.Type === 'separator'" class="sf-sep" :style="{ borderTopWidth: (block.Settings.Thickness || 1) + 'px' }">
+      <hr v-else-if="block.Type === 'separator'" class="sf-sep" :style="{ borderTopWidth: (block.Settings.Thickness || 1) + 'px', width: (block.Settings.Length || 100) + '%', marginLeft: (block.Settings.Length || 100) < 100 && block.Settings.LineAlign !== 'left' ? 'auto' : undefined, marginRight: (block.Settings.Length || 100) < 100 && block.Settings.LineAlign !== 'right' ? 'auto' : undefined, borderTopColor: own(block.Settings), opacity: own(block.Settings) ? 1 : undefined }">
+      <div v-else-if="block.Type === 'logos'" class="sf-logos" :style="{ gap: (block.Settings.Gap ?? 10) + 'px', justifyContent: ({ left: 'flex-start', center: 'center', right: 'flex-end' } as Record<string, string>)[block.Settings.Align] }">
+        <template v-for="n in 10" :key="n"><span v-if="block.Settings['Logo' + n]" class="sf-lg" :class="{ 'is-framed': block.Settings.Framed }" :style="{ height: (block.Settings.Height || 32) + 'px' }"><img :src="block.Settings['Logo' + n]" alt="" loading="lazy" decoding="async"></span></template>
+      </div>
     </div>
   </template>
 </template>

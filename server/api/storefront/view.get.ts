@@ -35,6 +35,33 @@ export default defineEventHandler(async (event) => {
     return { Kind: 'lookbook', Design: null, Page: null, Lookbook: { Alternates: Object.fromEntries(Object.entries(book.Slugs || {}).map(([iso, slug]) => [iso, 'lookbook/' + slug])), Title: String(book.Title || ''), SeoTitle: String(book.SeoTitle || book.Title || ''), SeoDescription: String(book.SeoDescription || ''), Blocks: book.Blocks || [], Products: pinned } }
   }
 
+  // « Shop the look »: a product and the pieces that go with it (the products associated with it in Digipart), to buy together
+  const lookAt = rest.match(/^shop-the-look\/[\p{L}\p{N}_.-]{1,200}-(\d{1,10})$/u)
+  if (lookAt) {
+    const main = await loadProduct(event, Number(lookAt[1]), lang, prefix, 'EUR', priceBase)
+    const ids: number[] = main ? (((await digipart(event, 'looks.php', { IdProduct: main.Id }).catch(() => null))?.ProductIds as number[]) || []) : []
+    const pieces = (await Promise.all(ids.slice(0, 12).map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean)
+    if (!main || !pieces.length) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
+    return { Kind: 'look', Design: null, Page: null, Look: { Product: main, Pieces: pieces } }
+  }
+
+  // the brands of the shop: the list, and one brand with its newest products
+  const text = (value: unknown, max: number) => String(value ?? '').replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, max)
+  const shapeBrand = (b: any) => ({ Id: Number(b.IdBrand) || 0, Name: text(b.Name, 120), Title: text(b.Title, 160), Slug: text(b.Slug, 120), Short: text(b.DescriptionShort, 400), Logo: /^https?:\/\//.test(String(b.Logo)) ? String(b.Logo) : '', Cover: /^https?:\/\//.test(String(b.Cover)) ? String(b.Cover) : '', Count: Number(b.ProductCount) || 0 })
+  if (/^(?:marques|brands)$/.test(rest)) {
+    const answer = await digipart(event, 'brand.php', { ...preview, ...language })
+    return { Kind: 'brands', Design: null, Page: null, Brands: (Array.isArray(answer?.Brands) ? answer.Brands : []).map(shapeBrand).filter((b: any) => b.Id > 0 && b.Slug) }
+  }
+  const brandAt = rest.match(/^(?:marque|brand)\/([\p{L}\p{N}_.-]{1,200})$/u)
+  if (brandAt) {
+    const answer = await digipart(event, 'brand.php', { ...preview, ...language, Slug: brandAt[1] })
+    const brand = answer?.Brand
+    if (!brand) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
+    const products = (await Promise.all(((brand.ProductIds as number[]) || []).slice(0, 48).map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean)
+    return { Kind: 'brand', Design: null, Page: null, Brand: { ...shapeBrand(brand), Description: String(brand.Description || '').slice(0, 20000), SeoTitle: text(brand.SeoTitle || brand.Title || brand.Name, 160), SeoDescription: text(brand.SeoDescription || brand.DescriptionShort, 300),
+      Alternates: Object.fromEntries(Object.entries(brand.Slugs || {}).map(([iso, slug]) => [iso, 'marque/' + slug])), Products: products } }
+  }
+
   // the search: the products whose name or reference holds the words typed (api/storefront/search.php)
   if (rest === 'recherche' || rest === 'search') {
     const term = String(query.q ?? '').trim().slice(0, 80)
@@ -88,10 +115,14 @@ export default defineEventHandler(async (event) => {
   const priceMin = Math.max(0, Math.floor(Number(query.min) || 0)), priceMax = Math.max(0, Math.floor(Number(query.max) || 0))
   const filtered = { ...(attributes ? { FilterAttribute: attributes } : {}), ...(priceMax > priceMin ? { FilterPrice: priceMin + ',' + priceMax } : {}) }
   const same = { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR' }
-  const [listing, filterAttributes, filterPrice] = await Promise.all([
+  const [listing, filterAttributes, filterPrice, media] = await Promise.all([
     shopApi(event, 'category/product', { ...same, Offset: (pageNumber - 1) * perPage, Limit: perPage, ...(SORTS[sort] || {}), ...filtered }),
     shopApi(event, 'category/filterAttribute', same), shopApi(event, 'category/filterPrice', same),
+    digipart(event, 'category-cover.php', { IdCategory: Number(category.IdCategory) }).catch(() => null),
   ])
+  // the cover of the category (Catalogue > Catégories > Couverture): its sizes from the smallest to the largest, or its Vimeo video. The addresses follow where the shop keeps its pictures (disk or bucket)
+  const coverSizes = (Array.isArray(media?.Sizes) ? media.Sizes : []).filter((i: any) => /^https?:\/\//.test(String(i?.Src || ''))).map((i: any) => ({ Src: String(i.Src), Width: Number(i.Width) || 0, Height: Number(i.Height) || 0 })).sort((a: any, b: any) => a.Width - b.Width)
+  const coverVideo = String(media?.Video || '')
   const groups = (Array.isArray(filterAttributes?.AttributeGroup) ? filterAttributes.AttributeGroup : []).map((group: any) => ({ Name: String(group.AttributeGroupName || ''), Values: (Array.isArray(group.Attribute) ? group.Attribute : []).map((a: any) => ({ Id: Number(a.IdAttribute), Name: String(a.AttributeName || '') })).filter((a: any) => a.Id > 0 && a.Name) })).filter((group: any) => group.Name && group.Values.length)
   const filters = { Groups: groups, PriceMin: Math.floor(Number(filterPrice?.RegularPrice?.MinPriceTaxIncl || 0)), PriceMax: Math.ceil(Number(filterPrice?.RegularPrice?.MaxPriceTaxIncl || 0)), Attributes: attributes ? attributes.split(',').map(Number) : [], Min: priceMax > priceMin ? priceMin : 0, Max: priceMax > priceMin ? priceMax : 0 }
   const seo = (Array.isArray(category.SEO) ? category.SEO : []).find((s: any) => String(s.LanguageIsoCode || '').toLowerCase() === lang) || category.SEO?.[0] || {}
@@ -101,9 +132,34 @@ export default defineEventHandler(async (event) => {
     const ids: number[] = ((await digipart(event, 'products.php', { Mode: 'category', IdCategory: Number(category.IdCategory), Limit: perPage }).catch(() => null))?.ProductIds as number[]) || []
     products = (await Promise.all(ids.map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean) as any[]
   }
+  // the staging of the category (Catalogue > Catégories > Mise en scène): its order, the products put forward, the photo of each card and the editorial blocks. It is the default sort of the page:
+  // a visitor who sorts or filters sees the products alone, in the order asked for
+  let items: any[] | null = null
+  if (!sort && !attributes && !filters.Max) {
+    const stage = await digipart(event, 'category-stage.php', { IdCategory: Number(category.IdCategory) }).catch(() => null)
+    const staged: any[] = Array.isArray(stage?.Items) ? stage.Items : []
+    if (staged.length) {
+      const stagedIds = new Set(staged.filter(i => i.Type === 'product').map(i => Number(i.IdProduct)))
+      const byId = new Map(products.map((p: any) => [p.Id, p]))
+      const rest = products.filter((p: any) => !stagedIds.has(p.Id)).map((p: any) => ({ Kind: 'product', Size: '1x1', Product: p }))
+      if (pageNumber === 1) {
+        const first = (await Promise.all(staged.map(async (i) => {
+          if (i.Type === 'edito') { return { Kind: 'edito', Id: String(i.Id), Size: String(i.Size), Image: /^https?:\/\//.test(String(i.Image)) ? String(i.Image) : '', Video: String(i.Video || ''), Title: String(i.Title || '').slice(0, 120), Height: Math.max(0, Math.min(1200, Number(i.Height) || 0)), HeightMobile: Math.max(0, Math.min(1200, Number(i.HeightMobile) || 0)), Url: /^(https?:\/\/|\/(?!\/))/.test(String(i.Url)) ? String(i.Url) : '' } }
+          const product: any = byId.get(Number(i.IdProduct)) || await loadProduct(event, Number(i.IdProduct), lang, prefix, 'EUR', priceBase)
+          if (!product) { return null }
+          const own = (Array.isArray(i.Images) ? i.Images : []).filter((x: any) => /^https?:\/\//.test(String(x?.Src)))
+          const shown = own.length ? { ...product, Images: [own[own.length - 1].Src, ...product.Images.filter((src: string) => !own.some((x: any) => x.Src === src))], ImageSets: [own.map((x: any) => x.Src + ' ' + x.Width + 'w').join(', '), ...(product.ImageSets || [])] } : product
+          return { Kind: 'product', Size: String(i.Size), Video: String(i.Video || ''), Layout: i.Layout === 'cover' ? 'cover' : 'photos', Count: Math.max(2, Math.min(4, Number(i.Count) || 3)), Product: shown }
+        }))).filter(Boolean)
+        items = [...first, ...rest]
+      } else {
+        items = rest
+      }
+    }
+  }
   return {
     Kind: 'catalog', Design: catalog, Page: null,
-    Category: { Alternates: Object.fromEntries((Array.isArray(category.SEO) ? category.SEO : []).map((s: any) => [String(s.LanguageIsoCode || '').toLowerCase(), String(s.URL || '').replace(/^\/+|\/+$/g, '')]).filter(([iso, url]: string[]) => /^[a-z]{2,3}$/.test(iso) && url)), Id: Number(category.IdCategory), Slug: rest, Name: String(category.Description?.Title || seo.MetaTitle || rest), Description: String(category.Description?.Description || ''), SeoTitle: String(seo.MetaTitle || ''), SeoDescription: String(seo.MetaDescription || '') },
-    Listing: { Products: products, Total: total, Page: pageNumber, Pages: Math.max(1, Math.ceil(total / perPage)), Sort: sort, Filters: filters },
+    Category: { Alternates: Object.fromEntries((Array.isArray(category.SEO) ? category.SEO : []).map((s: any) => [String(s.LanguageIsoCode || '').toLowerCase(), String(s.URL || '').replace(/^\/+|\/+$/g, '')]).filter(([iso, url]: string[]) => /^[a-z]{2,3}$/.test(iso) && url)), Id: Number(category.IdCategory), Slug: rest, Cover: { Sizes: coverSizes, Video: /vimeo\.com/i.test(coverVideo) ? coverVideo : '' }, Name: String(category.Description?.Title || seo.MetaTitle || rest), Description: String(category.Description?.Description || ''), SeoTitle: String(seo.MetaTitle || ''), SeoDescription: String(seo.MetaDescription || '') },
+    Listing: { Items: items, Products: products, Total: total, Page: pageNumber, Pages: Math.max(1, Math.ceil(total / perPage)), Sort: sort, Filters: filters },
   }
 })
