@@ -27,7 +27,31 @@ Copier `.env.example` en `.env` et renseigner :
 
 Ne jamais commiter `.env`.
 
-## Lancer
+## Lancer en local (sur la machine où Digipart est installé)
+
+Aucune clé n'est nécessaire : le moteur lit directement le Digipart local (`dev/bridge.php`), pour le canal de vente n° 1 par défaut. Le site répond sur `https://storefront.digipart.fr` (MAMP fait suivre vers le moteur, voir plus bas) et sur `http://127.0.0.1:3100`.
+
+| Besoin | Commande |
+|---|---|
+| Première fois, ou après un `git pull` | `npm install` |
+| Construire puis lancer le site (le plus rapide à l'usage) | `npm run local` |
+| Relancer sans reconstruire | `npm run local:start` |
+| Travailler sur le code du moteur (rechargement à chaud, plus lent) | `npm run local:dev` |
+| Arrêter le site | `npm run local:stop` |
+
+À savoir :
+
+- `npm run dev` seul ne suffit pas en local : il lance bien Nuxt, mais sans dire où est Digipart. Utiliser `npm run local:dev`, qui fait la même chose avec les bons réglages.
+- Après une modification du code (`app/`, `server/`), il faut reconstruire : `npm run local:stop` puis `npm run local`. En mode `local:dev`, ce n'est pas nécessaire.
+- Un autre canal de vente : `sh dev/start-local.sh 3` (ou `sh dev/dev-local.sh 3`).
+- Digipart ailleurs que dans `../app/local.digipart.fr/app.digipart.fr` : `DIGIPART_APP=/chemin/vers/app.digipart.fr npm run local:start`.
+- Le port 3100 est déjà pris : le site tourne déjà ; `npm run local:stop` l'arrête.
+- Le site ne montre pas un changement fait dans Digipart : une publication dans l'éditeur, un logo ou une mise en scène se voient en quelques secondes ; un produit ou un menu, sous 30 secondes. La liste des produits d'une catégorie est en plus gardée en cache par Digipart lui-même.
+- Le terminal doit rester ouvert tant que le site tourne (Ctrl+C l'arrête).
+
+## Lancer avec une clé (comme en production)
+
+Remplir `.env` à partir de `.env.example` (voir « Configuration »), puis :
 
 ```bash
 npm install
@@ -39,7 +63,7 @@ Le moteur écoute sur `127.0.0.1:3100`.
 
 ## En local avec MAMP
 
-Ce dossier est aussi la racine du sous-domaine MAMP. `.htaccess` envoie toute requête à `proxy.php`, qui la passe au moteur : aucun fichier du dossier n'est servi tel quel. Si Digipart est en HTTPS avec un certificat local, Node doit l'accepter : lancer avec `NODE_TLS_REJECT_UNAUTHORIZED=0 npm run start` (en local uniquement).
+Ce dossier est aussi la racine du sous-domaine MAMP `storefront.digipart.fr`. `.htaccess` envoie toute requête à `proxy.php`, qui la passe au moteur (port 3100) : aucun fichier du dossier n'est servi tel quel. Si le moteur est arrêté, le sous-domaine répond une erreur : lancer `npm run local`.
 
 ## En production
 

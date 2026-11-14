@@ -7,7 +7,11 @@
     "dev": "nuxt dev --port 3100",
     "build": "nuxt build",
     "start": "PORT=3100 HOST=127.0.0.1 node .output/server/index.mjs",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "local": "nuxt build && sh dev/start-local.sh",
+    "local:start": "sh dev/start-local.sh",
+    "local:dev": "sh dev/dev-local.sh",
+    "local:stop": "kill $(lsof -tiTCP:3100 -sTCP:LISTEN) 2>/dev/null || true"
   },
   "dependencies": {
     "nuxt": "4.2.1",
