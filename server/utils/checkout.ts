@@ -12,7 +12,7 @@ async function customer(event: H3Event): Promise<any | null> {
   if (!sessionToken(event)) { return null }
   const answer = await cartCall(event, 'GET', 'customer', {})
   const found = answer?.AuthData?.Customer
-  if (!found || !found.Id) { setSession(event, ''); return null }   // the token is no longer accepted
+  if (!found || !found.Id) { if (answer) { setSession(event, '') } return null }   // the token is no longer accepted; a Digipart that did not answer drops nothing
   return { Email: String(found.Email || ''), Firstname: String(found.Firstname || ''), Lastname: String(found.Lastname || ''), Guest: (found.Guest === true || found.Guest === 1 || found.Guest === '1') && !loggedIn(event) }
 }
 

@@ -63,8 +63,9 @@ export function profile(event: H3Event): Promise<any | null> {
 }
 async function readProfile(event: H3Event): Promise<any | null> {
   if (!sessionToken(event)) { return null }
-  const found = (await cartCall(event, 'GET', 'customer', {}))?.AuthData?.Customer
-  if (!found || !found.Id) { setSession(event, ''); return null }
+  const answer = await cartCall(event, 'GET', 'customer', {})
+  const found = answer?.AuthData?.Customer
+  if (!found || !found.Id) { if (answer) { setSession(event, '') } return null }   // a Digipart that did not answer drops nothing
   if (Number(found.IdFavorite) > 0 && !favId(event)) { keepFav(event, Number(found.IdFavorite)) }
   return {
     Email: String(found.Email || ''), Firstname: String(found.Firstname || ''), Lastname: String(found.Lastname || ''), Birthday: String(found.Birthday || ''), Phone: String(found.Phone || ''),

@@ -2,6 +2,14 @@
 // The blocks of a section, in the order the shop gave them in the site builder: titles, texts, buttons, pictures, spaces. The block `content` is the place of what the section itself draws (its
 // products, its form...): the default slot.
 const props = defineProps<{ blocks?: any[], light?: boolean }>()
+const site = inject<Ref<any>>('sfSite')!
+const onDark = inject<Ref<boolean> | null>('sfOnDark', null)
+// the logo of the shop in a block: the version for dark backgrounds when it stands on a picture or a dark band (or when the shop says so), the SVG when there is one, else the picture
+const logoOf = (settings: any) => {
+  const files = site.value?.LogoFiles || {}, dark = settings.Variant === 'dark' || (settings.Variant !== 'normal' && (props.light || !!onDark?.value))
+  const copies = [...(site.value?.Logo || [])].filter((c: any) => c.Src).sort((a: any, b: any) => (a.Height || 0) - (b.Height || 0))
+  return (dark && files.Dark?.Src) || files.Svg?.Src || (copies.find((c: any) => (c.Height || 0) >= (settings.Height || 48) * 2) || copies[copies.length - 1])?.Src || ''
+}
 const style = (block: any) => {
   const s = block.Settings || {}
   return { textAlign: s.Align && s.Align !== 'inherit' ? s.Align : undefined, marginTop: (s.GapTop || 0) + 'px', marginBottom: (s.Gap ?? 16) + 'px' }
@@ -42,6 +50,7 @@ const ratio = (value: string) => ({ portrait: '4 / 5', square: '1', landscape: '
           <img :src="block.Settings.Image" alt="" loading="lazy" decoding="async" :style="{ aspectRatio: ratio(block.Settings.Ratio), objectFit: ratio(block.Settings.Ratio) ? 'cover' : undefined }">
         </picture>
       </component>
+      <a v-else-if="block.Type === 'logo'" :href="block.Settings.Url || site?.Route?.Prefix || '/'" class="sf-blk-logo"><img v-if="logoOf(block.Settings)" :src="logoOf(block.Settings)" :alt="site?.Name" :style="{ height: (block.Settings.Height || 48) + 'px' }" loading="lazy" decoding="async"><template v-else>{{ site?.Name }}</template></a>
       <hr v-else-if="block.Type === 'separator'" class="sf-sep" :style="{ borderTopWidth: (block.Settings.Thickness || 1) + 'px', width: (block.Settings.Length || 100) + '%', marginLeft: (block.Settings.Length || 100) < 100 && block.Settings.LineAlign !== 'left' ? 'auto' : undefined, marginRight: (block.Settings.Length || 100) < 100 && block.Settings.LineAlign !== 'right' ? 'auto' : undefined, borderTopColor: own(block.Settings), opacity: own(block.Settings) ? 1 : undefined }">
       <div v-else-if="block.Type === 'logos'" class="sf-logos" :style="{ gap: (block.Settings.Gap ?? 10) + 'px', justifyContent: ({ left: 'flex-start', center: 'center', right: 'flex-end' } as Record<string, string>)[block.Settings.Align] }">
         <template v-for="n in 10" :key="n"><span v-if="block.Settings['Logo' + n]" class="sf-lg" :class="{ 'is-framed': block.Settings.Framed }" :style="{ height: (block.Settings.Height || 32) + 'px' }"><img :src="block.Settings['Logo' + n]" alt="" loading="lazy" decoding="async"></span></template>

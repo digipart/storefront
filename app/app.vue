@@ -36,6 +36,8 @@ onMounted(() => {
   if (typeof ResizeObserver !== 'undefined' && headerBox.value) { new ResizeObserver(set).observe(headerBox.value) }
 })
 const ordering = computed(() => ['commande', 'checkout', 'commande/merci', 'checkout/thanks'].includes(site.value?.Route?.Rest || ''))
+// the order page has its own small header: the logo of the shop (the SVG, else the image), as in the header of the site; the name only when the shop has no logo
+const orderLogo = computed(() => { const svg = site.value?.LogoFiles?.Svg?.Src; if (svg) { return String(svg) } const copies = [...(site.value?.Logo || [])].filter((c: any) => c.Src).sort((x: any, y: any) => (x.Height || 0) - (y.Height || 0)); return String((copies.find((c: any) => (c.Height || 0) >= 72) || copies[copies.length - 1])?.Src || '') })
 const closed = computed(() => !!site.value && !site.value.Preview && (status.value ? !status.value.IsLive && status.value.Bypass !== true : site.value.State !== 'online'))
 const closedPage = computed(() => (closed.value ? status.value?.Page || null : null))
 const cover = computed(() => closedPage.value?.Cover || null)
@@ -46,7 +48,12 @@ useHead(() => ({
   htmlAttrs: { lang: site.value?.Route?.LanguageIsoCode || 'fr', style: style.value },
   // the fonts of the theme, served by this site: their rules are written in the page (nothing to fetch before it is drawn) and their files are asked for at once (server/utils/fonts.ts)
   style: site.value?.FontCss ? [{ key: 'sf-fonts', innerHTML: site.value.FontCss }] : [],
-  link: (site.value?.FontFiles || []).map((href: string) => ({ rel: 'preload', as: 'font', type: 'font/woff2', href, crossorigin: 'anonymous' })),
+  link: [
+    ...(site.value?.FontFiles || []).map((href: string) => ({ rel: 'preload', as: 'font', type: 'font/woff2', href, crossorigin: 'anonymous' })),
+    // the icon of the browser tab (Configuration > Thème de la boutique > Favicon): the SVG when there is one, the picture for the browsers that do not read it
+    ...(site.value?.LogoFiles?.FaviconImage?.Src ? [{ key: 'sf-icon', rel: 'icon', href: site.value.LogoFiles.FaviconImage.Src, sizes: 'any' }, { key: 'sf-touch', rel: 'apple-touch-icon', href: site.value.LogoFiles.FaviconImage.Src }] : []),
+    ...(site.value?.LogoFiles?.Favicon?.Src && site.value.LogoFiles.Favicon.Format === 'svg' ? [{ key: 'sf-icon-svg', rel: 'icon', type: 'image/svg+xml', href: site.value.LogoFiles.Favicon.Src }] : site.value?.LogoFiles?.Favicon?.Src ? [{ key: 'sf-icon-png', rel: 'icon', href: site.value.LogoFiles.Favicon.Src }] : []),
+  ],
   // the next page is prepared while the visitor points at its link (browsers that know « speculation rules »: Chrome, Edge): the click then shows it at once. Never for what belongs to
   // one visitor or does something (cart, order, account, short links), nor in a theme preview.
   script: site.value?.Preview ? [] : [{ key: 'sf-speculation', type: 'speculationrules', innerHTML: JSON.stringify({ prerender: [{ where: { and: [{ href_matches: '/*' }, { not: { href_matches: ['/*panier*', '/*cart*', '/*commande*', '/*checkout*', '/*compte*', '/*account*', '/*favoris*', '/*wishlist*', '/s/*', '/*parrainage*', '/*referral*', '/*reset*', '/*\\?*'] } }, { not: { selector_matches: '[target], [download], [rel~=nofollow]' } }] }, eagerness: 'moderate' }] }) }],
@@ -86,7 +93,7 @@ if (import.meta.server && closed.value) {
   </main>
   <template v-else>
     <!-- the order page keeps the visitor on the order: a slim bar instead of the menu, no footer -->
-    <header v-if="ordering" class="sf-cohead"><a :href="site.Route.Prefix || '/'">‹ {{ words(site.Route.LanguageIsoCode, 'Continuer mes achats') }}</a><a :href="site.Route.Prefix || '/'" class="sf-logo">{{ site.Name }}</a><span /></header>
+    <header v-if="ordering" class="sf-cohead"><a :href="site.Route.Prefix || '/'">‹ {{ words(site.Route.LanguageIsoCode, 'Continuer mes achats') }}</a><a :href="site.Route.Prefix || '/'" class="sf-logo"><img v-if="orderLogo" :src="orderLogo" :alt="site.Name"><template v-else>{{ site.Name }}</template></a><span /></header>
     <header v-else-if="site.Header" ref="headerBox" :class="{ 'sf-sticky': stickyHeader }"><SfSection v-for="section in site.Header.Sections" :key="section.Id" :section="section" /></header>
     <NuxtPage />
     <ClientOnly><LazySfCart /></ClientOnly>

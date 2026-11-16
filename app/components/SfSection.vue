@@ -35,6 +35,8 @@ const frame = computed(() => ({
   '--pt': (s.value.PaddingTop || 0) + 'px', '--pb': (s.value.PaddingBottom || 0) + 'px', '--pl': (s.value.PaddingLeft || 0) + 'px', '--pr': (s.value.PaddingRight || 0) + 'px', '--pm': (s.value.PaddingMobile || 60) / 100,
   background: s.value.Background === 'custom' ? s.value.BackgroundColor : undefined, color: s.value.Background === 'custom' ? s.value.TextColor : undefined,
 }))
+// what stands in this section is on something dark (a dark band, a picture with a dark veil): a logo block then takes the version for dark backgrounds
+provide('sfOnDark', computed(() => s.value.Background === 'dark' || (!!s.value.BgImage && s.value.BgTone !== 'light')))
 const wrap = computed(() => ['sf-wrap', 'is-' + (s.value.Width || 'page'), { 'is-full-mobile': s.value.FullMobile }])
 const band = computed(() => ['sf-band', { 'has-bg': !!s.value.BgImage, 'is-fixed-bg': !!s.value.BgFixed }, 'is-' + (s.value.Background || 'none'), 'sf-s-' + type.value.replace(/_/g, '-')])   // `sf-s-`: never the class of what is inside (`sf-hero`)
 const align = computed(() => ({ textAlign: s.value.Align || 'left' }))

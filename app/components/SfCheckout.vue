@@ -203,6 +203,64 @@ async function orderFree() {
     location.href = (site.value?.Route?.Prefix || '') + '/commande/merci'
   } catch { payError.value = 'Votre commande n\'a pas pu être enregistrée, merci de réessayer.' } finally { paying.value = false }
 }
+// Paying in several instalments with Alma. Each Alma method stands for a number of instalments; the page shows what Alma would take and when (asked by the server), then sends the customer to
+// Alma's own payment page. The payment is made by Digipart for the amount of the cart: the browser only receives the address of that page.
+const byAlma = computed(() => !free.value && method.value?.Provider === 'Alma' && !!state.value?.Pay?.Alma)
+const almaPlans = ref<any[]>([])
+const almaAsked = ref(false)
+const almaPlan = computed(() => almaPlans.value.find((p: any) => p.IdPayment === payment.value) || null)
+// the Alma methods (2, 3, 4 instalments) are ONE line of the list; the number of instalments is chosen inside it
+const almaCount = (p: any) => Number(/^ALMA([1-4])X$/i.exec(String(p?.Code || ''))?.[1] || 0)
+const almaMethods = computed(() => state.value?.Pay?.Alma ? (state.value?.Payments || []).filter((p: any) => p.Provider === 'Alma' && almaCount(p) > 0).sort((a: any, b: any) => almaCount(a) - almaCount(b)) : [])
+const payRows = computed(() => {
+  const rows: any[] = []
+  let grouped = false
+  for (const p of state.value?.Payments || []) {
+    if (!almaMethods.value.includes(p)) { rows.push({ ...p, Ids: [p.IdPayment] }); continue }
+    if (grouped) { continue }
+    grouped = true
+    const counts = almaMethods.value.map(almaCount)
+    rows.push({ IdPayment: 'alma', Alma: true, Ids: almaMethods.value.map((m: any) => m.IdPayment), Available: almaMethods.value.some((m: any) => m.Available),
+      Title: w('Paiement en plusieurs fois avec Alma'), Description: w('En {a} fois par carte bancaire', { a: counts.length > 1 ? counts.slice(0, -1).join(', ') + ' ' + w('ou') + ' ' + counts[counts.length - 1] : String(counts[0]) }) })
+  }
+  return rows
+})
+function choosePay(row: any) {
+  if (!row.Alma) { payment.value = row.IdPayment; return }
+  if (!row.Ids.includes(payment.value)) { payment.value = (almaMethods.value.find((m: any) => m.Available) || almaMethods.value[0]).IdPayment }
+}
+const almaOff = (m: any) => !m.Available || (almaAsked.value && almaPlans.value.find((p: any) => p.IdPayment === m.IdPayment)?.Eligible === false)
+let almaFor = ''
+async function loadAlma() {
+  const key = String(state.value?.Cart?.IdCarrier || 0) + ':' + Math.round(leftToPay.value * 100)
+  if (!byAlma.value || !identified.value || key === almaFor) { return }
+  almaFor = key
+  almaAsked.value = false
+  try { almaPlans.value = (await $fetch<any>('/api/storefront/pay', { method: 'POST', query: query(), body: { Action: 'alma-plans', CountryIsoCode: form.CountryIsoCode } })).Plans || [] } catch { almaPlans.value = []; almaFor = '' }
+  almaAsked.value = true
+}
+watch([byAlma, leftToPay, () => state.value?.Cart?.IdCarrier, identified], loadAlma, { immediate: true })
+async function payAlma() {
+  if (paying.value || !ready.value || !byAlma.value) { return }
+  paying.value = true
+  payError.value = ''
+  let leaving = false
+  try {
+    const answer = await $fetch<any>('/api/storefront/pay', { method: 'POST', query: query(), body: { Action: 'alma-create', IdPayment: payment.value, CountryIsoCode: form.CountryIsoCode } })
+    if (answer.Error || !answer.Url) { payError.value = answer.Error || 'Le paiement n\'a pas pu être préparé, merci de réessayer.'; if (giftCards.value.length) { await giftCall({ Action: 'release' }) } return }
+    try { sessionStorage.setItem('sf-order-before', String(state.value?.LastOrder || '')) } catch { /* the confirmation page then shows no order number */ }
+    leaving = true
+    location.href = answer.Url
+  } catch { payError.value = 'Le paiement ne répond pas, merci de réessayer.' } finally { if (!leaving) { paying.value = false } }
+}
+// back from Alma's page without paying: the gift cards get their part back, and the page says so
+async function backFromAlma() {
+  if (new URLSearchParams(location.search).get('paiement') !== 'annule') { return }
+  history.replaceState(history.state, '', location.pathname)
+  payError.value = 'Votre paiement n\'a pas été finalisé. Vous pouvez réessayer ou choisir un autre moyen de paiement.'
+  if (giftCards.value.length) { await giftCall({ Action: 'release' }) }   // once the page is loaded, and only when a gift card may hold something
+}
+const shortDate = (iso: string) => { const d = new Date(iso + 'T12:00:00Z'); return isNaN(d.getTime()) ? '' : d.toLocaleDateString(lang.value, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) }
 // Paying with PayPal. The button and the window are PayPal's; the PayPal order is made and its money taken by Digipart, for the amount of the cart (the browser only carries its id).
 const byPaypal = computed(() => !free.value && method.value?.Provider === 'Paypal' && !!state.value?.Pay?.Paypal)
 const paypalBox = ref<HTMLElement | null>(null)
@@ -257,7 +315,7 @@ onBeforeUnmount(unmountPaypal)
 const changeCountry = () => { if (!identified.value) { load(form.CountryIsoCode) } }
 const show = (n: number) => !steps.value || step.value === n
 const locked = (n: number) => !steps.value && n > 1 && !identified.value
-onMounted(() => load())
+onMounted(async () => { await load(); await backFromAlma() })
 </script>
 
 <template>
@@ -358,8 +416,8 @@ onMounted(() => load())
           <template v-else>
           <p v-if="!state.Payments.length" class="sf-muted">{{ w('Aucun moyen de paiement pour ce pays pour le moment.') }}</p>
           <div v-else class="sf-co-types">
-            <button v-for="method in state.Payments" :key="method.IdPayment" type="button" class="sf-co-pay" :class="{ 'is-on': payment === method.IdPayment }" :aria-pressed="payment === method.IdPayment" :disabled="!method.Available || locked(3)" @click="payment = method.IdPayment">
-              <span class="sf-radio" :class="{ 'is-on': payment === method.IdPayment }" /><span class="sf-co-option-main"><strong>{{ method.Title }}</strong><small>{{ method.Available ? method.Description : w('Indisponible pour ce montant') }}</small></span>
+            <button v-for="method in payRows" :key="method.IdPayment" type="button" class="sf-co-pay" :class="{ 'is-on': method.Ids.includes(payment) }" :aria-pressed="method.Ids.includes(payment)" :disabled="!method.Available || locked(3)" @click="choosePay(method)">
+              <span class="sf-radio" :class="{ 'is-on': method.Ids.includes(payment) }" /><span class="sf-co-option-main"><strong>{{ method.Title }}</strong><small>{{ method.Available ? method.Description : w('Indisponible pour ce montant') }}</small></span>
             </button>
           </div>
           <!-- the card form of Stripe (the card number never goes through this site) -->
@@ -376,10 +434,27 @@ onMounted(() => load())
             <div ref="paypalBox" :aria-busy="!paypalReady" />
             <p v-if="!paypalReady && !payError" class="sf-muted">{{ w('Chargement du bouton PayPal…') }}</p>
           </div>
+          <!-- Alma: what will be taken and when, then Alma's own payment page -->
+          <div v-else-if="byAlma" class="sf-co-alma">
+            <p v-if="state.Pay.Alma.TestMode" class="sf-co-test">{{ w('Mode test : aucun paiement réel. Utilisez une carte de test Alma.') }}</p>
+            <div v-if="almaMethods.length > 1" class="sf-co-alma-tabs" role="group" :aria-label="w('Nombre de fois')">
+              <button v-for="m in almaMethods" :key="m.IdPayment" type="button" :class="{ 'is-on': payment === m.IdPayment }" :aria-pressed="payment === m.IdPayment" :disabled="almaOff(m) || paying" @click="payment = m.IdPayment">{{ w('{a} fois', { a: almaCount(m) }) }}</button>
+            </div>
+            <template v-if="almaPlan?.Eligible">
+              <ol class="sf-co-alma-plan">
+                <li v-for="(step, index) in almaPlan.Schedule" :key="index"><span>{{ index === 0 ? w('Aujourd\'hui') : shortDate(step.Date) }}</span><strong>{{ money(step.Amount, total.Currency, lang) }}</strong></li>
+              </ol>
+              <p class="sf-total-note">{{ almaPlan.CustomerFee > 0 ? w('Dont frais : {a}. Total : {b}.', { a: money(almaPlan.CustomerFee, total.Currency, lang), b: money(almaPlan.Total, total.Currency, lang) }) : w('Sans frais. Total : {a}.', { a: money(almaPlan.Total, total.Currency, lang) }) }}</p>
+              <button type="button" class="sf-btn sf-summary-go" :disabled="paying || !ready" @click="payAlma">{{ paying ? w('Redirection vers Alma…') : w('Payer avec Alma') }}</button>
+              <p class="sf-total-note">{{ w('Vous serez redirigé vers la page de paiement sécurisée d\'Alma.') }}</p>
+            </template>
+            <p v-else-if="almaAsked" class="sf-muted">{{ w('Ce paiement en plusieurs fois n\'est pas disponible pour ce montant.') }}</p>
+            <p v-else class="sf-muted" aria-live="polite">{{ w('Calcul de vos échéances…') }}</p>
+          </div>
           <button v-else type="button" class="sf-btn sf-summary-go" disabled>{{ w('Commander') }}</button>
-          <p v-if="(byCard || byPaypal) && !ready" class="sf-total-note">{{ w('Validez vos coordonnées et choisissez la livraison pour payer.') }}</p>
+          <p v-if="(byCard || byPaypal || byAlma) && !ready" class="sf-total-note">{{ w('Validez vos coordonnées et choisissez la livraison pour payer.') }}</p>
           <p v-else-if="!payment" class="sf-total-note">{{ w('Choisissez un moyen de paiement.') }}</p>
-          <p v-else-if="!byCard && !byPaypal" class="sf-total-note">{{ w('Ce moyen de paiement n\'est pas encore disponible sur ce site.') }}</p>
+          <p v-else-if="!byCard && !byPaypal && !byAlma" class="sf-total-note">{{ w('Ce moyen de paiement n\'est pas encore disponible sur ce site.') }}</p>
           </template>
           <p v-if="section?.Texts?.Legal" class="sf-co-legal">{{ section.Texts.Legal }}</p>
         </section>

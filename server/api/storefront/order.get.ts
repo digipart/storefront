@@ -5,6 +5,7 @@ export default defineEventHandler(async (event) => {
   const after = String(getQuery(event).after ?? '')
   setResponseHeader(event, 'Cache-Control', 'private, no-store')
   await localNotify(event)   // development only: does nothing on a real site
+  await confirmAlma(event, String(getQuery(event).pid ?? ''))   // back from Alma's payment page: Digipart checks the payment with Alma and makes the order
   const order = await newestOrder(event, lang)
   const made = order && order.Id !== after ? order : null
   if (made) { forgetPayment(event); forget(event) }   // the paid cart is gone: what was kept for this visitor is dropped

@@ -9,9 +9,12 @@ const order = ref<any>(null)
 const waiting = ref(true)
 onMounted(async () => {
   let before: string | null = null
+  // back from Alma's payment page: the id of the payment is in the address; Digipart checks it with Alma before making the order
+  const pid = new URLSearchParams(location.search).get('pid') || ''
+  const alma = /^payment_[A-Za-z0-9]{6,60}$/.test(pid) ? { pid } : {}
   try { before = sessionStorage.getItem('sf-order-before') } catch { /* no order number then */ }
   for (let attempt = 0; before !== null && attempt < 8 && !order.value; attempt++) {
-    try { order.value = (await $fetch<any>('/api/storefront/order', { query: { lang: lang.value, after: before } })).Order } catch { break }
+    try { order.value = (await $fetch<any>('/api/storefront/order', { query: { lang: lang.value, after: before, ...alma } })).Order } catch { break }
     if (!order.value) { await new Promise(resolve => setTimeout(resolve, 2500)) }
   }
   if (order.value) { try { sessionStorage.removeItem('sf-order-before') } catch { /* nothing to clean */ } }

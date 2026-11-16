@@ -10,8 +10,13 @@ const at = ref(0)
 const many = computed(() => props.slides.length > 1)
 const vimeo = (value: unknown) => { const found = String(value || '').match(/vimeo\.com\/(?:video\/)?(\d{6,12})(?:\/([0-9a-f]{6,20}))?/i); return found ? 'https://player.vimeo.com/video/' + found[1] + '?background=1&autoplay=1&loop=1&muted=1&dnt=1' + (found[2] ? '&h=' + found[2] : '') : '' }
 const rgba = (hex: string, alpha: number) => { let h = String(hex || '#ffffff').replace('#', ''); if (h.length === 3) { h = h.split('').map(c => c + c).join('') } const n = parseInt(h, 16) || 0; return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})` }
-const go = (index: number) => { const el = track.value; if (!el) { return } const n = props.slides.length, to = ((index % n) + n) % n; el.scrollTo({ left: to * el.clientWidth, behavior: 'smooth' }) }
-const onScroll = () => { const el = track.value; if (el && el.clientWidth) { at.value = Math.round(el.scrollLeft / el.clientWidth) } }
+// « Fondu »: the slides are stacked and the one shown fades in (no scrolling: a swipe is read by hand); « Glissement »: they scroll, snapped one by one
+const fade = computed(() => s.value.Effect === 'fade')
+const go = (index: number) => { const n = props.slides.length, to = ((index % n) + n) % n; if (fade.value) { at.value = to; return } const el = track.value; if (el) { el.scrollTo({ left: to * el.clientWidth, behavior: 'smooth' }) } }
+const onScroll = () => { const el = track.value; if (!fade.value && el && el.clientWidth) { at.value = Math.round(el.scrollLeft / el.clientWidth) } }
+let touchX = 0
+const touchStart = (event: TouchEvent) => { touchX = event.touches[0]?.clientX || 0 }
+const touchEnd = (event: TouchEvent) => { if (!fade.value) { return } const dx = (event.changedTouches[0]?.clientX || 0) - touchX; if (Math.abs(dx) > 40) { go(at.value + (dx < 0 ? 1 : -1)) } }
 const arrow = (next: boolean) => {
   const v = s.value, size = Number(v.ArrowSize || 40), inset = Number(v.ArrowInset ?? 16), bottom = v.ArrowPlace === 'bottom'
   return {
@@ -34,8 +39,8 @@ onBeforeUnmount(() => { if (timer) { clearInterval(timer) } })
 <template>
   <div class="sf-carousel" @mouseenter="paused = true" @mouseleave="paused = false" @focusin="paused = true" @focusout="paused = false">
     <div class="sf-carousel-view">
-      <div ref="track" class="sf-slides" @scroll.passive="onScroll">
-        <div v-for="slide in slides" :key="slide.Id" class="sf-hero sf-slide" :class="{ 'is-empty': !slide.Settings.Image && !vimeo(slide.Settings.Video) }">
+      <div ref="track" class="sf-slides" :class="{ 'is-fade': fade }" @scroll.passive="onScroll" @touchstart.passive="touchStart" @touchend.passive="touchEnd">
+        <div v-for="(slide, index) in slides" :key="slide.Id" class="sf-hero sf-slide" :class="{ 'is-empty': !slide.Settings.Image && !vimeo(slide.Settings.Video), 'is-on': index === at }" :aria-hidden="fade && index !== at ? 'true' : undefined">
           <picture v-if="slide.Settings.Image">
             <source v-if="slide.Settings.ImageMobile" media="(max-width: 767px)" :srcset="slide.Settings.ImageMobile">
             <img :src="slide.Settings.Image" alt="" :loading="first && slide === slides[0] ? 'eager' : 'lazy'" decoding="async">
