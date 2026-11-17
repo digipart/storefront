@@ -1,0 +1,18 @@
+# what the image does not need (it is built from the sources; the build makes .nuxt and .output itself)
+node_modules
+.nuxt
+.output
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.log
+Dockerfile
+.dockerignore
+# local development only: the MAMP bridge and its welcome page
+dev
+proxy.php
+index.php
+.htaccess
+README.md

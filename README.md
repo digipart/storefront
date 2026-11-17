@@ -65,6 +65,27 @@ Le moteur écoute sur `127.0.0.1:3100`.
 
 Ce dossier est aussi la racine du sous-domaine MAMP `storefront.digipart.fr`. `.htaccess` envoie toute requête à `proxy.php`, qui la passe au moteur (port 3100) : aucun fichier du dossier n'est servi tel quel. Si le moteur est arrêté, le sous-domaine répond une erreur : lancer `npm run local`.
 
+## Docker (Coolify ou tout hôte Docker)
+
+Le `Dockerfile` construit le moteur en deux étapes (construction, puis une image légère qui ne garde que `.output`), tourne sans droits particuliers et écoute sur le port 3000. **Aucun secret dans l'image** : on les donne au conteneur au démarrage, avec le préfixe `NUXT_` (le moteur les relit à ce moment-là) :
+
+| Variable | Rôle |
+|---|---|
+| `NUXT_DIGIPART_URL` | L'adresse du back-office Digipart de production |
+| `NUXT_ID_MARKET_PLACE` | Le canal de vente du site |
+| `NUXT_CLIENT_ID`, `NUXT_CLIENT_SECRET` | La clé du front |
+| `NUXT_CACHE_SECONDS` | Durée de garde d'une réponse de Digipart (300) |
+| `NUXT_GOOGLE_PLACES_KEY`, `NUXT_RETURN_PORTAL_URL` | Facultatives |
+
+Sur Coolify : méthode de construction « Dockerfile », port exposé 3000, domaine du site, variables ci-dessus **sans** « disponible à la construction ». Le contrôle de santé du Dockerfile vérifie seulement que le port répond (un site fermé ou un Digipart arrêté ne rend pas le conteneur « mort »).
+
+```bash
+docker build -t storefront .
+docker run --rm -p 3000:3000 -e NUXT_DIGIPART_URL=... -e NUXT_ID_MARKET_PLACE=... -e NUXT_CLIENT_ID=... -e NUXT_CLIENT_SECRET=... storefront
+```
+
+`package-lock.json` doit rester à jour (`npm install` après tout changement de `package.json`) : la construction utilise `npm ci`, qui refuse un fichier de verrouillage en retard.
+
 ## En production
 
 Le moteur vit hors de la racine web ; le serveur web fait suivre les requêtes vers son port. `.htaccess` et `proxy.php` ne servent pas.
