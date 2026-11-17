@@ -6,6 +6,8 @@ const { cart, loaded, busy, error, addCode, removeCode } = useCart()
 const lang = computed(() => site.value?.Route?.LanguageIsoCode || 'fr')
 const home = computed(() => site.value?.Route?.Prefix || '/')
 const orderUrl = computed(() => (site.value?.Route?.Prefix || '') + (lang.value === 'fr' ? '/commande' : '/checkout'))
+// the HTML tag the shop chose for the title (h1 as before when it chose nothing)
+const titleTag = computed(() => (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div'].includes(String(props.settings?.TitleTag)) ? String(props.settings.TitleTag) : 'h1'))
 const code = ref('')
 const apply = async () => { if (code.value.trim() && await addCode(code.value.trim())) { code.value = '' } }
 const w = useWords()
@@ -13,7 +15,7 @@ const w = useWords()
 
 <template>
   <div class="sf-cartpage">
-    <h1 class="sf-h" :style="{ '--size': '30px' }">{{ w(texts.Title || 'Votre panier') }}</h1>
+    <component :is="titleTag" class="sf-h" :style="{ '--size': '30px' }">{{ w(texts.Title || 'Votre panier') }}</component>
     <p v-if="error" class="sf-cart-error" role="alert">{{ w(error) }}</p>
     <p v-if="!loaded" class="sf-cart-wait">{{ w('Chargement de votre panier…') }}</p>
     <div v-else-if="!cart.Lines.length" class="sf-cart-none"><p>{{ w('Votre panier est vide.') }}</p><a :href="home" class="sf-btn">{{ w('Continuer mes achats') }}</a></div>

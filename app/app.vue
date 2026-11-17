@@ -47,7 +47,8 @@ const style = computed(() => Object.entries(site.value?.Theme?.Variables || {}).
 useHead(() => ({
   htmlAttrs: { lang: site.value?.Route?.LanguageIsoCode || 'fr', style: style.value },
   // the fonts of the theme, served by this site: their rules are written in the page (nothing to fetch before it is drawn) and their files are asked for at once (server/utils/fonts.ts)
-  style: site.value?.FontCss ? [{ key: 'sf-fonts', innerHTML: site.value.FontCss }] : [],
+  // the CSS the shop wrote for the whole site (Réglages du thème > CSS personnalisé; cleaned by Digipart)
+  style: [...(site.value?.FontCss ? [{ key: 'sf-fonts', innerHTML: site.value.FontCss }] : []), ...(site.value?.Theme?.CustomCss ? [{ key: 'sf-custom-css', innerHTML: String(site.value.Theme.CustomCss) }] : [])],
   link: [
     ...(site.value?.FontFiles || []).map((href: string) => ({ rel: 'preload', as: 'font', type: 'font/woff2', href, crossorigin: 'anonymous' })),
     // the icon of the browser tab (Configuration > Thème de la boutique > Favicon): the SVG when there is one, the picture for the browsers that do not read it

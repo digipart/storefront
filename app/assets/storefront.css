@@ -744,3 +744,19 @@ iframe.sf-closed-cover { top: 50%; left: 50%; width: max(100%, 177.78vh); height
 .sf-slides.is-fade > .sf-slide.is-on { opacity: 1; visibility: visible; z-index: 1; transition: opacity .6s ease; }
 @media (prefers-reduced-motion: reduce) { .sf-slides.is-fade > .sf-slide { transition: none; } }
 .sf-blk-logo { display: inline-block; color: inherit; text-decoration: none; font-family: var(--t-font-heading, inherit); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; } .sf-blk-logo img { display: block; width: auto; max-width: 100%; }
+
+/* icons (SfIcon: the library of Digipart, or the shop's own): in the header (icon, or icon and text), on buttons, as a block of their own, in the reassurance lines */
+.sf-icon { display: block; flex: none; }
+.sf-hicons.has-icons { align-items: center; gap: 20px; }
+.sf-hicons.has-icons a, .sf-hicons.has-icons .sf-cartlink { position: relative; display: inline-flex; align-items: center; gap: 7px; }
+.sf-hbadge { position: absolute; top: -7px; right: -9px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--t-btn, #1e2129); color: var(--t-btn-text, #fff); font-size: 10px; font-weight: 600; line-height: 16px; text-align: center; font-style: normal; }
+/* what each screen shows of the header icons: the icon, the word, or both (set on the header, one choice for the computer and one for the phone) */
+@media (min-width: 768px) { .sf-hicons.is-d-text .sf-hi, .sf-hicons.is-d-icon .sf-ht, .sf-hicons.is-d-text .sf-hbadge, .sf-hicons.is-d-both .sf-hbadge { display: none; } }
+@media (max-width: 767px) { .sf-hicons.is-m-text .sf-hi, .sf-hicons.is-m-icon .sf-ht, .sf-hicons.is-m-text .sf-hbadge, .sf-hicons.is-m-both .sf-hbadge { display: none; } }
+.sf-btn.has-icon { display: inline-flex; align-items: center; justify-content: center; gap: 9px; }
+.sf-iconblk { display: inline-flex; color: inherit; text-decoration: none; }
+.sf-reassure li > * > span:first-child { display: inline-flex; }
+@media (max-width: 767px) { .sf-hicons.has-icons { gap: 14px; } }
+
+/* a title written as h3 to h6, p or div keeps the look of the others (no default margin) */
+h3.sf-h, h4.sf-h, h5.sf-h, h6.sf-h, p.sf-h, div.sf-h { margin: 0; }

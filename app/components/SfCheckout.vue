@@ -7,7 +7,6 @@ const section = computed(() => (props.design?.Sections || []).find((s: any) => s
 const options = computed(() => section.value?.Settings || {})
 const reassurances = computed(() => (section.value?.Blocks || []).filter((b: any) => b.Type === 'reassurance' && b.Texts?.Title))
 const told = ref<any>(null)   // the reassurance line whose text is shown in the panel
-const marks: Record<string, string> = { check: '✓', shield: '🛡', truck: '🚚', return: '↺', support: '☎' }
 const wantNews = ref(false)
 const promo = ref('')
 const site = inject<Ref<any>>('sfSite')!
@@ -488,8 +487,8 @@ onMounted(async () => { await load(); await backFromAlma() })
         </template>
         <ul v-if="reassurances.length" class="sf-reassure">
           <li v-for="item in reassurances" :key="item.Id">
-            <button v-if="item.Texts.Text" type="button" aria-haspopup="dialog" @click="told = item"><span aria-hidden="true">{{ marks[item.Settings?.Icon] || '✓' }}</span><span>{{ item.Texts.Title }}</span><span aria-hidden="true">›</span></button>
-            <div v-else><span aria-hidden="true">{{ marks[item.Settings?.Icon] || '✓' }}</span><span>{{ item.Texts.Title }}</span></div>
+            <button v-if="item.Texts.Text" type="button" aria-haspopup="dialog" @click="told = item"><span aria-hidden="true"><SfIcon :name="item.Settings?.Icon || 'check'" :size="20" /></span><span>{{ item.Texts.Title }}</span><span aria-hidden="true">›</span></button>
+            <div v-else><span aria-hidden="true"><SfIcon :name="item.Settings?.Icon || 'check'" :size="20" /></span><span>{{ item.Texts.Title }}</span></div>
           </li>
         </ul>
       </aside>

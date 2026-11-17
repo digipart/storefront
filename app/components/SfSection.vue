@@ -10,6 +10,15 @@ const route = useRoute()
 const lang = computed(() => site.value?.Route?.LanguageIsoCode || 'fr')
 // the address of another page of the same category (a page of products, a sort), keeping what the visitor already chose
 const listUrl = (changes: Record<string, string | number>) => { const query: Record<string, string> = {}; for (const [k, v] of Object.entries({ ...route.query, ...changes })) { if (typeof v !== 'object' && v !== '' && v !== 1 && v !== '1' && k !== 'preview') { query[k] = String(v) } } const text = new URLSearchParams(query).toString(); return route.path + (text ? '?' + text : '') }
+// the HTML tag the shop chose for the title of a page section (h1 as before when it chose nothing)
+// the header icons: the words, the icons alone or both, on a computer and (apart) on a phone; both are written in the page and the style sheet shows the one of the screen (nothing changes after the page is drawn)
+const iconModeOf = (value: any) => (['text', 'icon', 'both'].includes(String(value)) ? String(value) : 'text')
+const iconDesk = computed(() => iconModeOf(s.value.IconMode))
+const iconMob = computed(() => (s.value.IconModeMobile && s.value.IconModeMobile !== 'same' ? iconModeOf(s.value.IconModeMobile) : iconDesk.value))
+const hasIcons = computed(() => iconDesk.value !== 'text' || iconMob.value !== 'text')
+// the HTML the shop wrote, with its variables ({{ shop.name }}, {{ year }}...) replaced (app/utils/htmlVars.ts)
+const customHtml = computed(() => withHtmlVars(String(s.value.Html || ''), site.value))
+const titleTag = computed(() => (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div'].includes(String(s.value.TitleTag)) ? String(s.value.TitleTag) : 'h1'))
 const titleStyle = computed(() => ({ '--size': ({ xl: 42, lg: 34, md: 26, sm: 19 } as Record<string, number>)[s.value.TitleSize || 'md'] + 'px', fontWeight: s.value.TitleWeight || 600, textTransform: s.value.TitleCase === 'uppercase' ? 'uppercase' : undefined, textAlign: s.value.TitleAlign, marginBottom: (s.value.TitleGap ?? 20) + 'px' }))
 const pdp = computed(() => { const w = s.value.GalleryWidth || 60; return { '--cols': s.value.GalleryPosition === 'right' ? (100 - w) + 'fr ' + w + 'fr' : w + 'fr ' + (100 - w) + 'fr', '--gap': (s.value.Gap ?? 48) + 'px' } })
 const info = computed(() => ({ textAlign: s.value.Align || 'left', maxWidth: (s.value.InfoWidth || 900) + 'px', marginTop: (s.value.InfoTop || 0) + 'px', marginLeft: s.value.InfoX === 'left' ? 0 : 'auto', marginRight: s.value.InfoX === 'right' ? 0 : 'auto', '--ih': infoHeight.value + 'px' }))
@@ -38,7 +47,11 @@ const frame = computed(() => ({
 // what stands in this section is on something dark (a dark band, a picture with a dark veil): a logo block then takes the version for dark backgrounds
 provide('sfOnDark', computed(() => s.value.Background === 'dark' || (!!s.value.BgImage && s.value.BgTone !== 'light')))
 const wrap = computed(() => ['sf-wrap', 'is-' + (s.value.Width || 'page'), { 'is-full-mobile': s.value.FullMobile }])
-const band = computed(() => ['sf-band', { 'has-bg': !!s.value.BgImage, 'is-fixed-bg': !!s.value.BgFixed }, 'is-' + (s.value.Background || 'none'), 'sf-s-' + type.value.replace(/_/g, '-')])   // `sf-s-`: never the class of what is inside (`sf-hero`)
+// the CSS the shop wrote for this section (cleaned by Digipart): written inside the rule of the section (CSS nesting), so it only reaches this section
+// every section carries its own class (`sf-i-<id>`), every block `sf-b-<id>` and every column `sf-col-<n>`: the site builder shows them next to the CSS field, to be aimed at from the custom CSS
+const instance = computed(() => (props.section.Id ? 'sf-i-' + String(props.section.Id).replace(/[^A-Za-z0-9_-]/g, '') : ''))
+useHead(() => ({ style: instance.value && s.value.CustomCss ? [{ key: instance.value, innerHTML: '.' + instance.value + '{' + String(s.value.CustomCss) + '}' }] : [] }))
+const band = computed(() => ['sf-band', { 'has-bg': !!s.value.BgImage, 'is-fixed-bg': !!s.value.BgFixed }, 'is-' + (s.value.Background || 'none'), 'sf-s-' + type.value.replace(/_/g, '-'), instance.value, s.value.CssClass])   // `sf-s-`: never the class of what is inside (`sf-hero`)
 const align = computed(() => ({ textAlign: s.value.Align || 'left' }))
 const justify = computed(() => ({ center: 'center', right: 'flex-end' } as Record<string, string>)[s.value.Align] || 'flex-start')
 
@@ -78,7 +91,7 @@ const columnPicture = (i: number) => {
     ...(align === 'center' || align === 'bottom' ? { display: 'flex', flexDirection: 'column', justifyContent: align === 'center' ? 'center' : 'flex-end' } : {}) }
 }
 const columnsReverse = computed(() => !!s.value.ReverseMobile && ratios(s.value.LayoutMobile, '1').length === 1)
-const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'newsletter', 'social', 'announcement', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart']
+const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'newsletter', 'social', 'announcement', 'custom_html', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart']
 const { cart, show: showPanel } = useCart()
 const { customer, favorites, url: accountUrl, favoritesUrl } = useAccount()
 // the filters of a category (sizes, colours, price): chosen in a panel, kept in the address so a filtered list can be shared
@@ -142,10 +155,12 @@ const w = useWords()
 
       <!-- columns: blocks side by side on a computer, laid out as the shop chose on a phone -->
       <div v-else-if="type === 'columns'" class="sf-cols" :class="{ 'is-reverse': columnsReverse, 'has-div': Number(s.ColDivider) > 0, 'is-stack': ratios(s.LayoutMobile, '1').length === 1 }" :style="columnsStyle">
-        <div v-for="(column, i) in columnList" :key="i" class="sf-col" :class="{ 'has-bg': !!s['C' + (i + 1) + 'Image'] }" :style="columnPicture(i)"><SfBlocks :blocks="column" /></div>
+        <div v-for="(column, i) in columnList" :key="i" class="sf-col" :class="['sf-col-' + (i + 1), { 'has-bg': !!s['C' + (i + 1) + 'Image'] }]" :style="columnPicture(i)"><SfBlocks :blocks="column" /></div>
       </div>
 
       <!-- sections whose own content is one block among the others -->
+      <!-- the HTML the shop wrote (cleaned by Digipart: no script, frame, form or event) -->
+      <div v-else-if="type === 'custom_html'" class="sf-custom" :style="align" v-html="customHtml" />
       <div v-else-if="['richtext', 'products', 'lookbook', 'stories', 'newsletter', 'social', 'contact_form', 'store_locator'].includes(type)" :style="align">
         <SfBlocks :blocks="blocks">
           <div v-if="type === 'newsletter'" class="sf-news-wrap" :style="{ marginLeft: s.Align === 'left' ? 0 : 'auto', marginRight: s.Align === 'right' ? 0 : 'auto' }"><SfNewsletter :button="t.ButtonText" /></div>
@@ -166,8 +181,8 @@ const w = useWords()
         <button type="button" class="sf-burger" :aria-label="w('Menu principal')" aria-haspopup="dialog" @click="navOpen = true"><span /><span /><span /></button>
         <a :href="home" class="sf-logo" :style="{ fontSize: Math.round((s.LogoHeight || 28) * 0.62) + 'px' }"><img v-if="logoFile" :src="logoFile.Src" :alt="site?.Name" :style="{ height: (s.LogoHeight || 28) + 'px', width: 'auto' }" :width="logoFile.Width ? Math.round(logoFile.Width * (s.LogoHeight || 28) / (logoFile.Height || 1)) : undefined" :height="s.LogoHeight || 28"><img v-else-if="logo" :src="logo.Src" :alt="site?.Name" :style="{ height: (s.LogoHeight || 28) + 'px' }" :width="logo.Width || undefined" :height="logo.Height || undefined"><template v-else>{{ site?.Name }}</template></a>
         <nav class="sf-nav" :style="menuStyle" :aria-label="w('Menu principal')"><SfMenu :id="s.IdMenu" mode="nav" /></nav>
-        <div class="sf-hicons">
-          <a v-if="s.ShowSearch" :href="searchUrl">{{ w('Recherche') }}</a><a v-if="s.ShowAccount" :href="accountUrl" class="sf-desk" @click.prevent="showPanel('account')">{{ customer && !customer.Guest ? customer.Firstname : w('Compte') }}</a><a v-if="s.ShowWishlist" :href="favoritesUrl" class="sf-desk" @click.prevent="showPanel('favorites')">{{ w('Favoris') }}<template v-if="favorites.length"> ({{ favorites.length }})</template></a><button v-if="s.ShowCart" type="button" class="sf-cartlink" :aria-label="w('Ouvrir le panier, {a} article(s)', { a: cart.Count })" @click="showPanel('cart')">{{ w('Panier') }} ({{ cart.Count }})</button>
+        <div class="sf-hicons" :class="['is-d-' + iconDesk, 'is-m-' + iconMob, { 'has-icons': hasIcons }]">
+          <a v-if="s.ShowSearch" :href="searchUrl" :aria-label="hasIcons ? w('Recherche') : undefined"><template v-if="hasIcons"><SfIcon class="sf-hi" :name="s.IconSearch || 'search'" :size="s.IconSize || 22" :stroke="s.IconStroke || 1.5" /><span class="sf-ht">{{ w('Recherche') }}</span></template><template v-else>{{ w('Recherche') }}</template></a><a v-if="s.ShowAccount" :href="accountUrl" class="sf-desk" :aria-label="hasIcons ? w('Compte') : undefined" @click.prevent="showPanel('account')"><template v-if="hasIcons"><SfIcon class="sf-hi" :name="s.IconAccount || 'user'" :size="s.IconSize || 22" :stroke="s.IconStroke || 1.5" /><span class="sf-ht">{{ customer && !customer.Guest ? customer.Firstname : w('Compte') }}</span></template><template v-else>{{ customer && !customer.Guest ? customer.Firstname : w('Compte') }}</template></a><a v-if="s.ShowWishlist" :href="favoritesUrl" class="sf-desk" :aria-label="hasIcons ? w('Favoris') : undefined" @click.prevent="showPanel('favorites')"><SfIcon v-if="hasIcons" class="sf-hi" :name="s.IconWishlist || 'heart'" :size="s.IconSize || 22" :stroke="s.IconStroke || 1.5" /><span :class="hasIcons ? 'sf-ht' : undefined">{{ w('Favoris') }}<template v-if="favorites.length"> ({{ favorites.length }})</template></span><b v-if="hasIcons && favorites.length" class="sf-hbadge">{{ favorites.length }}</b></a><button v-if="s.ShowCart" type="button" class="sf-cartlink" :aria-label="w('Ouvrir le panier, {a} article(s)', { a: cart.Count })" @click="showPanel('cart')"><SfIcon v-if="hasIcons" class="sf-hi" :name="s.IconCart || 'shopping-bag'" :size="s.IconSize || 22" :stroke="s.IconStroke || 1.5" /><span :class="hasIcons ? 'sf-ht' : undefined">{{ w('Panier') }} ({{ cart.Count }})</span><b v-if="hasIcons && cart.Count" class="sf-hbadge">{{ cart.Count }}</b></button>
           <span v-if="s.ShowLanguage && (site?.Languages || []).length > 1" class="sf-langs"><a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="language.Default && site.UrlPrefix !== 'always' ? '/' : '/' + language.LanguageIsoCode" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.LanguageIsoCode.toUpperCase() }}</a></span>
         </div>
       </div>
@@ -196,13 +211,13 @@ const w = useWords()
           <picture v-if="catalogCover"><img :src="catalogCover.Src" :srcset="catalog.Category.Cover.Sizes.map((c: any) => c.Src + ' ' + c.Width + 'w').join(', ')" sizes="100vw" alt="" fetchpriority="high" decoding="async"></picture>
           <span v-if="vimeo(catalog.Category.Cover?.Video)" class="sf-hero-video"><iframe :src="vimeo(catalog.Category.Cover.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
           <div v-if="s.CoverTitle === 'over' || coverText" class="sf-hero-copy">
-            <h1 v-if="s.CoverTitle === 'over'" class="sf-h" :style="titleStyle">{{ catalog.Category.Name }}</h1>
+            <component :is="titleTag" v-if="s.CoverTitle === 'over'" class="sf-h" :style="titleStyle">{{ catalog.Category.Name }}</component>
             <!-- eslint-disable-next-line vue/no-v-html : the description of a category is written by the shop in Digipart and comes from its category API -->
             <div v-if="coverText" class="sf-rte" v-html="catalog.Category.Description" />
           </div>
         </div>
         <nav class="sf-crumb" :aria-label="w('Fil d\'Ariane')"><a :href="home">{{ w('Accueil') }}</a> / {{ catalog.Category.Name }}</nav>
-        <h1 v-if="!(s.CoverTitle === 'over' && hasCover)" class="sf-h" :style="titleStyle">{{ catalog.Category.Name }}</h1>
+        <component :is="titleTag" v-if="!(s.CoverTitle === 'over' && hasCover)" class="sf-h" :style="titleStyle">{{ catalog.Category.Name }}</component>
         <!-- eslint-disable-next-line vue/no-v-html : the description of a category is written by the shop in Digipart and comes from its category API -->
         <div v-if="s.ShowDescription && catalog.Category.Description && !coverText" class="sf-rte sf-muted" v-html="catalog.Category.Description" />
         <div class="sf-bar">
@@ -246,7 +261,7 @@ const w = useWords()
 
       <!-- a content page of the shop: its title and its text, written in the Pages tab of Digipart -->
       <article v-else-if="type === 'main_page' && page" :style="align">
-        <h1 v-if="s.ShowTitle" class="sf-h" :style="{ '--size': ({ xl: 42, lg: 34, md: 26, sm: 19 } as Record<string, number>)[s.TitleSize || 'md'] + 'px', fontWeight: s.TitleWeight || 600, textTransform: s.TitleCase === 'uppercase' ? 'uppercase' : undefined, textAlign: s.TitleAlign, marginBottom: (s.TitleGap ?? 20) + 'px' }">{{ page.Title }}</h1>
+        <component :is="titleTag" v-if="s.ShowTitle" class="sf-h" :style="{ '--size': ({ xl: 42, lg: 34, md: 26, sm: 19 } as Record<string, number>)[s.TitleSize || 'md'] + 'px', fontWeight: s.TitleWeight || 600, textTransform: s.TitleCase === 'uppercase' ? 'uppercase' : undefined, textAlign: s.TitleAlign, marginBottom: (s.TitleGap ?? 20) + 'px' }">{{ page.Title }}</component>
         <!-- eslint-disable-next-line vue/no-v-html : the HTML of a page is cleaned by Digipart (an allow-list of tags) when it is saved and again when the API gives it -->
         <div class="sf-rte" :style="{ fontSize: (s.TextSize || 15) + 'px', lineHeight: s.TextLine || 1.7 }" v-html="page.Content" />
       </article>
