@@ -75,15 +75,31 @@ const afterBanners = computed(() => { const at = blocks.value.findIndex((b: any)
 const split = computed(() => { const w = s.value.ImageWidth || 50; return { '--cols': s.value.Side === 'right' ? (100 - w) + 'fr ' + w + 'fr' : w + 'fr ' + (100 - w) + 'fr', '--gap': (s.value.Gap ?? 48) + 'px', alignItems: ({ top: 'start', bottom: 'end' } as Record<string, string>)[s.value.Valign] || 'center' } })
 // the large menu under a tab (site builder, group « Sous-menu »): its spaces, its titles and its links, given to the panel as variables
 const megaCase = (value: unknown) => (value === 'uppercase' ? 'uppercase' : 'none')
+// where the columns start (« Position du contenu »): under the first tab (measured here, again when the header changes size), at the edge of the pages, centred, on the left, on the right
+const megaPlace = computed(() => (['tabs', 'site', 'center', 'left', 'right'].includes(String(s.value.MegaAlign)) ? String(s.value.MegaAlign) : 'tabs'))
+const navBox = ref<HTMLElement | null>(null)
+const megaStart = ref(0)
+function measureMega() {
+  const nav = navBox.value, first = nav?.querySelector('.sf-nav-item') as HTMLElement | null, header = nav?.closest('.sf-header') as HTMLElement | null
+  megaStart.value = first && header ? Math.max(0, Math.round(first.getBoundingClientRect().left - header.getBoundingClientRect().left)) : 0
+}
+onMounted(() => {
+  if (!navBox.value || typeof ResizeObserver === 'undefined') { return }
+  const watcher = new ResizeObserver(measureMega)
+  watcher.observe(navBox.value); const header = navBox.value.closest('.sf-header'); if (header) { watcher.observe(header) }
+  document.fonts?.ready.then(measureMega).catch(() => {})
+  onBeforeUnmount(() => watcher.disconnect())
+})
 const megaVars = computed(() => ({
   '--mg-gap': (Number(s.value.MegaGap) || 48) + 'px', '--mg-line': (Number(s.value.MegaLineGap) || 8) + 'px', '--mg-pad': (Number(s.value.MegaPadding) || 28) + 'px',
   '--mg-tsize': (Number(s.value.MegaTitleSize) || 14) + 'px', '--mg-tweight': String(s.value.MegaTitleWeight || 600), '--mg-tcase': megaCase(s.value.MegaTitleCase),
   '--mg-xsize': (Number(s.value.MegaTextSize) || 14) + 'px', '--mg-xcase': megaCase(s.value.MegaTextCase),
-  '--mg-align': ({ left: 'flex-start', right: 'flex-end' } as Record<string, string>)[s.value.MegaAlign] || 'center',
+  '--mg-align': ({ center: 'center', right: 'flex-end' } as Record<string, string>)[megaPlace.value] || 'flex-start',
+  ...(megaPlace.value === 'tabs' && megaStart.value > 0 ? { '--mg-start': megaStart.value + 'px' } : {}),
   '--mg-img': Math.max(120, Math.min(480, Number(s.value.MegaImageWidth) || 220)) + 'px',
   '--mg-ratio': ({ portrait: '3 / 4', square: '1 / 1', landscape: '4 / 3' } as Record<string, string>)[s.value.MegaImageRatio] || 'auto',
 }))
-const megaClass = computed(() => ({ 'has-mega-rules': !!s.value.MegaRules, 'is-mega-tab': s.value.MegaWidth === 'tab' }))
+const megaClass = computed(() => ({ 'has-mega-rules': !!s.value.MegaRules, 'is-mega-tab': s.value.MegaWidth === 'tab', ['is-mega-at-' + megaPlace.value]: s.value.MegaWidth !== 'tab', 'has-mega-pics-right': s.value.MegaImagesRight !== false }))
 const menuStyle = computed(() => ({ ...megaVars.value, fontSize: (s.value.MenuSize || 14) + 'px', fontWeight: s.value.MenuWeight || 500, textTransform: s.value.MenuCase === 'uppercase' ? 'uppercase' : undefined, gap: (s.value.MenuGap || 28) + 'px', justifyContent: ({ left: 'flex-start', right: 'flex-end' } as Record<string, string>)[s.value.MenuAlign] || 'center' }))
 const home = computed(() => site.value?.Route?.Prefix || '/')
 // the cover of the category: its largest size is the fallback, the browser picks among all of them
@@ -322,7 +338,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
       <div v-else-if="type === 'main_header'" class="sf-header" :class="{ 'has-border': s.Border, 'is-centered': s.LogoPosition === 'center', 'is-below': s.MenuPosition === 'below', 'is-drawer': s.MenuPosition === 'drawer' }" :style="{ '--h': (s.Height || 72) + 'px' }">
         <button type="button" class="sf-burger" :aria-label="w('Menu principal')" aria-haspopup="dialog" @click="navOpen = true"><span /><span /><span /></button>
         <a :href="home" class="sf-logo" :style="{ fontSize: Math.round((s.LogoHeight || 28) * 0.62) + 'px' }"><img v-if="logoFile" :src="logoFile.Src" :alt="site?.Name" :style="{ height: (s.LogoHeight || 28) + 'px', width: 'auto' }" :width="logoFile.Width ? Math.round(logoFile.Width * (s.LogoHeight || 28) / (logoFile.Height || 1)) : undefined" :height="s.LogoHeight || 28"><img v-else-if="logo" :src="logo.Src" :alt="site?.Name" :style="{ height: (s.LogoHeight || 28) + 'px' }" :width="logo.Width || undefined" :height="logo.Height || undefined"><template v-else>{{ site?.Name }}</template></a>
-        <nav class="sf-nav" :class="megaClass" :style="menuStyle" :aria-label="w('Menu principal')"><SfMenu :id="s.IdMenu" mode="nav" /></nav>
+        <nav ref="navBox" class="sf-nav" :class="megaClass" :style="menuStyle" :aria-label="w('Menu principal')"><SfMenu :id="s.IdMenu" mode="nav" :split="s.MegaSplit === undefined ? 8 : Number(s.MegaSplit) || 0" /></nav>
         <div class="sf-hicons" :class="['is-d-' + iconDesk, 'is-m-' + iconMob, { 'has-icons': hasIcons }]" :style="{ fontSize: s.IconTextSize ? s.IconTextSize + 'px' : undefined, textTransform: s.IconCase === 'uppercase' ? 'uppercase' : undefined, letterSpacing: s.IconCase === 'uppercase' ? '.04em' : undefined }">
           <a :style="{ order: iconAt('search') }" v-if="s.ShowSearch" :href="searchUrl" :aria-label="hasIcons ? w('Recherche') : undefined"><template v-if="hasIcons"><SfIcon class="sf-hi" :name="s.IconSearch || 'search'" :size="s.IconSize || 22" :stroke="s.IconStroke || 1.5" /><span class="sf-ht">{{ w('Recherche') }}</span></template><template v-else>{{ w('Recherche') }}</template></a><a :style="{ order: iconAt('account') }" v-if="s.ShowAccount" :href="accountUrl" class="sf-desk" :aria-label="hasIcons ? w('Compte') : undefined" @click.prevent="showPanel('account')"><template v-if="hasIcons"><SfIcon class="sf-hi" :name="s.IconAccount || 'user'" :size="s.IconSize || 22" :stroke="s.IconStroke || 1.5" /><span class="sf-ht">{{ customer && !customer.Guest ? customer.Firstname : w('Compte') }}</span></template><template v-else>{{ customer && !customer.Guest ? customer.Firstname : w('Compte') }}</template></a><a :style="{ order: iconAt('wishlist') }" v-if="s.ShowWishlist" :href="favoritesUrl" class="sf-desk" :aria-label="hasIcons ? w('Favoris') : undefined" @click.prevent="showPanel('favorites')"><SfIcon v-if="hasIcons" class="sf-hi" :name="s.IconWishlist || 'heart'" :size="s.IconSize || 22" :stroke="s.IconStroke || 1.5" /><span :class="hasIcons ? 'sf-ht' : undefined">{{ w('Favoris') }}<template v-if="favorites.length"> ({{ favorites.length }})</template></span><b v-if="hasIcons && favorites.length" class="sf-hbadge">{{ favorites.length }}</b></a><button :style="{ order: iconAt('cart') }" v-if="s.ShowCart" type="button" class="sf-cartlink" :aria-label="w('Ouvrir le panier, {a} article(s)', { a: cart.Count })" @click="showPanel('cart')"><SfIcon v-if="hasIcons" class="sf-hi" :name="s.IconCart || 'shopping-bag'" :size="s.IconSize || 22" :stroke="s.IconStroke || 1.5" /><span :class="hasIcons ? 'sf-ht' : undefined">{{ w('Panier') }} ({{ cart.Count }})</span><b v-if="hasIcons && cart.Count" class="sf-hbadge">{{ cart.Count }}</b></button>
           <span :style="{ order: iconAt('language') }" v-if="s.ShowLanguage && (site?.Languages || []).length > 1" class="sf-langs"><a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="language.Default && site.UrlPrefix !== 'always' ? '/' : '/' + language.LanguageIsoCode" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.LanguageIsoCode.toUpperCase() }}</a></span>
