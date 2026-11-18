@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The newsletter box (a section, a column of the footer, the page of a closed site): the e-mail of the visitor is sent to the shop's subscription list.
-const props = defineProps<{ button?: string, small?: boolean, lang?: string }>()
+const props = defineProps<{ button?: string, small?: boolean, lang?: string, look?: { class: any[], style: Record<string, string | undefined> } }>()
 const site = inject<Ref<any>>('sfSite', ref(null))
 const say = (text: string) => words(props.lang || site.value?.Route?.LanguageIsoCode || 'fr', text)
 const email = ref(''), trap = ref(''), busy = ref(false), done = ref(false), error = ref('')
@@ -19,7 +19,7 @@ async function submit() {
   <form v-else class="sf-news" :class="{ 'is-small': small }" @submit.prevent="submit">
     <input v-model="email" type="email" name="email" autocomplete="email" maxlength="150" :placeholder="say('votre@email.fr')" :aria-label="say('Adresse e-mail')" required>
     <input v-model="trap" type="text" name="website" class="sf-sr" tabindex="-1" autocomplete="off" aria-hidden="true">
-    <button type="submit" class="sf-btn" :disabled="busy">{{ button || 'OK' }}</button>
+    <button type="submit" class="sf-btn" :class="look?.class" :style="look?.style" :disabled="busy">{{ button || 'OK' }}</button>
     <p v-if="error" class="sf-news-error" role="alert">{{ say(error) }}</p>
   </form>
 </template>

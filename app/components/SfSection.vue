@@ -166,7 +166,7 @@ const w = useWords()
       <div v-else-if="type === 'custom_html'" class="sf-custom" :style="align" v-html="customHtml" />
       <div v-else-if="['richtext', 'products', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'contact_form', 'store_locator'].includes(type)" :style="align">
         <SfBlocks :blocks="blocks">
-          <div v-if="type === 'newsletter'" class="sf-news-wrap" :style="{ marginLeft: s.Align === 'left' ? 0 : 'auto', marginRight: s.Align === 'right' ? 0 : 'auto' }"><SfNewsletter :button="t.ButtonText" /></div>
+          <div v-if="type === 'newsletter'" class="sf-news-wrap" :style="{ marginLeft: s.Align === 'left' ? 0 : 'auto', marginRight: s.Align === 'right' ? 0 : 'auto' }"><SfNewsletter :button="t.ButtonText" :look="buttonLook(s, 'Button')" /></div>
           <LazySfContact v-else-if="type === 'contact_form'" :settings="s" :texts="t" />
           <LazySfStores v-else-if="type === 'store_locator'" :settings="s" />
           <SfProducts v-else-if="type === 'products'" :section="section" />

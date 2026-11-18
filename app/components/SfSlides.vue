@@ -7,6 +7,11 @@ const w = useWords()
 const s = computed(() => props.settings || {})
 const track = ref<HTMLElement | null>(null)
 const at = ref(0)
+// what the shop chose for the texts and the buttons of the slides (site builder: groups Titres, Textes and Boutons of the carousel)
+const titleCss = computed(() => { const v = s.value; return { '--size': (v.TitleSize || 44) + 'px', fontWeight: Number(v.TitleWeight) && Number(v.TitleWeight) !== 600 ? v.TitleWeight : undefined, textTransform: v.TitleCase === 'uppercase' ? 'uppercase' : undefined, letterSpacing: Number(v.TitleSpacing) ? v.TitleSpacing + 'px' : undefined, color: v.TitleColorMode === 'custom' ? v.TitleColor : undefined } })
+const textCss = computed(() => { const v = s.value; return { fontSize: Number(v.TextSize) && Number(v.TextSize) !== 16 ? v.TextSize + 'px' : undefined, fontWeight: Number(v.TextWeight) && Number(v.TextWeight) !== 400 ? v.TextWeight : undefined, textTransform: v.TextCase === 'uppercase' ? 'uppercase' : undefined, color: v.TextColorMode === 'custom' ? v.TextColor : undefined } })
+// the section's look for every button, unless a slide has its own (switch « Style propre à cette diapositive »)
+const buttonOf = (slide: any) => buttonLook(slide.Settings?.ButtonOwn ? slide.Settings : s.value, 'Button', true)
 const many = computed(() => props.slides.length > 1)
 const vimeo = (value: unknown) => { const found = String(value || '').match(/vimeo\.com\/(?:video\/)?(\d{6,12})(?:\/([0-9a-f]{6,20}))?/i); return found ? 'https://player.vimeo.com/video/' + found[1] + '?background=1&autoplay=1&loop=1&muted=1&dnt=1' + (found[2] ? '&h=' + found[2] : '') : '' }
 const rgba = (hex: string, alpha: number) => { let h = String(hex || '#ffffff').replace('#', ''); if (h.length === 3) { h = h.split('').map(c => c + c).join('') } const n = parseInt(h, 16) || 0; return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})` }
@@ -47,9 +52,9 @@ onBeforeUnmount(() => { if (timer) { clearInterval(timer) } })
           </picture>
           <span v-if="vimeo(slide.Settings.Video)" class="sf-hero-video"><iframe :src="vimeo(slide.Settings.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
           <component :is="slide.Settings.Url && !slide.Texts.ButtonText ? 'a' : 'div'" :href="slide.Settings.Url && !slide.Texts.ButtonText ? slide.Settings.Url : undefined" class="sf-hero-copy">
-            <h2 v-if="slide.Texts.Title" class="sf-h" :style="{ '--size': (s.TitleSize || 44) + 'px' }">{{ slide.Texts.Title }}</h2>
-            <p v-if="slide.Texts.Text" class="sf-text">{{ slide.Texts.Text }}</p>
-            <a v-if="slide.Texts.ButtonText" :href="slide.Settings.Url || undefined" class="sf-btn" :class="['is-' + (s.ButtonStyle || 'solid'), { 'is-light': s.ButtonStyle === 'solid' }]">{{ slide.Texts.ButtonText }}</a>
+            <h2 v-if="slide.Texts.Title" class="sf-h" :style="titleCss">{{ slide.Texts.Title }}</h2>
+            <p v-if="slide.Texts.Text" class="sf-text" :style="textCss">{{ slide.Texts.Text }}</p>
+            <a v-if="slide.Texts.ButtonText" :href="slide.Settings.Url || undefined" class="sf-btn" :class="buttonOf(slide).class" :style="buttonOf(slide).style">{{ slide.Texts.ButtonText }}</a>
           </component>
         </div>
       </div>

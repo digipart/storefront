@@ -34,6 +34,7 @@ function chooseColor(name: string) {
   pickedColor.value = name
   picked.value = sizes.value.find((v: any) => colorOf(v) === name && v.Size === size && v.Available)?.Id || 0
 }
+const buyLook = computed(() => buttonLook(s.value))   // the look the shop gave to the buy button (shared with every button: app/utils/buttonLook.ts)
 const chosen = computed(() => sizes.value.find((v: any) => v.Id === picked.value) || null)
 const needsChoice = computed(() => sizes.value.length > 0 && !chosen.value)
 // the buy button: a product sold by size needs its size first
@@ -111,8 +112,8 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
       <LazySfPagePanel v-if="guideOpen" :id="guidePage" :title="t.Text" @close="guideOpen = false" />
     </template>
     <div v-else-if="block.Type === 'p_buy'" class="sf-buy" :class="{ 'is-full': s.Full }">
-      <button v-if="locked" type="button" class="sf-btn" :class="'is-' + (s.Style || 'solid')" :disabled="product.PriceState === 'pending'" @click="showPanel('account')">{{ w(product.PriceState === 'pending' ? 'Compte en cours de validation' : product.PriceState === 'business' ? 'Prix réservés aux professionnels' : 'Se connecter pour commander') }}</button>
-      <button v-else type="button" class="sf-btn" :class="'is-' + (s.Style || 'solid')" :disabled="!product.Available || cartBusy" @click="buy">{{ w(product.Available ? (cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) : 'Épuisé') }}</button>
+      <button v-if="locked" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="product.PriceState === 'pending'" @click="showPanel('account')">{{ w(product.PriceState === 'pending' ? 'Compte en cours de validation' : product.PriceState === 'business' ? 'Prix réservés aux professionnels' : 'Se connecter pour commander') }}</button>
+      <button v-else type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="!product.Available || cartBusy" @click="buy">{{ w(product.Available ? (cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) : 'Épuisé') }}</button>
       <button type="button" class="sf-heart" :class="{ 'is-on': isFavorite(product.Id) }" :aria-pressed="isFavorite(product.Id)" :aria-label="w(isFavorite(product.Id) ? 'Retirer de mes favoris' : 'Ajouter à mes favoris')" @click="toggleFavorite(product.Id)">{{ isFavorite(product.Id) ? '♥' : '♡' }}</button>
       <button v-if="product.TaxExcl && locked" type="button" class="sf-prohelp" aria-haspopup="dialog" @click="proOpen = true"><strong>{{ w('Nouveau client professionnel ?') }}</strong><span>{{ w('Découvrez les étapes pour commander') }}</span></button>
       <LazySfLot v-if="lotOpen" :product="product" @close="lotOpen = false" />
