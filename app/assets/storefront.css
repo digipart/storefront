@@ -699,6 +699,10 @@ iframe.sf-closed-cover { top: 50%; left: 50%; width: max(100%, 177.78vh); height
 .sf-card-top { position: relative; }
 .sf-card-heart { position: absolute; top: 8px; right: 8px; z-index: 2; width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .85); color: #1e2129; font-size: 17px; line-height: 1; cursor: pointer; }
 .sf-card-heart.is-on { color: #c0392b; }
+/* the heart: a drawn heart (not a letter of the font), shown when the pointer is on the card; always shown once the product is a favourite, on a touch screen, and to the keyboard */
+.sf-card-heart { display: inline-flex; align-items: center; justify-content: center; padding: 0; opacity: 0; transition: opacity .18s ease; }
+.sf-card-top:hover .sf-card-heart, .sf-card-heart:focus-visible, .sf-card-heart.is-on { opacity: 1; }
+@media (hover: none) { .sf-card-heart { opacity: 1; } }
 .sf-card-quick { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; opacity: 0; transform: translateY(6px); pointer-events: none; transition: opacity .18s, transform .18s; }
 .sf-card-top:hover .sf-card-quick, .sf-card-top:focus-within .sf-card-quick, .sf-card-top.is-open .sf-card-quick { opacity: 1; transform: none; pointer-events: auto; }
 .sf-card-quick button { min-width: 44px; padding: 9px 12px; border: 0; background: rgba(255, 255, 255, .94); color: #1e2129; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -747,8 +751,9 @@ iframe.sf-closed-cover { top: 50%; left: 50%; width: max(100%, 177.78vh); height
 .sf-card.is-full { grid-column: 1 / -1; }
 .sf-card-media.is-row { display: flex; gap: 0; aspect-ratio: auto; background: none; }
 .sf-card-media.is-row img { position: static; flex: 1 1 0; min-width: 0; height: auto; aspect-ratio: var(--t-card-ratio, 3 / 4); object-fit: cover; }
-.sf-edito.has-height { aspect-ratio: auto; height: var(--eh); min-height: 0; }
-@media (max-width: 767px) { .sf-card-media.is-row { overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; scrollbar-width: none; } .sf-card-media.is-row img { flex: 0 0 100%; scroll-snap-align: start; } .sf-edito.has-height { height: var(--ehm); aspect-ratio: auto; } }
+.sf-edito.has-height { aspect-ratio: auto; height: auto; min-height: var(--eh); }   /* the height set in the staging is the least: beside taller product cards the block grows to the height of its row, never leaving a gap */
+.sf-edito { align-self: stretch; }
+@media (max-width: 767px) { .sf-card-media.is-row { overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; scrollbar-width: none; } .sf-card-media.is-row img { flex: 0 0 100%; scroll-snap-align: start; } .sf-edito.has-height { height: auto; min-height: var(--ehm); aspect-ratio: auto; } }
 .sf-card-media.is-wide { aspect-ratio: 21 / 9; }
 @media (max-width: 767px) { .sf-card-media.is-wide { aspect-ratio: 4 / 5; } }
 /* the carousel with a fade: the slides are stacked, the one shown fades in */

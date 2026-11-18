@@ -10,15 +10,17 @@ export default defineEventHandler(async (event) => {
   const products = new Map<number, any>()
   await Promise.all(ids.map(async (id) => { const product = await loadProduct(event, id, lang, prefix).catch(() => null); if (product) { products.set(id, product) } }))
   // the id of a Vimeo video, with the key of an unlisted one (player.vimeo.com/video/123?h=abc → « 123?h=abc »)
+  // a still picture of Vimeo (i.vimeocdn.com) asked in the portrait format of a story: Vimeo crops it to fill, instead of the landscape picture with black bands it gives for a vertical video
+  const portrait = (src: string) => (/^https:\/\/i\.vimeocdn\.com\/video\//.test(src) ? src.replace(/-d_\d+(x\d+)?/, '-d_720x1280').replace(/([?&])r=pad&?/, '$1').replace(/[?&]$/, '') : src)
   const vimeo = (value: string) => { const m = String(value || '').match(/(\d{6,12})(?:\/([0-9a-f]{6,20})|.*[?&]h=([0-9a-f]{6,20}))?/i); return m ? m[1] + ((m[2] || m[3]) ? '?h=' + (m[2] || m[3]).toLowerCase() : '') : '' }
   return {
     Stories: stories.map(story => ({
-      Id: Number(story.IdStory), Title: String(story.Title || ''), Cover: String(story.Cover || story.Slides?.[0]?.Image || ''),
+      Id: Number(story.IdStory), Title: String(story.Title || ''), Cover: portrait(String(story.Cover || story.Slides?.[0]?.Image || '')),
       Slides: (story.Slides || []).map((slide: any) => {
         const product = products.get(Number(slide.IdProduct) || 0)
         const link = String(slide.Link || '')
         return {
-          Id: String(slide.Id), Image: String(slide.Image || ''), Vimeo: vimeo(slide.Video), Duration: Math.max(3, Math.min(30, Number(slide.Duration) || 6)), Title: String(slide.Texts?.Title || ''), Text: String(slide.Texts?.Text || ''), Button: String(slide.Texts?.Button || ''),
+          Id: String(slide.Id), Image: portrait(String(slide.Image || '')), Vimeo: vimeo(slide.Video), Duration: Math.max(3, Math.min(30, Number(slide.Duration) || 6)), Title: String(slide.Texts?.Title || ''), Text: String(slide.Texts?.Text || ''), Button: String(slide.Texts?.Button || ''),
           Link: /^https:\/\//.test(link) ? link : (/^\/[^/]/.test(link) || link === '/' ? prefix + link : ''),
           Product: product ? {
             Id: product.Id, Name: product.Name, Reference: product.Reference, Brand: product.Brand, Price: product.Price, PriceOld: product.PriceOld, Discount: product.Discount, Currency: product.Currency, Image: product.Images[0] || '', Images: product.Images.slice(0, 8), ImageSets: (product.ImageSets || []).slice(0, 8), Url: product.Url,
