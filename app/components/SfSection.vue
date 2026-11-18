@@ -99,6 +99,8 @@ const { cart, show: showPanel } = useCart()
 const { customer, favorites, url: accountUrl, favoritesUrl } = useAccount()
 // the filters of a category (sizes, colours, price): chosen in a panel, kept in the address so a filtered list can be shared
 const filtersOpen = ref(false)
+// the filters in a column beside the products (the shop chose « Dans une colonne à gauche »)
+const sideFilters = computed(() => s.value.Filters === 'left' && hasFilters.value)
 const filterData = computed(() => catalog?.value?.Listing?.Filters || null)
 const hasFilters = computed(() => s.value.Filters !== 'none' && !!filterData.value && (filterData.value.Groups.length > 0 || filterData.value.PriceMax > filterData.value.PriceMin))
 const filterCount = computed(() => (filterData.value ? filterData.value.Attributes.length + (filterData.value.Max ? 1 : 0) : 0))
@@ -199,12 +201,21 @@ const loadMore = async (auto = false) => {
     moreBusy.value = false
   }
 }
+// how the next products come (site builder: « La suite des produits »): by themselves as the visitor scrolls (always, or for a few lots then a button), with a button, or as numbered pages
+const loadMode = computed(() => (['auto', 'button', 'pages', 'auto_button'].includes(String(s.value.LoadMode)) ? String(s.value.LoadMode) : 'auto_button'))
+const autoLimit = computed(() => (loadMode.value === 'auto' ? Infinity : loadMode.value === 'auto_button' ? Math.max(1, Math.min(10, Number(s.value.AutoPages) || 2)) : 0))
+// numbered pages: the first, the last, and two around the open one (« … » between)
+const pageList = computed(() => {
+  const L = listing.value, total = L?.Pages || 1, at = L?.Page || 1, out: Array<number | null> = []
+  for (let n = 1; n <= total; n++) { if (n === 1 || n === total || Math.abs(n - at) <= 2) { out.push(n) } else if (out[out.length - 1] !== null) { out.push(null) } }
+  return out
+})
 const moreMark = ref<HTMLElement | null>(null)
 let moreWatcher: IntersectionObserver | null = null
 watch(moreMark, (el) => {
   moreWatcher?.disconnect()
   if (!el || typeof IntersectionObserver === 'undefined') { return }
-  moreWatcher = new IntersectionObserver((entries) => { if (entries.some(e => e.isIntersecting) && moreAuto < 2 && !moreFailed.value) { loadMore(true) } }, { rootMargin: '600px 0px' })
+  moreWatcher = new IntersectionObserver((entries) => { if (entries.some(e => e.isIntersecting) && moreAuto < autoLimit.value && !moreFailed.value) { loadMore(true) } }, { rootMargin: '600px 0px' })
   moreWatcher.observe(el)
 })
 onBeforeUnmount(() => moreWatcher?.disconnect())
@@ -305,7 +316,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
         </div>
       </div>
 
-      <LazySfFilters v-if="type === 'main_catalog' && catalog && filtersOpen" :filters="catalog.Listing.Filters" :currency="catalog.Listing.Products[0]?.Currency || 'EUR'" @close="filtersOpen = false" @apply="applyFilters" />
+      <LazySfFilters v-if="type === 'main_catalog' && catalog && filtersOpen" :filters="catalog.Listing.Filters" :currency="catalog.Listing.Products[0]?.Currency || 'EUR'" :settings="s" @close="filtersOpen = false" @apply="applyFilters" />
       <ClientOnly v-if="type === 'main_header'"><LazySfNavDrawer v-if="navOpen" :id="s.IdMenu" @close="navOpen = false" /></ClientOnly>
 
       <!-- the footer of the site: columns, then the bottom line -->
@@ -350,7 +361,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
         </nav>
         <div class="sf-bar">
           <span>{{ w(catalog.Listing.Total > 1 ? '{a} produits' : '{a} produit', { a: catalog.Listing.Total }) }}</span>
-          <button v-if="hasFilters" type="button" class="sf-filterbtn" aria-haspopup="dialog" @click="filtersOpen = true">{{ w('Filtrer') }}<template v-if="filterCount"> ({{ filterCount }})</template></button>
+          <button v-if="hasFilters" type="button" class="sf-filterbtn" :class="{ 'is-phone': sideFilters }" aria-haspopup="dialog" @click="filtersOpen = true">{{ w('Filtrer') }}<template v-if="filterCount"> ({{ filterCount }})</template></button>
           <nav v-if="s.ShowSort" class="sf-sort" :aria-label="w('Trier les produits')">
             <a :href="listUrl({ sort: '', page: 1 })" :aria-current="!catalog.Listing.Sort ? 'true' : undefined">{{ w('Sélection') }}</a>
             <a :href="listUrl({ sort: 'newest', page: 1 })" :aria-current="catalog.Listing.Sort === 'newest' ? 'true' : undefined">{{ w('Nouveautés') }}</a>
@@ -362,7 +373,11 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
             <button v-for="i in viewCount" :key="i" type="button" :aria-pressed="viewShown === i - 1 ? 'true' : 'false'" :title="w('{a} produits par ligne', { a: viewDesk[Math.min(i - 1, viewDesk.length - 1)] })" @click="chooseView(i - 1)">{{ i }}</button>
           </div>
         </div>
-        <a v-if="basePage > 1" :href="listUrl({ page: basePage - 1 })" rel="prev" class="sf-more-prev">{{ w('Voir les produits précédents') }}</a>
+        <!-- the filters in a column beside the products (computer; on a phone it is the « Filtrer » button and its panel) -->
+        <div class="sf-catalog-body" :class="{ 'has-side': sideFilters }" :style="sideFilters ? { '--fw': (s.FilterWidth || 260) + 'px' } : undefined">
+          <aside v-if="sideFilters" class="sf-catalog-side" :aria-label="w('Filtres')"><SfFilters :filters="catalog.Listing.Filters" :currency="catalog.Listing.Products[0]?.Currency || 'EUR'" :settings="s" inline @apply="applyFilters" /></aside>
+          <div class="sf-catalog-main">
+        <a v-if="basePage > 1 && loadMode !== 'pages'" :href="listUrl({ page: basePage - 1 })" rel="prev" class="sf-more-prev">{{ w('Voir les produits précédents') }}</a>
         <div v-if="shownItems ? shownItems.length : shownProducts.length" class="sf-grid" :style="{ '--cols': perRow.desk, '--cols-m': perRow.mob, '--gx': (s.GapX ?? 16) + 'px', '--gy': (s.GapY ?? 32) + 'px' }">
           <template v-if="shownItems">
             <template v-for="(item, index) in shownItems" :key="cardKey(item)">
@@ -378,11 +393,21 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
         </div>
         <p v-else class="sf-muted">{{ w('Aucun produit dans cette catégorie pour le moment.') }}</p>
         <!-- more products: a real link to the next page (followed by the search engines, and by a visitor without script), read in place by the page -->
-        <div v-if="catalog.Listing.Pages > 1" class="sf-more">
-          <p class="sf-more-count" aria-live="polite">{{ w('Vous avez vu {a} produits sur {b}', { a: shownCount, b: catalog.Listing.Total }) }}</p>
-          <span class="sf-more-bar" aria-hidden="true"><i :style="{ width: Math.min(100, Math.round(shownCount * 100 / Math.max(1, catalog.Listing.Total))) + '%' }" /></span>
-          <span v-if="hasMore" ref="moreMark" class="sf-more-mark" />
+        <nav v-if="catalog.Listing.Pages > 1 && loadMode === 'pages'" class="sf-pages is-numbers" :aria-label="w('Pages de produits')">
+          <a v-if="catalog.Listing.Page > 1" :href="listUrl({ page: catalog.Listing.Page - 1 })" rel="prev" :aria-label="w('Page précédente')">‹</a>
+          <template v-for="(n, i) in pageList" :key="n === null ? 'gap' + i : n">
+            <span v-if="n === null" class="sf-pages-gap">…</span>
+            <a v-else :href="listUrl({ page: n })" :aria-current="n === catalog.Listing.Page ? 'page' : undefined">{{ n }}</a>
+          </template>
+          <a v-if="catalog.Listing.Page < catalog.Listing.Pages" :href="listUrl({ page: catalog.Listing.Page + 1 })" rel="next" :aria-label="w('Page suivante')">›</a>
+        </nav>
+        <div v-else-if="catalog.Listing.Pages > 1" class="sf-more">
+          <p v-if="s.LoadCount !== false" class="sf-more-count" aria-live="polite">{{ w('Vous avez vu {a} produits sur {b}', { a: shownCount, b: catalog.Listing.Total }) }}</p>
+          <span v-if="s.LoadCount !== false" class="sf-more-bar" aria-hidden="true"><i :style="{ width: Math.min(100, Math.round(shownCount * 100 / Math.max(1, catalog.Listing.Total))) + '%' }" /></span>
+          <span v-if="hasMore && autoLimit > 0" ref="moreMark" class="sf-more-mark" />
           <a v-if="hasMore" :href="listUrl({ page: lastPage + 1 })" rel="next" class="sf-btn is-outline sf-more-btn" :aria-busy="moreBusy ? 'true' : undefined" @click.prevent="loadMore()">{{ moreBusy ? w('Chargement…') : moreFailed ? w('Réessayer') : w('Voir plus de produits') }}</a>
+        </div>
+          </div>
         </div>
       </div>
 

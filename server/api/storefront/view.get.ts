@@ -128,6 +128,13 @@ export default defineEventHandler(async (event) => {
   const coverSizes = (Array.isArray(media?.Sizes) ? media.Sizes : []).filter((i: any) => /^https?:\/\//.test(String(i?.Src || ''))).map((i: any) => ({ Src: String(i.Src), Width: Number(i.Width) || 0, Height: Number(i.Height) || 0 })).sort((a: any, b: any) => a.Width - b.Width)
   const coverVideo = String(media?.Video || '')
   const groups = (Array.isArray(filterAttributes?.AttributeGroup) ? filterAttributes.AttributeGroup : []).map((group: any) => ({ Name: String(group.AttributeGroupName || ''), Values: (Array.isArray(group.Attribute) ? group.Attribute : []).map((a: any) => ({ Id: Number(a.IdAttribute), Name: String(a.AttributeName || '') })).filter((a: any) => a.Id > 0 && a.Name) })).filter((group: any) => group.Name && group.Values.length)
+  // how the values look (api/storefront/attribute-looks.php): a colour group shows swatches, the picture of each one (Catalogue > Attributs) or its colour code
+  const valueIds = groups.flatMap((g: any) => g.Values.map((v: any) => v.Id)).slice(0, 300)
+  const looks = valueIds.length ? ((await digipart(event, 'attribute-looks.php', { Ids: valueIds.join(',') }).catch(() => null))?.Attributes || {}) : {}
+  for (const group of groups as any[]) {
+    for (const value of group.Values) { const look = looks[String(value.Id)]; value.Code = /^#[0-9a-f]{6}$/i.test(String(look?.Code)) ? String(look.Code) : ''; value.Image = /^https:\/\//.test(String(look?.Image)) ? String(look.Image) : '' }
+    group.IsColor = group.Values.some((v: any) => looks[String(v.Id)]?.IsColor)
+  }
   const filters = { Groups: groups, PriceMin: Math.floor(Number(filterPrice?.RegularPrice?.MinPriceTaxIncl || 0)), PriceMax: Math.ceil(Number(filterPrice?.RegularPrice?.MaxPriceTaxIncl || 0)), Attributes: attributes ? attributes.split(',').map(Number) : [], Min: priceMax > priceMin ? priceMin : 0, Max: priceMax > priceMin ? priceMax : 0 }
   const seo = (Array.isArray(category.SEO) ? category.SEO : []).find((s: any) => String(s.LanguageIsoCode || '').toLowerCase() === lang) || category.SEO?.[0] || {}
   const total = Number(listing?.TotalProduct || 0)

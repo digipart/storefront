@@ -23,7 +23,7 @@ const grid = computed(() => ({ '--cols': own.value ? Number(props.settings.Colum
     <template v-if="search.Term">
       <p class="sf-muted" aria-live="polite">{{ w(search.Total > 1 ? '{a} résultats pour « {b} »' : '{a} résultat pour « {b} »', { a: search.Total, b: search.Term }) }}</p>
       <div v-if="search.Products.length" class="sf-grid" :style="grid">
-        <SfProductCard v-for="(item, index) in search.Products" :key="item.Id" :product="item" :images="own && settings.CardImages === 'single' ? 'single' : 'hover'" :quick="!own || settings.QuickAdd !== false" :eager="index < 4" />
+        <SfProductCard v-for="(item, index) in search.Products" :key="item.Id" :product="item" :images="own ? settings.CardImages : undefined" :dots="own ? settings.CardDots !== false : undefined" :quick="!own || settings.QuickAdd !== false" :eager="index < 4" />
       </div>
       <p v-else class="sf-muted">{{ (own && texts?.EmptyText) || w('Aucun produit ne correspond à votre recherche.') }}</p>
       <nav v-if="search.Pages > 1" class="sf-pages" :aria-label="w('Pages')">
