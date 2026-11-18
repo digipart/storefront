@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
     const ids: number[] = main ? (((await digipart(event, 'looks.php', { IdProduct: main.Id }).catch(() => null))?.ProductIds as number[]) || []) : []
     const pieces = (await Promise.all(ids.slice(0, 12).map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean)
     if (!main || !pieces.length) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
-    return { Kind: 'look', Design: null, Page: null, Look: { Product: main, Pieces: pieces } }
+    return { Kind: 'look', Design: await design('look').catch(() => null), Page: null, Look: { Product: main, Pieces: pieces } }   // the page « Shop the look » of the site builder, when it was published
   }
 
   // the brands of the shop: the list, and one brand with its newest products

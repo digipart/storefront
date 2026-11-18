@@ -16,8 +16,10 @@ export default defineEventHandler(async (event) => {
     if (ip) { site = (await digipart(event, '', { ...preview, LanguageIsoCode: language, IP: ip })) || site }
   }
   // a preview: where its theme is edited in Digipart (shown in the bar of the preview, to whoever holds the link)
+  // the back-office of Digipart (shown in the bar of a preview only: the product or the category of the page is opened there)
+  const admin = site?.Preview ? String(useRuntimeConfig(event).digipartUrl || useRuntimeConfig(event).localUrl).replace(/\/+$/, '') + '/index.php' : ''
   const edit = site?.Preview ? String(useRuntimeConfig(event).digipartUrl || useRuntimeConfig(event).localUrl).replace(/\/+$/, '') + '/index.php?module=storefront/builder&idMarketPlace=' + site.IdMarketPlace + '&theme=' + site.Theme.IdTheme : ''
   // the fonts of the theme, ready for the head of the page: their CSS and the files to load at once (server/utils/fonts.ts)
   const fonts = await themeFonts((site?.Theme?.Fonts || []).map((font: any) => font?.Name)).catch(() => ({ css: '', files: [] }))
-  return { ...site, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, Route: { LanguageIsoCode: language, Rest: (prefixed ? segments.slice(1) : segments).join('/'), Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
+  return { ...site, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, PreviewAdminUrl: admin, Route: { LanguageIsoCode: language, Rest: (prefixed ? segments.slice(1) : segments).join('/'), Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
 })

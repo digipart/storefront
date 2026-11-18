@@ -6,6 +6,8 @@ const site = inject<Ref<any>>('sfSite')!
 const page = inject<Ref<any> | null>('sfPage', null)
 const product = inject<Ref<any> | null>('sfProduct', null)
 const catalog = inject<Ref<any> | null>('sfCatalog', null)
+const lookPage = inject<Ref<any> | null>('sfLook', null)
+const lookData = computed(() => lookPage?.value || null)
 const route = useRoute()
 const lang = computed(() => site.value?.Route?.LanguageIsoCode || 'fr')
 // the address of another page of the same category (a page of products, a sort), keeping what the visitor already chose
@@ -94,7 +96,7 @@ const columnPicture = (i: number) => {
     ...(align === 'center' || align === 'bottom' ? { display: 'flex', flexDirection: 'column', justifyContent: align === 'center' ? 'center' : 'flex-end' } : {}) }
 }
 const columnsReverse = computed(() => !!s.value.ReverseMobile && ratios(s.value.LayoutMobile, '1').length === 1)
-const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'announcement', 'custom_html', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart', 'main_search', 'main_404']
+const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'announcement', 'custom_html', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart', 'main_search', 'main_404', 'main_look']
 const { cart, show: showPanel } = useCart()
 const { customer, favorites, url: accountUrl, favoritesUrl } = useAccount()
 // the filters of a category (sizes, colours, price): chosen in a panel, kept in the address so a filtered list can be shared
@@ -337,6 +339,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
       <LazySfCartPage v-else-if="type === 'main_cart'" :settings="s" :texts="t" />
       <LazySfSearch v-else-if="type === 'main_search' && searchResults" :key="route.fullPath" :search="searchResults" :settings="s" :texts="t" />
       <LazySfNotFound v-else-if="type === 'main_404'" :settings="s" :texts="t" />
+      <LazySfLook v-else-if="type === 'main_look' && lookData" :look="lookData" :settings="s" :texts="t" />
       <div v-else-if="type === 'main_catalog' && catalog">
         <div v-if="hasCover" class="sf-hero sf-catcover" :class="{ 'is-full': s.CoverFull }" :style="{ '--h': (s.CoverHeight || 280) + 'px', '--hm': (s.CoverHeightMobile || 180) + 'px', '--shade': (s.CoverVeil ?? 20) / 100, '--pad': '24px', '--jc': ({ top: 'flex-start', bottom: 'flex-end' } as Record<string, string>)[s.CoverPosition] || 'center', color: '#fff', textAlign: s.CoverAlign || 'center' }">
           <picture v-if="catalogCover"><img :src="catalogCover.Src" :srcset="catalog.Category.Cover.Sizes.map((c: any) => c.Src + ' ' + c.Width + 'w').join(', ')" sizes="100vw" alt="" fetchpriority="high" decoding="async"></picture>

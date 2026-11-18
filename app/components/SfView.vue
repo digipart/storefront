@@ -17,6 +17,15 @@ const view = computed(() => loaded.value || missing.value)
 if (error.value && !missing.value) { throw createError({ statusCode: error.value.statusCode || 500, statusMessage: error.value.statusCode === 404 ? 'Page introuvable' : 'Le site est momentanément indisponible', fatal: true }) }
 provide('sfPage', computed(() => view.value?.Page || null))
 provide('sfProduct', computed(() => view.value?.Product || null))
+provide('sfLook', computed(() => (view.value?.Kind === 'look' ? view.value.Look : null)))   // the section « Shop the look » of the site builder draws it
+// the bar of a preview (app.vue) opens in Digipart what this page shows: the product, or the category and its staging
+const adminLinks = useState<{ Label: string, Path: string }[]>('sf-admin-links', () => [])
+watchEffect(() => {
+  const v = view.value
+  adminLinks.value = v?.Kind === 'product' && v.Product?.Id ? [{ Label: 'Modifier le produit', Path: 'product/edit&idProduct=' + v.Product.Id }]
+    : v?.Kind === 'catalog' && v.Category?.Id ? [{ Label: 'Mise en scène', Path: 'category/stage&idCategory=' + v.Category.Id }, { Label: 'Modifier la catégorie', Path: 'category/edit&idCategory=' + v.Category.Id }]
+    : []
+})
 // the page may have been drawn a few minutes ago: the stock of the product is read again as it opens (a size sold out since is shown sold out)
 onMounted(() => { if (view.value?.Kind === 'product' && view.value.Product) { refreshStock([view.value.Product]) } })
 provide('sfSearch', computed(() => (view.value?.Kind === 'search' ? view.value.Search : null)))
@@ -118,7 +127,7 @@ useHead(() => view.value?.Kind === 'product'
     <LazySfFavorites v-else-if="view?.Kind === 'favorites'" />
     <LazySfReset v-else-if="view?.Kind === 'reset'" />
     <LazySfLookbook v-else-if="view?.Kind === 'lookbook'" :lookbook="view.Lookbook" />
-    <LazySfLook v-else-if="view?.Kind === 'look'" :look="view.Look" />
+    <LazySfLook v-else-if="view?.Kind === 'look' && !view.Design" :look="view.Look" />
     <LazySfBrand v-else-if="view?.Kind === 'brand'" :brand="view.Brand" />
     <LazySfBrands v-else-if="view?.Kind === 'brands'" :brands="view.Brands" />
     <LazySfSearch v-else-if="view?.Kind === 'search' && !view.Design" :key="route.fullPath" :search="view.Search" />

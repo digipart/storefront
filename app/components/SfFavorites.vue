@@ -22,7 +22,7 @@ const shown = computed(() => products.value.filter(product => favorites.value.in
     <div v-else class="sf-grid" :style="{ '--cols': 4, '--cols-m': 2, '--gx': '16px', '--gy': '32px' }">
       <article v-for="product in shown" :key="product.Id" class="sf-card sf-fav-card">
         <a :href="product.Url" class="sf-card-pic"><img v-if="product.Image" :src="product.Image" :alt="product.Name" loading="lazy"><span v-else class="sf-card-empty" aria-hidden="true" /></a>
-        <button type="button" class="sf-heart is-on" :aria-label="w('Retirer de mes favoris')" @click="toggleFavorite(product.Id)">♥</button>
+        <button type="button" class="sf-heart is-on" :aria-label="w('Retirer de mes favoris')" @click="toggleFavorite(product.Id)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3 4.6 13a4.7 4.7 0 0 1 0-6.7 4.8 4.8 0 0 1 6.8 0l.6.6.6-.6a4.8 4.8 0 0 1 6.8 0 4.7 4.7 0 0 1 0 6.7z"/></svg></button>
         <a :href="product.Url" class="sf-card-name">{{ product.Name }}</a>
         <span class="sf-card-price"><SfPrice :product="product" /></span>
       </article>

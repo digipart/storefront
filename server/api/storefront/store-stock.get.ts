@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   if (idProduct < 1) { return { Stores: [] } }
   // the shops that show their stock (and take reservations): the list Digipart gives with the product
   const extra = await digipart(event, 'product-extra.php', { IdProduct: idProduct, LanguageIsoCode: lang }).catch(() => null)
-  const shown = new Map<number, { Name: string, City: string }>(((extra?.Reservation?.Stores || []) as any[]).map((s: any) => [Number(s.Id) || 0, { Name: text(s.Name, 120), City: text(s.City, 100) }]))
+  const shown = new Map<number, { Name: string, City: string, Images: string[] }>(((extra?.Reservation?.Stores || []) as any[]).map((s: any) => [Number(s.Id) || 0, { Name: text(s.Name, 120), City: text(s.City, 100), Images: (Array.isArray(s.Images) ? s.Images : []).filter((u: any) => /^https:\/\/[^\s"'<>]+$/.test(String(u))).slice(0, 4) }]))
   if (!shown.size) { return { Stores: [] } }
   const product = await loadProduct(event, idProduct, lang, '')
   const variants = product?.Variants || []
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
     const name = text(s.Name, 120) || known.Name, city = text(s.City, 100) || known.City
     return {
       Id: Number(s.IdStore) || 0, Name: name, Address: address, PostalCode: text(s.PostalCode, 20), City: city, Phone: text(s.Phone || s.MobilePhone, 30),
-      Known: !!s.HasStockInfo, Stock: stock,
+      Known: !!s.HasStockInfo, Stock: stock, Images: known.Images,
       Hours: (Array.isArray(s.OpeningHours) ? s.OpeningHours : []).slice(0, 7).map((d: any) => ({ Day: text(d?.Day, 20), Slots: (Array.isArray(d?.TimeSlots) ? d.TimeSlots : []).map((t: any) => text(t?.TimeSlotStart, 5) + ' – ' + text(t?.TimeSlotEnd, 5)).join(', ') })),
       MapsUrl: /^https:\/\//.test(String(s.GoogleMapsUrl)) ? String(s.GoogleMapsUrl) : placed ? 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([name, address, text(s.PostalCode, 20), city].filter(Boolean).join(' ')),
       Distance: here && placed ? Math.round(km(here, [lat, lng]) * 10) / 10 : null,

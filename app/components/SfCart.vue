@@ -50,7 +50,7 @@ watch(logged, (now, before) => { if (now !== before) { load() } })   // the cart
               <li v-for="product in favs.slice(0, 4)" :key="product.Id">
                 <a :href="product.Url" class="sf-line-pic" tabindex="-1" aria-hidden="true"><img v-if="product.Image" :src="product.Image" alt="" loading="lazy"></a>
                 <span class="sf-line-main"><a :href="product.Url" class="sf-line-name">{{ product.Name }}</a><span class="sf-line-variant"><SfPrice :product="product" /></span></span>
-                <button type="button" class="sf-heart is-on" :aria-label="w('Retirer de mes favoris')" @click="account.toggleFavorite(product.Id)">♥</button>
+                <button type="button" class="sf-heart is-on" :aria-label="w('Retirer de mes favoris')" @click="account.toggleFavorite(product.Id)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3 4.6 13a4.7 4.7 0 0 1 0-6.7 4.8 4.8 0 0 1 6.8 0l.6.6.6-.6a4.8 4.8 0 0 1 6.8 0 4.7 4.7 0 0 1 0 6.7z"/></svg></button>
               </li>
             </ul>
           </template>
@@ -73,7 +73,7 @@ watch(logged, (now, before) => { if (now !== before) { load() } })   // the cart
             <li v-for="product in favs" :key="product.Id">
               <a :href="product.Url" class="sf-line-pic" tabindex="-1" aria-hidden="true"><img v-if="product.Image" :src="product.Image" alt="" loading="lazy"></a>
               <span class="sf-line-main"><a :href="product.Url" class="sf-line-name">{{ product.Name }}</a><span class="sf-line-variant">{{ product.Reference }}</span><span><SfPrice :product="product" /></span></span>
-              <button type="button" class="sf-heart is-on" :aria-label="w('Retirer de mes favoris')" @click="account.toggleFavorite(product.Id)">♥</button>
+              <button type="button" class="sf-heart is-on" :aria-label="w('Retirer de mes favoris')" @click="account.toggleFavorite(product.Id)"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3 4.6 13a4.7 4.7 0 0 1 0-6.7 4.8 4.8 0 0 1 6.8 0l.6.6.6-.6a4.8 4.8 0 0 1 6.8 0 4.7 4.7 0 0 1 0 6.7z"/></svg></button>
             </li>
           </ul>
         </div>
