@@ -1199,3 +1199,9 @@ body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([t
 .sf-news { overflow: hidden; }
 /* inside a framed field, the input itself has no corner of its own */
 body .sf-spanel-field input, body .sf-news input { border-radius: 0; }
+
+/* the arrows of the product photos: drawn as the section Produit sets them; « Seulement au survol des photos » */
+.sf-gallery-nav { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.sf-gallery-wrap.has-hover-arrows .sf-gallery-nav { opacity: 0; transition: opacity .2s; }
+.sf-gallery-wrap.has-hover-arrows:hover .sf-gallery-nav, .sf-gallery-wrap.has-hover-arrows .sf-gallery-nav:focus-visible { opacity: 1; }
+@media (max-width: 767px) { .sf-gallery-nav { display: none; } }

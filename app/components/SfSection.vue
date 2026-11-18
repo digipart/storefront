@@ -446,7 +446,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
 
       <!-- a product: its photos beside its blocks (name, price, sizes, buy button, description...) in the order the shop gave them -->
       <div v-else-if="type === 'main_product' && product" class="sf-pdp" :class="{ 'is-reverse': s.GalleryPosition === 'right' }" :style="pdp">
-        <SfGallery :images="product.Images" :sets="product.ImageSets" :name="product.Name" :layout="s.GalleryLayout" :per-view="Number(s.GalleryPerView) || 2" @zoom="zoomAt = $event" />
+        <SfGallery :images="product.Images" :sets="product.ImageSets" :name="product.Name" :layout="s.GalleryLayout" :per-view="Number(s.GalleryPerView) || 2" :arrows="s" @zoom="zoomAt = $event" />
         <!-- the column is as tall as the photos; inside it the blocks follow the scroll (when the shop asked) and stop where the section ends, before the next one -->
         <div class="sf-info-col" :class="{ 'is-sticky': s.InfoSticky !== false, 'is-center': s.InfoY === 'center' }"><div ref="infoBox" class="sf-info" :style="info"><SfBlocks :blocks="blocks" /></div></div>
         <LazySfZoom v-if="zoomAt >= 0" :images="product.Images" :start="zoomAt" :name="product.Name" @close="zoomAt = -1" />
