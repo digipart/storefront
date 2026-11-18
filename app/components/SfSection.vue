@@ -91,7 +91,7 @@ const columnPicture = (i: number) => {
     ...(align === 'center' || align === 'bottom' ? { display: 'flex', flexDirection: 'column', justifyContent: align === 'center' ? 'center' : 'flex-end' } : {}) }
 }
 const columnsReverse = computed(() => !!s.value.ReverseMobile && ratios(s.value.LayoutMobile, '1').length === 1)
-const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'newsletter', 'social', 'announcement', 'custom_html', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart']
+const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'announcement', 'custom_html', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart']
 const { cart, show: showPanel } = useCart()
 const { customer, favorites, url: accountUrl, favoritesUrl } = useAccount()
 // the filters of a category (sizes, colours, price): chosen in a panel, kept in the address so a filtered list can be shared
@@ -161,7 +161,7 @@ const w = useWords()
       <!-- sections whose own content is one block among the others -->
       <!-- the HTML the shop wrote (cleaned by Digipart: no script, frame, form or event) -->
       <div v-else-if="type === 'custom_html'" class="sf-custom" :style="align" v-html="customHtml" />
-      <div v-else-if="['richtext', 'products', 'lookbook', 'stories', 'newsletter', 'social', 'contact_form', 'store_locator'].includes(type)" :style="align">
+      <div v-else-if="['richtext', 'products', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'contact_form', 'store_locator'].includes(type)" :style="align">
         <SfBlocks :blocks="blocks">
           <div v-if="type === 'newsletter'" class="sf-news-wrap" :style="{ marginLeft: s.Align === 'left' ? 0 : 'auto', marginRight: s.Align === 'right' ? 0 : 'auto' }"><SfNewsletter :button="t.ButtonText" /></div>
           <LazySfContact v-else-if="type === 'contact_form'" :settings="s" :texts="t" />
@@ -169,6 +169,7 @@ const w = useWords()
           <SfProducts v-else-if="type === 'products'" :section="section" />
           <LazySfLookbookFeature v-else-if="type === 'lookbook'" :id="Number(s.IdLookbook) || 0" :button="t.ButtonText" :height="s.Height" />
           <LazySfStories v-else-if="type === 'stories'" :place="catalog ? 'catalog' : product ? 'product' : 'home'" :product="product?.Id" :size="s.Size" :gap="s.Gap" />
+          <LazySfReviews v-else-if="type === 'reviews'" :settings="s" />
           <SfSocial v-else-if="type === 'social'" :display="s.Display" :shape="s.Shape" :size="s.Size" :gap="s.Gap" :style="{ justifyContent: justify }" />
         </SfBlocks>
       </div>
@@ -230,7 +231,7 @@ const w = useWords()
             <a :href="listUrl({ sort: 'price_desc', page: 1 })" :aria-current="catalog.Listing.Sort === 'price_desc' ? 'true' : undefined">{{ w('Prix décroissant') }}</a>
           </nav>
         </div>
-        <div v-if="catalog.Listing.Products.length" class="sf-grid" :style="{ '--cols': s.Columns || 4, '--cols-m': s.ColumnsMobile || 2, '--gx': (s.GapX ?? 16) + 'px', '--gy': (s.GapY ?? 32) + 'px' }">
+        <div v-if="catalog.Listing.Products.length" class="sf-grid" :style="{ '--cols': catalog.Listing.Display?.Columns || s.Columns || 4, '--cols-m': catalog.Listing.Display?.ColumnsMobile || s.ColumnsMobile || 2, '--gx': (s.GapX ?? 16) + 'px', '--gy': (s.GapY ?? 32) + 'px' }">
           <template v-if="catalog.Listing.Items">
             <template v-for="(item, index) in catalog.Listing.Items" :key="item.Kind + (item.Id || item.Product.Id)">
               <component :is="item.Url ? 'a' : 'div'" v-if="item.Kind === 'edito'" :href="item.Url || undefined" class="sf-edito" :class="['is-' + item.Size, { 'has-height': item.Height > 0 || item.HeightMobile > 0 }]" :style="item.Height > 0 || item.HeightMobile > 0 ? { '--eh': (item.Height || item.HeightMobile) + 'px', '--ehm': (item.HeightMobile || item.Height) + 'px' } : undefined">

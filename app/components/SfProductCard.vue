@@ -11,6 +11,9 @@ const w = useWords()
 const { add, busy } = useCart()
 const { isFavorite, toggleFavorite } = useAccount()
 const sizes = computed(() => (props.product.Variants || []).filter((v: any) => v.Label))
+// one colour only: the choices say the size (« 2(42/44) »), not « COLOUR / 2(42/44) »; several colours keep the full name, which tells them apart
+const oneColor = computed(() => sizes.value.length > 0 && new Set(sizes.value.map((v: any) => v.Color || '')).size === 1 && sizes.value.every((v: any) => v.Size && String(v.Label).split(' / ').length <= 2))
+const labelOf = (v: any) => (oneColor.value ? v.Size : v.Label)
 const buyable = computed(() => props.quick !== false && (props.product.PriceState || 'ok') === 'ok' && !props.product.TaxExcl && props.product.Available !== false)
 const open = ref(false), adding = ref(0)
 async function quickAdd(variant: number) { if (busy.value) { return } adding.value = variant || -1; try { await add(props.product.Id, variant, 1) } finally { adding.value = 0; open.value = false } }
@@ -34,7 +37,7 @@ const shown = computed(() => (mode.value === 'row' ? props.product.Images.slice(
       <template v-if="buyable">
         <button type="button" class="sf-card-plus" :aria-expanded="open" :aria-label="w('Ajouter au panier')" @click="open = !open">+</button>
         <div class="sf-card-quick" role="group" :aria-label="w(sizes.length ? 'Choisir une taille' : 'Ajouter au panier')">
-          <template v-if="sizes.length"><button v-for="v in sizes" :key="v.Id" type="button" :disabled="!v.Available || !!adding" :class="{ 'is-busy': adding === v.Id }" :title="v.Available ? w('Ajouter au panier') : w('Épuisé')" @click="quickAdd(v.Id)">{{ v.Label }}</button></template>
+          <template v-if="sizes.length"><button v-for="v in sizes" :key="v.Id" type="button" :disabled="!v.Available || !!adding" :class="{ 'is-busy': adding === v.Id }" :title="v.Available ? w('Ajouter au panier') : w('Épuisé')" @click="quickAdd(v.Id)">{{ labelOf(v) }}</button></template>
           <button v-else type="button" class="is-wide" :disabled="!!adding" @click="quickAdd(0)">{{ w(adding ? 'Ajout…' : 'Ajouter au panier') }}</button>
         </div>
       </template>

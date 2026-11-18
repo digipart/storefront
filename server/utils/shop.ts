@@ -23,7 +23,7 @@ export async function shopApi<T = any>(event: H3Event, path: string, query: Reco
   } catch { return null }
 }
 
-export interface ShopVariant { Id: number, Label: string, Size: string, Color: string, Available: boolean, Quantity: number }
+export interface ShopVariant { Id: number, Label: string, Size: string, Color: string, Attributes: { Group: string, Name: string }[], Available: boolean, Quantity: number }
 export interface ShopProduct {
   Id: number, IdCategory: number, Name: string, Reference: string, Brand: string, Slug: string, Url: string, Canonical: string, Alternates: Record<string, string>, Images: string[], ImageSets: string[], Currency: string, Price: number, PriceOld: number, Discount: number, PriceTaxExcl: number, PriceOldTaxExcl: number, TaxExcl: boolean, PriceState: 'ok' | 'login' | 'pending' | 'business',
   Description: string, DescriptionShort: string, SeoTitle: string, SeoDescription: string, Variants: ShopVariant[], Available: boolean, LookUrl?: string,
@@ -62,7 +62,7 @@ export function shapeProduct(raw: any, lang: string, prefix: string): ShopProduc
     const attributes = Array.isArray(variant?.Combination?.Attributes) ? variant.Combination.Attributes : []
     const of = (group: RegExp) => String((attributes.find((a: any) => group.test(String(a.GroupName || ''))) || {}).AttributeName || '')
     const size = of(/size|taille/i), color = of(/colou?r|couleur/i)
-    return { Id: Number(variant?.Combination?.IdProductAttribute || 0), Label: attributes.map((a: any) => String(a.AttributeName || '')).filter(Boolean).join(' / '), Size: size, Color: color, Available: !!variant.Available, Quantity: Number(variant.Quantity || 0) }
+    return { Id: Number(variant?.Combination?.IdProductAttribute || 0), Label: attributes.map((a: any) => String(a.AttributeName || '')).filter(Boolean).join(' / '), Size: size, Color: color, Attributes: attributes.map((a: any) => ({ Group: String(a.GroupName || ''), Name: String(a.AttributeName || '') })).filter((a: any) => a.Name), Available: !!variant.Available, Quantity: Number(variant.Quantity || 0) }
   }).filter((variant: ShopVariant) => variant.Id > 0)
   return {
     Canonical: categorySlug && seo.URL ? categorySlug + '/' + String(seo.URL).replace(/^\/+|\/+$/g, '') : '', Alternates: alternates, ImageSets: imageSets,

@@ -10,6 +10,30 @@ const lang = computed(() => site.value?.Route?.LanguageIsoCode || 'fr')
 // the size the visitor picked: shared by the blocks of the page (the sizes block sets it, the buy button reads it)
 const picked = useState<number>('sf-variant-' + (product.value?.Id || 0), () => 0)
 const sizes = computed(() => (product.value?.Variants || []).filter((v: any) => v.Label))
+// the choices of the block « Tailles et couleurs » (setting « Ce que montre chaque bouton »): « size » (the default) = the buttons say the size alone, with a row above to choose the colour when the product has
+// several (a product with one colour shows its sizes alone); « both » = one row « Colour / Size ». « size » needs every choice to have a size and nothing more than a colour and a size in its name; otherwise the full name is used.
+// the colours that belong to a colour group of Digipart (with their code), then the colour of a choice: the value of its colour attribute, found by the group of colours first, else by a group named Couleur / Color
+const swatches = computed<Record<string, string>>(() => Object.fromEntries((extra.value?.Colors || []).map((c: any) => [c.Name, c.Code])))
+const colorOf = (v: any): string => (v.Attributes || []).find((a: any) => a.Name in swatches.value)?.Name || v.Color || ''
+const colors = computed(() => [...new Set(sizes.value.map((v: any) => colorOf(v)).filter(Boolean))] as string[])
+const split = computed(() => s.value.Choice !== 'both' && sizes.value.length > 0 && sizes.value.every((v: any) => v.Size && (colors.value.length < 2 || colorOf(v)) && String(v.Label).split(' / ').length <= 2))
+const pickedColor = useState<string>('sf-color-' + (product.value?.Id || 0), () => '')
+// the colour shown: the one chosen, else the one of the size already picked, else the first colour that still has a size to sell
+const color = computed(() => {
+  if (colors.value.length < 2) { return colors.value[0] || '' }
+  if (pickedColor.value && colors.value.includes(pickedColor.value)) { return pickedColor.value }
+  const current = sizes.value.find((v: any) => v.Id === picked.value)
+  return (current && colorOf(current)) || colorOf(sizes.value.find((v: any) => v.Available && colorOf(v)) || {}) || colors.value[0] || ''
+})
+const sizeChoices = computed(() => (colors.value.length < 2 ? sizes.value : sizes.value.filter((v: any) => colorOf(v) === color.value)))
+// a swatch (a round of the colour) when the shop asks for it and the colour has a code; the name otherwise
+const swatchOf = (name: string) => (s.value.ColorStyle !== 'names' && swatches.value[name]) || ''
+// another colour: the same size is kept when that colour has it, else the visitor picks again
+function chooseColor(name: string) {
+  const size = sizes.value.find((v: any) => v.Id === picked.value)?.Size
+  pickedColor.value = name
+  picked.value = sizes.value.find((v: any) => colorOf(v) === name && v.Size === size && v.Available)?.Id || 0
+}
 const chosen = computed(() => sizes.value.find((v: any) => v.Id === picked.value) || null)
 const needsChoice = computed(() => sizes.value.length > 0 && !chosen.value)
 // the buy button: a product sold by size needs its size first
@@ -29,7 +53,7 @@ const guideOpen = ref(false), reserveOpen = ref(false), reviewOpen = ref(false)
 const w = useWords()
 // the points a purchase earns and the reviews of the product: asked once for the page, only when one of these blocks is drawn
 const extra = ref<any>(null)
-if (['p_points', 'p_reviews', 'p_stock'].includes(props.block.Type) || (props.block.Type === 'p_title' && props.block.Settings?.ShowBrand !== false) || (props.block.Type === 'p_sizeguide' && (props.block.Settings?.Guides || []).length > 0) && product.value?.Id) {
+if (['p_points', 'p_reviews', 'p_stock', 'p_variants'].includes(props.block.Type) || (props.block.Type === 'p_title' && props.block.Settings?.ShowBrand !== false) || (props.block.Type === 'p_sizeguide' && (props.block.Settings?.Guides || []).length > 0) && product.value?.Id) {
   const { data } = await useFetch<any>('/api/storefront/product-extra', { query: { id: product.value.Id, amount: product.value.PriceState === 'ok' ? product.value.Price : 0 }, key: 'sf-extra-' + product.value.Id, server: true })
   extra.value = data.value
 }
@@ -53,15 +77,34 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
     <div v-else-if="block.Type === 'p_price'" class="sf-pprice" :style="{ fontSize: (s.Size || 18) + 'px' }">
       <SfPrice :product="product" :compare="!!s.ShowCompare" badge />
     </div>
-    <fieldset v-else-if="block.Type === 'p_variants' && sizes.length" class="sf-variants">
-      <legend :class="{ 'sf-sr': !s.Labels }">{{ w('Taille') }}</legend>
-      <select v-if="s.Style === 'dropdown'" v-model.number="picked" class="sf-select" :aria-label="w('Taille')">
-        <option :value="0" disabled>{{ w('Choisir une taille') }}</option>
-        <option v-for="variant in sizes" :key="variant.Id" :value="variant.Id" :disabled="!variant.Available">{{ variant.Label }}{{ variant.Available ? '' : ' (' + w('épuisé') + ')' }}</option>
-      </select>
-      <div v-else class="sf-sizes">
-        <button v-for="variant in sizes" :key="variant.Id" type="button" :class="{ 'is-on': picked === variant.Id }" :disabled="!variant.Available" :aria-pressed="picked === variant.Id" :title="variant.Available ? '' : w('Épuisé')" @click="picked = variant.Id">{{ variant.Label }}</button>
-      </div>
+    <fieldset v-else-if="block.Type === 'p_variants' && sizes.length" class="sf-variants" :class="{ 'is-split': split }">
+      <template v-if="split">
+        <div v-if="colors.length > 1" class="sf-vgroup" role="group" :aria-label="w('Couleur')">
+          <div class="sf-vlegend" :class="{ 'sf-sr': !s.Labels }">{{ w('Couleur') }}<span v-if="color"> : {{ color }}</span></div>
+          <select v-if="s.Style === 'dropdown'" :value="color" class="sf-select" :aria-label="w('Couleur')" @change="chooseColor(($event.target as HTMLSelectElement).value)"><option v-for="name in colors" :key="name" :value="name">{{ name }}</option></select>
+          <div v-else class="sf-sizes"><button v-for="name in colors" :key="name" type="button" :class="{ 'is-on': color === name, 'sf-swatch': !!swatchOf(name) }" :style="swatchOf(name) ? { '--sw': swatchOf(name) } : undefined" :title="name" :aria-label="name" :aria-pressed="color === name" @click="chooseColor(name)"><template v-if="!swatchOf(name)">{{ name }}</template></button></div>
+        </div>
+        <div class="sf-vgroup" role="group" :aria-label="w('Taille')">
+          <div class="sf-vlegend" :class="{ 'sf-sr': !s.Labels }">{{ w('Taille') }}</div>
+          <select v-if="s.Style === 'dropdown'" v-model.number="picked" class="sf-select" :aria-label="w('Taille')">
+            <option :value="0" disabled>{{ w('Choisir une taille') }}</option>
+            <option v-for="variant in sizeChoices" :key="variant.Id" :value="variant.Id" :disabled="!variant.Available">{{ variant.Size }}{{ variant.Available ? '' : ' (' + w('épuisé') + ')' }}</option>
+          </select>
+          <div v-else class="sf-sizes">
+            <button v-for="variant in sizeChoices" :key="variant.Id" type="button" :class="{ 'is-on': picked === variant.Id }" :disabled="!variant.Available" :aria-pressed="picked === variant.Id" :title="variant.Available ? '' : w('Épuisé')" @click="picked = variant.Id">{{ variant.Size }}</button>
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <legend :class="{ 'sf-sr': !s.Labels }">{{ w('Taille') }}</legend>
+        <select v-if="s.Style === 'dropdown'" v-model.number="picked" class="sf-select" :aria-label="w('Taille')">
+          <option :value="0" disabled>{{ w('Choisir une taille') }}</option>
+          <option v-for="variant in sizes" :key="variant.Id" :value="variant.Id" :disabled="!variant.Available">{{ variant.Label }}{{ variant.Available ? '' : ' (' + w('épuisé') + ')' }}</option>
+        </select>
+        <div v-else class="sf-sizes">
+          <button v-for="variant in sizes" :key="variant.Id" type="button" :class="{ 'is-on': picked === variant.Id }" :disabled="!variant.Available" :aria-pressed="picked === variant.Id" :title="variant.Available ? '' : w('Épuisé')" @click="picked = variant.Id">{{ variant.Label }}</button>
+        </div>
+      </template>
     </fieldset>
     <template v-else-if="block.Type === 'p_sizeguide' && t.Text">
       <button v-if="guidePage > 0" type="button" class="sf-link sf-guide" aria-haspopup="dialog" @click="guideOpen = true">{{ t.Text }}</button>

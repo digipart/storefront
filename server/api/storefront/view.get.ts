@@ -135,8 +135,10 @@ export default defineEventHandler(async (event) => {
   // the staging of the category (Catalogue > Catégories > Mise en scène): its order, the products put forward, the photo of each card and the editorial blocks. It is the default sort of the page:
   // a visitor who sorts or filters sees the products alone, in the order asked for
   let items: any[] | null = null
+  // the staging of the category: read for every view of the page, because it also holds the cards per line chosen for this category (it applies when the visitor sorts or filters too)
+  const stage = await digipart(event, 'category-stage.php', { IdCategory: Number(category.IdCategory) }).catch(() => null)
+  const display = { Columns: Math.max(0, Math.min(6, Number(stage?.Display?.Columns) || 0)), ColumnsMobile: Math.max(0, Math.min(2, Number(stage?.Display?.ColumnsMobile) || 0)) }
   if (!sort && !attributes && !filters.Max) {
-    const stage = await digipart(event, 'category-stage.php', { IdCategory: Number(category.IdCategory) }).catch(() => null)
     const staged: any[] = Array.isArray(stage?.Items) ? stage.Items : []
     if (staged.length) {
       const stagedIds = new Set(staged.filter(i => i.Type === 'product').map(i => Number(i.IdProduct)))
@@ -145,7 +147,8 @@ export default defineEventHandler(async (event) => {
       if (pageNumber === 1) {
         const first = (await Promise.all(staged.map(async (i) => {
           if (i.Type === 'edito') { return { Kind: 'edito', Id: String(i.Id), Size: String(i.Size), Image: /^https?:\/\//.test(String(i.Image)) ? String(i.Image) : '', Video: String(i.Video || ''), Title: String(i.Title || '').slice(0, 120), Height: Math.max(0, Math.min(1200, Number(i.Height) || 0)), HeightMobile: Math.max(0, Math.min(1200, Number(i.HeightMobile) || 0)), Url: /^(https?:\/\/|\/(?!\/))/.test(String(i.Url)) ? String(i.Url) : '' } }
-          const product: any = byId.get(Number(i.IdProduct)) || await loadProduct(event, Number(i.IdProduct), lang, prefix, 'EUR', priceBase)
+          // a product put forward is read like its own page does (its price, its promotion and its old price are those of the product page), the listing only when that fails
+          const product: any = (await loadProduct(event, Number(i.IdProduct), lang, prefix, 'EUR', priceBase).catch(() => null)) || byId.get(Number(i.IdProduct))
           if (!product) { return null }
           const own = (Array.isArray(i.Images) ? i.Images : []).filter((x: any) => /^https?:\/\//.test(String(x?.Src)))
           const shown = own.length ? { ...product, Images: [own[own.length - 1].Src, ...product.Images.filter((src: string) => !own.some((x: any) => x.Src === src))], ImageSets: [own.map((x: any) => x.Src + ' ' + x.Width + 'w').join(', '), ...(product.ImageSets || [])] } : product
@@ -160,6 +163,6 @@ export default defineEventHandler(async (event) => {
   return {
     Kind: 'catalog', Design: catalog, Page: null,
     Category: { Alternates: Object.fromEntries((Array.isArray(category.SEO) ? category.SEO : []).map((s: any) => [String(s.LanguageIsoCode || '').toLowerCase(), String(s.URL || '').replace(/^\/+|\/+$/g, '')]).filter(([iso, url]: string[]) => /^[a-z]{2,3}$/.test(iso) && url)), Id: Number(category.IdCategory), Slug: rest, Cover: { Sizes: coverSizes, Video: /vimeo\.com/i.test(coverVideo) ? coverVideo : '' }, Name: String(category.Description?.Title || seo.MetaTitle || rest), Description: String(category.Description?.Description || ''), SeoTitle: String(seo.MetaTitle || ''), SeoDescription: String(seo.MetaDescription || '') },
-    Listing: { Items: items, Products: products, Total: total, Page: pageNumber, Pages: Math.max(1, Math.ceil(total / perPage)), Sort: sort, Filters: filters },
+    Listing: { Items: items, Display: display, Products: products, Total: total, Page: pageNumber, Pages: Math.max(1, Math.ceil(total / perPage)), Sort: sort, Filters: filters },
   }
 })
