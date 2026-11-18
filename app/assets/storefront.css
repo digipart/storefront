@@ -1090,3 +1090,16 @@ a.sf-reassure-item:hover b { text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) { .sf-announce-item { transition: none; } }
 .sf-announce-arrow, .sf-announce-close { flex: 0 0 auto; padding: 0 6px; border: 0; background: none; color: inherit; font: inherit; font-size: 1.2em; line-height: 1; cursor: pointer; opacity: .8; }
 .sf-announce-arrow:hover, .sf-announce-close:hover { opacity: 1; } .sf-announce-close { font-size: .9em; }
+/* « Donner mon avis »: the same light line as « Disponibilité en boutique » and the heart */
+.sf-review-btn.is-outline { box-shadow: none; border: 1px solid var(--t-line, #cfcfcf); font-weight: 500; }
+.sf-review-btn.is-outline:hover { border-color: currentColor; }
+.sf-review-btn:focus:not(:focus-visible) { outline: none; }
+
+/* the large menu: each tab takes the whole height of the header, so the pointer going down from a tab to its menu never leaves it; the menu waits a moment before closing (a pointer
+   crossing diagonally), and opens at once */
+.sf-header:not(.is-below) > .sf-nav { align-self: stretch; align-items: stretch; }
+.sf-header:not(.is-below) > .sf-nav .sf-nav-item { align-self: stretch; }
+.sf-mega { display: flex; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity .15s ease .12s, visibility 0s linear .27s; }
+.sf-nav-item:hover .sf-mega, .sf-nav-item:focus-within .sf-mega { visibility: visible; opacity: 1; pointer-events: auto; transition: opacity .15s ease, visibility 0s; }
+.sf-mega:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .sf-mega, .sf-nav-item:hover .sf-mega { transition: none; } }
