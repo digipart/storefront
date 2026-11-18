@@ -1112,3 +1112,12 @@ a.sf-reassure-item:hover b { text-decoration: underline; }
 .sf-nav.has-mega-rules .sf-mega { column-gap: var(--mg-gap, 48px); }
 .sf-nav.is-mega-tab .sf-nav-item { position: relative; }
 .sf-nav.is-mega-tab .sf-mega { right: auto; width: max-content; max-width: min(90vw, 1100px); justify-content: flex-start; }
+
+/* the pictures of the large menu (elements « Image » of Catalogue > Menus): width and format from the site builder */
+.sf-mega-img { display: flex; flex-direction: column; gap: 8px; width: var(--mg-img, 220px); max-width: 100%; opacity: 1 !important; text-decoration: none !important; }
+.sf-mega-pic { display: block; width: 100%; aspect-ratio: var(--mg-ratio, auto); overflow: hidden; background: var(--t-soft, #f3f4f6); }
+.sf-mega-pic img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .4s ease; }
+a.sf-mega-img:hover .sf-mega-pic img { transform: scale(1.03); }
+a.sf-mega-img:hover .sf-mega-caption { text-decoration: underline; }
+.sf-mega-caption { text-transform: var(--mg-xcase, none); }
+@media (prefers-reduced-motion: reduce) { .sf-mega-pic img { transition: none; } }

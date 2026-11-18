@@ -80,6 +80,8 @@ const megaVars = computed(() => ({
   '--mg-tsize': (Number(s.value.MegaTitleSize) || 14) + 'px', '--mg-tweight': String(s.value.MegaTitleWeight || 600), '--mg-tcase': megaCase(s.value.MegaTitleCase),
   '--mg-xsize': (Number(s.value.MegaTextSize) || 14) + 'px', '--mg-xcase': megaCase(s.value.MegaTextCase),
   '--mg-align': ({ left: 'flex-start', right: 'flex-end' } as Record<string, string>)[s.value.MegaAlign] || 'center',
+  '--mg-img': Math.max(120, Math.min(480, Number(s.value.MegaImageWidth) || 220)) + 'px',
+  '--mg-ratio': ({ portrait: '3 / 4', square: '1 / 1', landscape: '4 / 3' } as Record<string, string>)[s.value.MegaImageRatio] || 'auto',
 }))
 const megaClass = computed(() => ({ 'has-mega-rules': !!s.value.MegaRules, 'is-mega-tab': s.value.MegaWidth === 'tab' }))
 const menuStyle = computed(() => ({ ...megaVars.value, fontSize: (s.value.MenuSize || 14) + 'px', fontWeight: s.value.MenuWeight || 500, textTransform: s.value.MenuCase === 'uppercase' ? 'uppercase' : undefined, gap: (s.value.MenuGap || 28) + 'px', justifyContent: ({ left: 'flex-start', right: 'flex-end' } as Record<string, string>)[s.value.MenuAlign] || 'center' }))

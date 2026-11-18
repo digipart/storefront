@@ -29,7 +29,10 @@ onBeforeUnmount(() => { document.documentElement.style.overflow = '' })
           <div v-if="open === tab.Name" class="sf-navdrawer-sub">
             <template v-for="column in tab.Columns" :key="column.Name"><template v-for="group in column.Groups" :key="group.Name">
               <div v-if="group.Name" class="sf-mega-title">{{ group.Name }}</div>
-              <component :is="item.Url ? 'a' : 'span'" v-for="item in group.Links" :key="item.Name" :href="href(item.Url)">{{ item.Name }}</component>
+              <template v-for="(item, i) in group.Links" :key="i + item.Name">
+                <component :is="item.Url ? 'a' : 'span'" v-if="item.Image" :href="href(item.Url)" class="sf-mega-img"><span class="sf-mega-pic"><img :src="item.Image" :alt="item.Name || ''" loading="lazy" decoding="async"></span><span v-if="item.Name" class="sf-mega-caption">{{ item.Name }}</span></component>
+                <component :is="item.Url ? 'a' : 'span'" v-else :href="href(item.Url)">{{ item.Name }}</component>
+              </template>
             </template></template>
           </div>
         </div>
