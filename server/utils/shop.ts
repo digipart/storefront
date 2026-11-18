@@ -34,10 +34,26 @@ export async function shopApi<T = any>(event: H3Event, path: string, query: Reco
 export interface ShopVariant { Id: number, Label: string, Size: string, Color: string, Attributes: { Group: string, Name: string }[], Available: boolean, Quantity: number }
 export interface ShopProduct {
   Id: number, IdCategory: number, Name: string, Reference: string, Brand: string, Slug: string, Url: string, Canonical: string, Alternates: Record<string, string>, Images: string[], ImageSets: string[], Currency: string, Price: number, PriceOld: number, Discount: number, PriceTaxExcl: number, PriceOldTaxExcl: number, TaxExcl: boolean, PriceState: 'ok' | 'login' | 'pending' | 'business',
-  Description: string, DescriptionShort: string, SeoTitle: string, SeoDescription: string, Variants: ShopVariant[], Available: boolean, LookUrl?: string,
+  Description: string, DescriptionShort: string, SeoTitle: string, SeoDescription: string, Variants: ShopVariant[], Available: boolean, LookUrl?: string, Type?: string, GiftAmounts?: { Id: number, Label: string, Url: string, Current: boolean }[],
 }
 
 /** A product of the product API as the theme draws it: one flat shape, whatever the API left empty. `prefix` = the language part of the addresses of the page ('' or '/en'). */
+/** The amounts of an e-gift card: the cards tied to it (Relationship.Child), each with its amount (its size « 25€ », else its price) and its address. */
+function giftAmounts(raw: any, lang: string, prefix: string, current: number): { Id: number, Label: string, Url: string, Current: boolean }[] {
+  const children: any[] = Array.isArray(raw?.Relationship?.Child) ? raw.Relationship.Child : []
+  return children.map((child: any) => {
+    const id = Number(child?.IdProduct || 0)
+    const seo = (Array.isArray(child?.SEO) ? child.SEO : []).find((s: any) => String(s.LanguageIsoCode || '').toLowerCase() === lang) || (Array.isArray(child?.SEO) ? child.SEO[0] : null) || {}
+    const catSeo = child?.Category?.Main?.SEO
+    const cat = String((Array.isArray(catSeo) ? (catSeo.find((s: any) => String(s.LanguageIsoCode || '').toLowerCase() === lang) || catSeo[0])?.URL : '') || '').replace(/^\/+|\/+$/g, '')
+    const slug = String(seo.URL || '').replace(/^\/+|\/+$/g, '') || 'carte-cadeau'
+    const variant = Array.isArray(child?.Variant) ? child.Variant[0] : null
+    const size = (Array.isArray(variant?.Combination?.Attributes) ? variant.Combination.Attributes : []).find((a: any) => /size|taille/i.test(String(a.GroupName || '')))
+    const price = Number(variant?.Price?.RegularPrice?.PriceTaxIncl || 0)
+    return { Id: id, Label: String(size?.AttributeName || (price ? Math.round(price) + ' €' : '')), Url: prefix + '/' + (cat || 'p') + '/' + slug + '-' + id, Current: id === current }
+  }).filter(a => a.Id > 0 && a.Label)
+}
+
 export function shapeProduct(raw: any, lang: string, prefix: string): ShopProduct | null {
   const name = String(raw?.Description?.Title || '').trim()
   const id = Number(raw?.IdProduct || 0)
@@ -77,6 +93,8 @@ export function shapeProduct(raw: any, lang: string, prefix: string): ShopProduc
     Id: id, IdCategory: Number(raw.Category?.Main?.IdCategory || 0), Name: name, Reference: String(raw.Reference || ''), Brand: String(raw.Brand?.Name || raw.Brand?.BrandName || ''), Slug: slug, Url: prefix + '/' + (categorySlug || 'p') + '/' + slug + '-' + id, Images: images,
     Currency: String(raw.Price?.Currency?.CurrencyIsoCode || 'EUR'), Price: onSale ? promo : regular, PriceOld: onSale ? regular : 0, Discount: onSale ? Math.round(100 - (promo * 100) / regular) : 0, PriceTaxExcl: onSale ? promoExcl : regularExcl, PriceOldTaxExcl: onSale ? regularExcl : 0, TaxExcl: false, PriceState: 'ok',
     Description: String(raw.Description?.Description || ''), DescriptionShort: String(raw.Description?.DescriptionShort || ''), SeoTitle: String(seo.MetaTitle || name), SeoDescription: String(seo.MetaDescription || ''),
+    // an e-gift card: its type, and the amounts the shop sells (the other gift cards tied to it in Digipart, Relationship), each a product of its own
+    Type: String(raw.Type || 'physical'), GiftAmounts: raw.Type === 'e-giftcard' ? giftAmounts(raw, lang, prefix, id) : [],
     Variants: variants, Available: variants.length ? variants.some(variant => variant.Available) : raw.Active === 1,
   }
 }

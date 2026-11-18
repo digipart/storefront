@@ -27,7 +27,8 @@ export function useCart() {
       return !answer.Error
     } catch { error.value = 'Le panier ne répond pas, merci de réessayer.'; return false } finally { busy.value = false }
   }
-  const add = async (idProduct: number, idVariant: number, quantity = 1) => { const done = await send({ Action: 'add', IdProduct: idProduct, IdProductAttribute: idVariant, Quantity: quantity }); if (done) { show('cart') } return done }
+  // `gift`: an e-gift card, with whom it is for (Personal, Email, MobilePhone, Firstname, Lastname, Message, DateSend)
+  const add = async (idProduct: number, idVariant: number, quantity = 1, gift?: Record<string, unknown>) => { const done = await send({ Action: 'add', IdProduct: idProduct, IdProductAttribute: idVariant, Quantity: quantity, ...(gift ? { Gift: gift } : {}) }); if (done) { show('cart') } return done }
   const addMany = async (idProduct: number, items: { IdProductAttribute: number, Quantity: number }[]) => { const done = await send({ Action: 'add-many', IdProduct: idProduct, Items: items }); if (done) { show('cart') } return done }
   const setQuantity = (line: any, quantity: number) => (quantity < 1 ? remove(line) : send({ Action: 'update', IdProduct: line.IdProduct, IdProductAttribute: line.IdProductAttribute, Quantity: quantity }))
   const setVariant = (line: any, idVariant: number) => send({ Action: 'update', IdProduct: line.IdProduct, IdProductAttribute: line.IdProductAttribute, Quantity: line.Quantity, NewIdProductAttribute: idVariant })

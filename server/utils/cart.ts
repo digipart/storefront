@@ -126,7 +126,17 @@ export async function changeCart(event: H3Event, body: any): Promise<string> {
   }
   if (action === 'add') {
     if (idProduct <= 0) { return 'Ce produit ne peut pas être ajouté.' }
-    const answer = await cartCall(event, 'POST', 'cart/product/add', { IdCart: id || '', IdProduct: idProduct, IdProductAttribute: idVariant, Quantity: quantity })
+    // an e-gift card: who receives it, the message and the day it is sent (Digipart makes the card with the line: api/cart/product/add, ProductType e-giftcard)
+    const gift = body?.Gift && typeof body.Gift === 'object' ? body.Gift : null
+    let giftFields: Record<string, string> = {}
+    if (gift) {
+      const clean = (v: unknown, max: number) => String(v ?? '').replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, max)
+      const email = clean(gift.Email, 150), date = /^\d{4}-\d{2}-\d{2}$/.test(String(gift.DateSend)) ? String(gift.DateSend) : new Date().toISOString().slice(0, 10)
+      if (gift.Personal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { return 'Indiquez l\'adresse e-mail du destinataire.' }
+      giftFields = { ProductType: 'e-giftcard', Email: gift.Personal ? email : '', MobilePhone: gift.Personal ? clean(gift.MobilePhone, 25) : '', Firstname: gift.Personal ? clean(gift.Firstname, 80) : '', Lastname: gift.Personal ? clean(gift.Lastname, 80) : '',
+        Message: gift.Personal ? String(gift.Message ?? '').replace(/\r\n/g, '\n').trim().slice(0, 300) : '', DateSend: date, LanguageIsoCode: langOf(event).lang, IP: getRequestIP(event, { xForwardedFor: true }) || '' }
+    }
+    const answer = await cartCall(event, 'POST', 'cart/product/add', { IdCart: id || '', IdProduct: idProduct, IdProductAttribute: idVariant, Quantity: gift ? 1 : quantity, ...giftFields })
     if (!answer || !answer.IdCart) { return answer?.status === 'error' ? 'Ce produit ne peut pas être ajouté au panier.' : 'Le panier ne répond pas, merci de réessayer.' }
     keep(event, Number(answer.IdCart))
     return ''

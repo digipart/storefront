@@ -1019,10 +1019,10 @@ button.sf-link:hover { opacity: .7; }
 .sf-ss-store.is-chosen { padding: 14px 16px; }
 .sf-ss-open { display: flex; align-items: center; gap: 6px; margin: -4px 0 10px; font-size: 12px; } .sf-ss-open i { width: 6px; height: 6px; border-radius: 50%; background: #c0392b; } .sf-ss-open.is-open i { background: #2e9e5b; }
 .sf-ss-sizes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.sf-ss-sizes span { position: relative; display: inline-flex; align-items: center; gap: 4px; min-width: 30px; justify-content: center; padding: 4px 8px; border: 1px solid var(--t-line, #cfcfcf); font-size: 11px; }
-.sf-ss-sizes span.is-in, .sf-ss-sizes span.is-low { border-color: var(--t-text, #1e2129); background: var(--t-text, #1e2129); color: var(--t-bg, #fff); }
+.sf-ss-sizes span { position: relative; background: var(--t-bg, #fff); display: inline-flex; align-items: center; gap: 4px; min-width: 30px; justify-content: center; padding: 4px 8px; border: 1px solid var(--t-line, #cfcfcf); font-size: 11px; }
+
 .sf-ss-sizes span.is-low i { width: 5px; height: 5px; border-radius: 50%; background: #e08a1e; }
-.sf-ss-sizes span.is-out { color: rgba(30, 33, 41, .35); text-decoration: line-through; background: color-mix(in srgb, currentColor 4%, transparent); }
+
 .sf-ss-more { margin-top: 2px; }
 .sf-ss-options { display: flex; flex-direction: column; border-top: 1px solid var(--t-border, #ececf1); background: color-mix(in srgb, currentColor 3%, transparent); }
 .sf-ss-options > a, .sf-ss-options > button { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 16px; border: 0; border-bottom: 1px solid var(--t-border, #ececf1); background: none; color: inherit; font: inherit; font-size: 13px; text-align: left; text-decoration: none; cursor: pointer; }
@@ -1034,8 +1034,47 @@ button.sf-link:hover { opacity: .7; }
 
 .sf-pbar-admin { display: contents; }
 /* « Disponibilité et réservation en boutique »: a fine line (1px), lighter than the buy button above it */
-.sf-stock-btn.is-outline { box-shadow: inset 0 0 0 1px currentColor; font-weight: 500; }
+.sf-stock-btn.is-outline { box-shadow: none; border: 1px solid var(--t-line, #cfcfcf); font-weight: 500; }   /* the same line as the heart beside the buy button */
+.sf-stock-btn.is-outline:hover { border-color: currentColor; }
 .sf-stock-btn:focus:not(:focus-visible) { outline: none; }
 /* the headings that fold (Description, Avis clients…): no blue frame after a click; the keyboard keeps one */
 .sf-acc > summary:focus:not(:focus-visible) { outline: none; }
 .sf-acc > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* the sizes of a shop, as on the product page: every size shown; a size in stock is outlined, black when it is one the visitor looks for; a size out of stock is greyed and struck; last pieces keep their dot */
+.sf-ss-sizes span { border-color: var(--t-border, #d8d8e5); }
+.sf-ss-sizes span.is-picked.is-in, .sf-ss-sizes span.is-picked.is-low { border-color: var(--t-text, #1e2129); background: var(--t-text, #1e2129); color: var(--t-bg, #fff); }
+.sf-ss-sizes span.is-out { opacity: .4; text-decoration: line-through; background: color-mix(in srgb, currentColor 6%, transparent); }
+.sf-ss-filter button { border-color: var(--t-border, #d8d8e5); }
+
+/* e-gift card: its amounts (each a card of its own), whom it is for */
+.sf-gift-amounts { display: flex; flex-wrap: wrap; gap: 8px; }
+.sf-gift-amounts a { min-width: 64px; padding: 10px 14px; border: 1px solid var(--t-border, #d8d8e5); color: inherit; font-size: 14px; text-align: center; text-decoration: none; }
+.sf-gift-amounts a:hover { border-color: currentColor; } .sf-gift-amounts a.is-on { border-color: var(--t-text, #1e2129); background: var(--t-text, #1e2129); color: var(--t-bg, #fff); }
+.sf-buy.is-gift { flex-wrap: wrap; }
+.sf-gift { flex: 0 0 100%; display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px; font-size: 13px; }
+.sf-gift-check { display: flex; align-items: center; gap: 10px; cursor: pointer; } .sf-gift-check input { width: 16px; height: 16px; accent-color: var(--t-text, #1e2129); }
+.sf-gift label:not(.sf-gift-check) { position: relative; display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; }
+.sf-gift label > span { font-size: 12px; letter-spacing: .02em; }
+.sf-gift input:not([type=checkbox]), .sf-gift textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--t-border, #d8d8e5); background: var(--t-bg, #fff); color: inherit; font: inherit; font-size: 13px; }
+.sf-gift textarea { resize: vertical; min-height: 64px; }
+.sf-gift-count { position: absolute; right: 8px; bottom: 6px; font-size: 10px; opacity: .5; }
+.sf-gift-row { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (max-width: 560px) { .sf-gift label:not(.sf-gift-check) { grid-template-columns: 1fr; gap: 4px; } }
+/* the loyalty programme: a card that opens its panel */
+.sf-loyalty-card { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px; border: 1px solid var(--t-border, #d8d8e5); background: var(--t-bg, #fff); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.sf-loyalty-card:hover { border-color: currentColor; } .sf-loyalty-card:focus:not(:focus-visible) { outline: none; }
+.sf-loyalty-logo { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+.sf-loyalty-text { flex: 1 1 auto; display: flex; flex-direction: column; gap: 4px; font-size: 13px; } .sf-loyalty-text b { font-size: 14px; font-weight: 600; }
+.sf-loyalty-text em, .sf-loyalty-earn em { font-style: normal; padding: 1px 6px; border-radius: 4px; background: color-mix(in srgb, #2e9e5b 14%, transparent); color: #23794a; font-weight: 600; }
+.sf-loyalty-go { font-size: 22px; opacity: .5; }
+.sf-loyalty-intro { font-size: 14px; line-height: 1.6; } .sf-loyalty-earn { padding: 12px 14px; border: 1px solid var(--t-border, #ececf1); font-size: 13px; }
+.sf-loyalty h3 { margin: 22px 0 10px; font-size: 15px; } .sf-loyalty-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 1.5; }
+/* reassurance: delivery, returns, payment */
+.sf-reassure { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); }
+.sf-reassure.is-framed { border: 1px solid var(--t-border, #ececf1); }
+.sf-reassure-item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 10px; color: inherit; text-align: center; text-decoration: none; font-size: 12px; }
+.sf-reassure.is-framed .sf-reassure-item + .sf-reassure-item { border-left: 1px solid var(--t-border, #ececf1); }
+.sf-reassure-item b { font-weight: 500; text-transform: uppercase; letter-spacing: .02em; } .sf-reassure-item span { opacity: .65; }
+a.sf-reassure-item:hover b { text-decoration: underline; }
+@media (max-width: 560px) { .sf-reassure { grid-template-columns: 1fr; } .sf-reassure.is-framed .sf-reassure-item + .sf-reassure-item { border-left: 0; border-top: 1px solid var(--t-border, #ececf1); } }

@@ -135,7 +135,7 @@ onBeforeUnmount(() => { document.documentElement.style.overflow = ''; if (clock)
                     <p class="sf-ss-store-address">{{ [s.Address, [s.PostalCode, s.City].filter(Boolean).join(' ')].filter(Boolean).join(', ') }}</p>
                     <p v-if="openState(s)" class="sf-ss-open" :class="{ 'is-open': openState(s)!.open }"><i aria-hidden="true" />{{ openState(s)!.text }}</p>
                     <div v-if="s.Known && sizes.length" class="sf-ss-sizes" :aria-label="w('Tailles en boutique')">
-                      <span v-for="v in looked" :key="v.Id" :class="'is-' + sizeState(s, v)" :title="w(sizeState(s, v) === 'out' ? 'Indisponible' : sizeState(s, v) === 'low' ? 'Dernières pièces' : 'Disponible')">{{ sizeName(v) }}<i v-if="sizeState(s, v) === 'low'" aria-hidden="true" /></span>
+                      <span v-for="v in sizes" :key="v.Id" :class="['is-' + sizeState(s, v), { 'is-picked': wanted.includes(v.Id) }]" :title="w(sizeState(s, v) === 'out' ? 'Indisponible' : sizeState(s, v) === 'low' ? 'Dernières pièces' : 'Disponible')">{{ sizeName(v) }}<i v-if="sizeState(s, v) === 'low'" aria-hidden="true" /></span>
                     </div>
                     <p class="sf-ss-store-state" :class="'is-' + state(s)"><i aria-hidden="true" />{{ label(s) }}</p>
                     <button type="button" class="sf-link sf-ss-more" :aria-expanded="options === s.Id" @click="options = options === s.Id ? 0 : s.Id">{{ w(options === s.Id ? 'Masquer les options' : 'Afficher les options') }}</button>

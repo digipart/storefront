@@ -45,11 +45,27 @@ const lotOpen = ref(false), proOpen = ref(false)
 const { isFavorite, toggleFavorite, customer } = useAccount()
 const ask = ref(false)
 watch(picked, () => { ask.value = false })
+// an e-gift card: whom it is for, what it says and when it is sent (sent with the line of the cart; Digipart makes the card)
+const isGift = computed(() => product.value?.Type === 'e-giftcard')
+const gift = reactive({ Personal: props.block.Settings?.GiftPersonal !== false, Email: '', MobilePhone: '', Firstname: '', Lastname: '', Message: '', DateSend: '' })
+const today = new Date().toISOString().slice(0, 10)
+const giftError = ref('')
 async function buy() {
   if (product.value.TaxExcl && sizes.value.length > 0) { lotOpen.value = true; return }
   if (needsChoice.value) { ask.value = true; return }
+  if (isGift.value) {
+    giftError.value = gift.Personal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gift.Email.trim()) ? w('Indiquez l\'adresse e-mail du destinataire.') : ''
+    if (giftError.value) { return }
+    await add(product.value.Id, chosen.value ? chosen.value.Id : (sizes.value[0]?.Id || 0), 1, { ...gift, DateSend: gift.DateSend || today })
+    return
+  }
   await add(product.value.Id, chosen.value ? chosen.value.Id : 0, 1)
 }
+// the loyalty programme: its card opens a panel that presents it
+const loyaltyOpen = ref(false)
+const steps = computed(() => String(t.value.Steps || '').split('\n').map(x => x.trim()).filter(Boolean))
+// the reassurance lines: up to four, each an icon, a title, a text and maybe a link
+const reassurance = computed(() => [1, 2, 3, 4].map(n => ({ n, icon: s.value['Icon' + n], title: t.value['Title' + n], text: t.value['Text' + n], url: s.value['Url' + n] })).filter(x => x.title))
 const guideOpen = ref(false), storesOpen = ref(false), reviewOpen = ref(false), alertOpen = ref(false)
 // « M'avertir du retour en stock » when nothing is left (the sold-out sizes it can be asked for)
 const alertSizes = computed(() => (product.value?.Variants || []).filter((v: any) => v.Label && !v.Available))
@@ -79,6 +95,10 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
     </template>
     <div v-else-if="block.Type === 'p_price'" class="sf-pprice" :style="{ fontSize: (s.Size || 18) + 'px' }">
       <SfPrice :product="product" :compare="!!s.ShowCompare" badge />
+    </div>
+    <!-- an e-gift card: its amounts are the cards tied to it, each its own page -->
+    <div v-else-if="block.Type === 'p_variants' && product.GiftAmounts?.length" class="sf-gift-amounts" role="group" :aria-label="w('Montant')">
+      <a v-for="a in product.GiftAmounts" :key="a.Id" :href="a.Url" :class="{ 'is-on': a.Current }" :aria-current="a.Current ? 'page' : undefined">{{ a.Label }}</a>
     </div>
     <fieldset v-else-if="block.Type === 'p_variants' && sizes.length" class="sf-variants" :class="{ 'is-split': split }">
       <template v-if="split">
@@ -113,7 +133,21 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
       <button v-if="guidePage > 0" type="button" class="sf-link sf-guide" aria-haspopup="dialog" @click="guideOpen = true">{{ t.Text }}</button>
       <LazySfPagePanel v-if="guideOpen" :id="guidePage" :title="t.Text" @close="guideOpen = false" />
     </template>
-    <div v-else-if="block.Type === 'p_buy'" class="sf-buy" :class="{ 'is-full': s.Full }">
+    <div v-else-if="block.Type === 'p_buy'" class="sf-buy" :class="{ 'is-full': s.Full, 'is-gift': isGift }">
+      <div v-if="isGift && !locked" class="sf-gift">
+        <label class="sf-gift-check"><input v-model="gift.Personal" type="checkbox">{{ w('Je souhaite personnaliser ma carte cadeau avant de l\'envoyer') }}</label>
+        <template v-if="gift.Personal">
+          <label><span>{{ w('E-mail du destinataire') }} *</span><input v-model="gift.Email" type="email" autocomplete="off" maxlength="150" required></label>
+          <label v-if="s.GiftPhone !== false"><span>{{ w('Téléphone mobile') }}</span><input v-model="gift.MobilePhone" type="tel" autocomplete="off" maxlength="25"></label>
+          <div class="sf-gift-row">
+            <label><span>{{ w('Prénom') }}</span><input v-model="gift.Firstname" type="text" autocomplete="off" maxlength="80"></label>
+            <label><span>{{ w('Nom') }}</span><input v-model="gift.Lastname" type="text" autocomplete="off" maxlength="80"></label>
+          </div>
+          <label><span>{{ w('Message') }}</span><textarea v-model="gift.Message" rows="3" maxlength="300" /><small class="sf-gift-count">{{ gift.Message.length }}/300</small></label>
+          <label v-if="s.GiftDate !== false"><span>{{ w('Envoyer le') }}</span><input v-model="gift.DateSend" type="date" :min="today"></label>
+        </template>
+        <p v-if="giftError" class="sf-form-error" role="alert">{{ giftError }}</p>
+      </div>
       <button v-if="locked" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="product.PriceState === 'pending'" @click="showPanel('account')">{{ w(product.PriceState === 'pending' ? 'Compte en cours de validation' : product.PriceState === 'business' ? 'Prix réservés aux professionnels' : 'Se connecter pour commander') }}</button>
       <button v-else-if="!product.Available && alertSizes.length && site?.Theme?.Settings?.StockAlert !== false" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" @click="alertOpen = true">{{ w('M\'avertir du retour en stock') }}</button>
       <button v-else type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="!product.Available || cartBusy" @click="buy">{{ w(product.Available ? (cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) : 'Épuisé') }}</button>
@@ -138,7 +172,35 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
       <LazySfStoreStock v-if="storesOpen" :product="product" :variant="picked" :reserve="s.Reserve !== false" @close="storesOpen = false" />
     </div>
     <LazySfStories v-else-if="block.Type === 'p_stories'" place="product" :product="product.Id" :size="s.Size || 64" :gap="14" />
-    <p v-else-if="block.Type === 'p_points' && earn > 0" class="sf-points">{{ w('Gagnez') }} <strong>{{ earn }}</strong> {{ w(earn > 1 ? 'points de fidélité avec cet achat' : 'point de fidélité avec cet achat') }}</p>
+    <template v-else-if="block.Type === 'p_points' && earn > 0">
+      <p v-if="s.Look === 'line'" class="sf-points">{{ w('Gagnez') }} <strong>{{ earn }}</strong> {{ w(earn > 1 ? 'points de fidélité avec cet achat' : 'point de fidélité avec cet achat') }}</p>
+      <button v-else type="button" class="sf-loyalty-card" aria-haspopup="dialog" @click="loyaltyOpen = true">
+        <img v-if="s.Logo" :src="s.Logo" alt="" class="sf-loyalty-logo">
+        <span class="sf-loyalty-text"><b>{{ t.Title || w('Le programme de fidélité') }}</b><span>{{ w('Gagnez') }} <em>{{ earn }} pts</em> {{ w('de fidélité avec cet achat') }}</span></span>
+        <span class="sf-loyalty-go" aria-hidden="true">›</span>
+      </button>
+      <Teleport to="body">
+        <div v-if="loyaltyOpen" class="sf-drawer" @keydown.esc="loyaltyOpen = false">
+          <div class="sf-drawer-veil" @click="loyaltyOpen = false" />
+          <aside class="sf-drawer-panel sf-loyalty" role="dialog" aria-modal="true" :aria-label="t.Title || w('Le programme de fidélité')">
+            <header class="sf-drawer-head"><h2>{{ t.Title || w('Le programme de fidélité') }}</h2><button type="button" :aria-label="w('Fermer')" @click="loyaltyOpen = false">✕</button></header>
+            <div class="sf-drawer-body">
+              <p v-if="t.Intro" class="sf-loyalty-intro">{{ t.Intro }}</p>
+              <p class="sf-loyalty-earn"><em>{{ earn }} pts</em> {{ w('de fidélité gagnés avec cet achat') }}</p>
+              <template v-if="steps.length"><h3>{{ w('Comment ça marche ?') }}</h3><ol class="sf-loyalty-steps"><li v-for="(step, i) in steps" :key="i">{{ step }}</li></ol></template>
+            </div>
+            <footer class="sf-drawer-foot"><a v-if="s.MoreUrl" :href="s.MoreUrl" class="sf-btn">{{ t.MoreText || w('En savoir plus') }}</a><button type="button" class="sf-btn is-outline" @click="loyaltyOpen = false">{{ w('Fermer') }}</button></footer>
+          </aside>
+        </div>
+      </Teleport>
+    </template>
+    <!-- reassurance: delivery, returns, payment… as the shop wrote them -->
+    <div v-else-if="block.Type === 'p_reassurance' && reassurance.length" class="sf-reassure" :class="{ 'is-framed': s.Framed !== false }" :style="{ '--n': reassurance.length }">
+      <component :is="r.url ? 'a' : 'div'" v-for="r in reassurance" :key="r.n" :href="r.url || undefined" class="sf-reassure-item">
+        <SfIcon v-if="r.icon" :name="r.icon" :size="s.IconSize || 22" />
+        <b>{{ r.title }}</b><span v-if="r.text">{{ r.text }}</span>
+      </component>
+    </div>
     <details v-else-if="block.Type === 'p_reviews'" class="sf-acc sf-reviews">
       <summary>{{ w('Avis clients') }}<template v-if="extra?.Reviews?.Total > 0"> <span class="sf-stars" :aria-label="extra.Reviews.Average + ' / 5'">{{ stars(extra.Reviews.Average) }}</span> <small>{{ extra.Reviews.Average }} ({{ extra.Reviews.Total }})</small></template></summary>
       <p v-if="!(extra?.Reviews?.Total > 0)" class="sf-muted">{{ w('Aucun avis pour le moment.') }}</p>
