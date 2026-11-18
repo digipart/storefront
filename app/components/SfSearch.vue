@@ -12,7 +12,7 @@ const tag = computed(() => (own.value && ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p
 const titleStyle = computed(() => (own.value ? { '--size': ({ xl: 42, lg: 34, md: 26, sm: 19 } as Record<string, number>)[props.settings.TitleSize || 'md'] + 'px', fontWeight: props.settings.TitleWeight || 600, textTransform: props.settings.TitleCase === 'uppercase' ? 'uppercase' : undefined, textAlign: props.settings.TitleAlign || undefined, marginBottom: (props.settings.TitleGap ?? 20) + 'px' } : undefined))
 // the address of the results with what the visitor chose (filters, main category, sort, page)
 const query = (ask: Record<string, string | number>) => Object.entries(ask).filter(([k, v]) => v !== '' && v !== 0 && !(k === 'page' && v === 1)).map(([k, v]) => k + '=' + encodeURIComponent(String(v))).join('&')
-const current = computed(() => ({ q: props.search.Term, attr: (props.search.Filters?.Attributes || []).join(','), min: props.search.Filters?.Min || 0, max: props.search.Filters?.Max || 0, tab: props.search.Tab || 0, sort: props.search.Sort || '' }))
+const current = computed(() => ({ q: props.search.Term, attr: (props.search.Filters?.Attributes || []).join(','), min: props.search.Filters?.Min || 0, max: props.search.Filters?.Max || 0, tab: props.search.Tab || 0, sort: props.search.Sort || '', promo: props.search.Filters?.Promo ? 'yes' : '' }))
 const pageUrl = (page: number) => action.value + '?' + query({ ...current.value, page })
 const go = (ask: Record<string, string | number>) => navigateTo(action.value + '?' + query(ask))
 </script>

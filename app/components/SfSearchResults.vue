@@ -7,13 +7,13 @@ const emit = defineEmits<{ change: [ask: Record<string, string | number>], more:
 const w = useWords()
 const s = computed(() => props.settings || {})
 const r = computed(() => props.result || {})
-const ask = (change: Record<string, string | number>) => ({ q: r.value.Term, attr: (r.value.Filters?.Attributes || []).join(','), min: r.value.Filters?.Min || 0, max: r.value.Filters?.Max || 0, tab: r.value.Tab || 0, sort: r.value.Sort || '', page: 1, ...change })
-const hasFilters = computed(() => s.value.ShowFilters !== false && ((r.value.Filters?.Groups || []).length > 0 || r.value.Filters?.PriceMax > r.value.Filters?.PriceMin))
-const filterCount = computed(() => (r.value.Filters?.Attributes || []).length + (r.value.Filters?.Max ? 1 : 0))
+const ask = (change: Record<string, string | number>) => ({ q: r.value.Term, attr: (r.value.Filters?.Attributes || []).join(','), min: r.value.Filters?.Min || 0, max: r.value.Filters?.Max || 0, tab: r.value.Tab || 0, sort: r.value.Sort || '', promo: r.value.Filters?.Promo ? 'yes' : '', page: 1, ...change })
+const hasFilters = computed(() => s.value.ShowFilters !== false && ((r.value.Filters?.Groups || []).length > 0 || r.value.Filters?.PriceMax > r.value.Filters?.PriceMin || (s.value.FilterPromo !== false && (r.value.Filters?.PromoCount > 0 || r.value.Filters?.Promo))))
+const filterCount = computed(() => (r.value.Filters?.Attributes || []).length + (r.value.Filters?.Max ? 1 : 0) + (r.value.Filters?.Promo ? 1 : 0))
 // the filters column can be hidden on a computer (« Masquer les filtres »); on a phone they open in their panel
 const sideShown = ref(true)
 const phoneOpen = ref(false)
-const apply = (chosen: { attributes: number[], min: number, max: number }) => { phoneOpen.value = false; emit('change', ask({ attr: chosen.attributes.join(','), min: chosen.min, max: chosen.max })) }
+const apply = (chosen: { attributes: number[], min: number, max: number, promo?: boolean }) => { phoneOpen.value = false; emit('change', ask({ attr: chosen.attributes.join(','), min: chosen.min, max: chosen.max, promo: chosen.promo ? 'yes' : '' })) }
 const cols = computed(() => Math.max(2, Math.min(6, Number(s.value.Columns) || 4)))
 // « Affichage 1 2 3 »: the buttons of the category pages (their lists of products per line, a computer and a phone), the choice kept in the browser for the categories and the search alike
 const viewSet = computed(() => props.view || r.value.View || null)
@@ -72,7 +72,7 @@ const bold = (name: string) => {
       </div>
     </div>
     <div class="sf-srch-body" :class="{ 'has-side': hasFilters && sideShown }">
-      <aside v-if="hasFilters && sideShown" class="sf-srch-side" :aria-label="w('Filtres')"><SfFilters :key="JSON.stringify(r.Filters)" :filters="r.Filters" :currency="currency" :settings="s" inline @apply="apply" /></aside>
+      <aside v-if="hasFilters && sideShown" class="sf-srch-side" :aria-label="w('Filtres')"><SfFilters :key="JSON.stringify(r.Filters)" :filters="r.Filters" :currency="currency" :settings="s" :texts="texts" inline @apply="apply" /></aside>
       <div class="sf-srch-main">
         <div v-if="r.Products?.length" class="sf-grid" :style="{ '--cols': perRow, '--cols-m': perRowMobile, '--gx': (s.GapX ?? 16) + 'px', '--gy': (s.GapY ?? 32) + 'px' }">
           <SfProductCard v-for="(item, index) in r.Products" :key="item.Id" :product="item" :images="s.CardImages" :dots="s.CardDots !== false" :quick="s.QuickAdd !== false" :eager="index < 4" />
@@ -81,6 +81,6 @@ const bold = (name: string) => {
         <slot name="after" />
       </div>
     </div>
-    <LazySfFilters v-if="phoneOpen" :filters="r.Filters" :currency="currency" :settings="s" @close="phoneOpen = false" @apply="apply" />
+    <LazySfFilters v-if="phoneOpen" :filters="r.Filters" :currency="currency" :settings="s" :texts="texts" @close="phoneOpen = false" @apply="apply" />
   </div>
 </template>

@@ -5,7 +5,7 @@ import type { H3Event } from 'h3'
 // answers the plain search, drawn without filters.
 export const SEARCH_SORTS = ['newest', 'price_asc', 'price_desc', 'best']
 
-export interface SearchAsk { term: string, attr: string, min: number, max: number, tab: number, sort: string, page: number, size: number }
+export interface SearchAsk { term: string, attr: string, min: number, max: number, tab: number, sort: string, page: number, size: number, promo: boolean }
 
 export function searchAsk(query: Record<string, any>, size = 24): SearchAsk {
   const min = Math.max(0, Math.floor(Number(query.min) || 0)), max = Math.max(0, Math.floor(Number(query.max) || 0))
@@ -15,6 +15,7 @@ export function searchAsk(query: Record<string, any>, size = 24): SearchAsk {
     min: max > min ? min : 0, max: max > min ? max : 0,
     tab: /^\d{1,9}$/.test(String(query.tab ?? '')) ? Number(query.tab) : 0,
     sort: SEARCH_SORTS.includes(String(query.sort)) ? String(query.sort) : '',
+    promo: ['1', 'yes'].includes(String(query.promo)),
     page: Math.max(1, Math.min(200, Number(query.page) || 1)),
     size: Math.max(4, Math.min(48, size)),
   }
@@ -28,10 +29,10 @@ export async function catalogView(event: H3Event, lang: string) {
 }
 
 export async function readSearch(event: H3Event, ask: SearchAsk, lang: string, prefix: string, priceBase: string) {
-  const empty = { Term: ask.term, Total: 0, Products: [] as any[], Page: 1, Pages: 1, Sort: ask.sort, Tab: ask.tab, Tabs: [] as any[], Suggestions: [] as any[], Filters: { Groups: [] as any[], PriceMin: 0, PriceMax: 0, Attributes: [] as number[], Min: 0, Max: 0 } }
+  const empty = { Term: ask.term, Total: 0, Products: [] as any[], Page: 1, Pages: 1, Sort: ask.sort, Tab: ask.tab, Tabs: [] as any[], Suggestions: [] as any[], Filters: { Groups: [] as any[], PriceMin: 0, PriceMax: 0, Attributes: [] as number[], Min: 0, Max: 0, Promo: false, PromoCount: 0 } }
   if (!ask.term) { return empty }
   const found = await digipart(event, 'search.php', {
-    LanguageIsoCode: lang, Term: ask.term, Facets: 1, Attributes: ask.attr, PriceMin: ask.min, PriceMax: ask.max, Tab: ask.tab, Sort: ask.sort || 'newest', Limit: ask.size, Offset: (ask.page - 1) * ask.size,
+    LanguageIsoCode: lang, Term: ask.term, Facets: 1, Attributes: ask.attr, PriceMin: ask.min, PriceMax: ask.max, Tab: ask.tab, Promo: ask.promo ? 1 : '', Sort: ask.sort || 'newest', Limit: ask.size, Offset: (ask.page - 1) * ask.size,
   }).catch(() => null)
   if (!found) { return empty }
   const products = (await Promise.all(((found.ProductIds as number[]) || []).map(id => loadProduct(event, Number(id), lang, prefix, 'EUR', priceBase)))).filter(Boolean)
@@ -54,6 +55,6 @@ export async function readSearch(event: H3Event, ask: SearchAsk, lang: string, p
     Term: String(found.Term || ask.term), Total: total, Products: products, Page: ask.page, Pages: Math.max(1, Math.ceil(total / ask.size)), Sort: ask.sort, Tab: ask.tab,
     Tabs: (Array.isArray(found.Tabs) ? found.Tabs : []).map((t: any) => ({ Id: Number(t.Id) || 0, Name: String(t.Name || '').slice(0, 60), Count: Number(t.Count) || 0 })).filter((t: any) => t.Id > 0 && t.Name),
     Suggestions: (Array.isArray(found.Suggestions) ? found.Suggestions : []).filter((c: any) => /^[\p{L}\p{N}_.\/-]{1,200}$/u.test(slug(c.Slug))).map((c: any) => ({ Id: Number(c.Id) || 0, Name: String(c.Name || '').slice(0, 80), Url: prefix + '/' + slug(c.Slug) })),
-    Filters: { Groups: groups, PriceMin: Math.floor(Number(found.Facets?.PriceMin) || 0), PriceMax: Math.ceil(Number(found.Facets?.PriceMax) || 0), Attributes: chosen, Min: ask.min, Max: ask.max },
+    Filters: { Groups: groups, PriceMin: Math.floor(Number(found.Facets?.PriceMin) || 0), PriceMax: Math.ceil(Number(found.Facets?.PriceMax) || 0), Attributes: chosen, Min: ask.min, Max: ask.max, Promo: ask.promo, PromoCount: Number(found.Facets?.PromoCount) || 0 },
   }
 }

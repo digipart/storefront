@@ -1205,3 +1205,6 @@ body .sf-spanel-field input, body .sf-news input { border-radius: 0; }
 .sf-gallery-wrap.has-hover-arrows .sf-gallery-nav { opacity: 0; transition: opacity .2s; }
 .sf-gallery-wrap.has-hover-arrows:hover .sf-gallery-nav, .sf-gallery-wrap.has-hover-arrows .sf-gallery-nav:focus-visible { opacity: 1; }
 @media (max-width: 767px) { .sf-gallery-nav { display: none; } }
+
+/* « En promotion », the last of the filters */
+.sf-fpromo { padding: 14px 0; } .sf-fpromo .sf-check { font-weight: 600; } .sf-fpromo small { font-weight: 400; opacity: .65; }

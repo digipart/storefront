@@ -116,14 +116,20 @@ export default defineEventHandler(async (event) => {
   // what the visitor filtered on: sizes and colours (ids of the filter API), a price range
   const attributes = /^\d{1,9}(,\d{1,9}){0,19}$/.test(String(query.attr ?? '')) ? String(query.attr) : ''
   const priceMin = Math.max(0, Math.floor(Number(query.min) || 0)), priceMax = Math.max(0, Math.floor(Number(query.max) || 0))
-  const filtered = { ...(attributes ? { FilterAttribute: attributes } : {}), ...(priceMax > priceMin ? { FilterPrice: priceMin + ',' + priceMax } : {}) }
+  // « En promotion »: the products with a discount (api/category/product `InPromotion`, which that API only reads with another filter: an open price range is then given with it, it changes nothing)
+  const promo = ['1', 'yes'].includes(String(query.promo))
+  const priceRange = priceMax > priceMin ? { FilterPrice: priceMin + ',' + priceMax } : {}
+  const filtered = { ...(attributes ? { FilterAttribute: attributes } : {}), ...priceRange, ...(promo ? { InPromotion: 1, ...(priceMax > priceMin ? {} : { FilterPrice: '0,1000000' }) } : {}) }
+  // how many products the box would give with the other choices kept
+  const promoAsk = { ...(attributes ? { FilterAttribute: attributes } : {}), ...(priceMax > priceMin ? priceRange : { FilterPrice: '0,1000000' }), InPromotion: 1 }
   const same = { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR' }
-  const [listing, filterAttributes, filterPrice, media, links] = await Promise.all([
+  const [listing, filterAttributes, filterPrice, media, links, promoListing] = await Promise.all([
     shopApi(event, 'category/product', { ...same, Offset: (pageNumber - 1) * perPage, Limit: perPage, ...(SORTS[sort] || {}), ...filtered }),
     shopApi(event, 'category/filterAttribute', same), shopApi(event, 'category/filterPrice', same),
     digipart(event, 'category-cover.php', { IdCategory: Number(category.IdCategory) }).catch(() => null),
     // the sub-categories and the categories next to it (api/storefront/category-links.php), when the section links to them
     settings.SubNav === 'none' ? null : digipart(event, 'category-links.php', { ...language, IdCategory: Number(category.IdCategory) }).catch(() => null),
+    settings.FilterPromo === false || settings.Filters === 'none' ? null : shopApi(event, 'category/product', { ...same, Offset: 0, Limit: 1, ...promoAsk }),
   ])
   // the cover of the category (Catalogue > Catégories > Couverture): its sizes from the smallest to the largest, or its Vimeo video. The addresses follow where the shop keeps its pictures (disk or bucket)
   const coverSizes = (Array.isArray(media?.Sizes) ? media.Sizes : []).filter((i: any) => /^https?:\/\//.test(String(i?.Src || ''))).map((i: any) => ({ Src: String(i.Src), Width: Number(i.Width) || 0, Height: Number(i.Height) || 0 })).sort((a: any, b: any) => a.Width - b.Width)
@@ -136,11 +142,11 @@ export default defineEventHandler(async (event) => {
     for (const value of group.Values) { const look = looks[String(value.Id)]; value.Code = /^#[0-9a-f]{6}$/i.test(String(look?.Code)) ? String(look.Code) : ''; value.Image = /^https:\/\//.test(String(look?.Image)) ? String(look.Image) : '' }
     group.IsColor = group.Values.some((v: any) => looks[String(v.Id)]?.IsColor)
   }
-  const filters = { Groups: groups, PriceMin: Math.floor(Number(filterPrice?.RegularPrice?.MinPriceTaxIncl || 0)), PriceMax: Math.ceil(Number(filterPrice?.RegularPrice?.MaxPriceTaxIncl || 0)), Attributes: attributes ? attributes.split(',').map(Number) : [], Min: priceMax > priceMin ? priceMin : 0, Max: priceMax > priceMin ? priceMax : 0 }
+  const filters = { Groups: groups, PriceMin: Math.floor(Number(filterPrice?.RegularPrice?.MinPriceTaxIncl || 0)), PriceMax: Math.ceil(Number(filterPrice?.RegularPrice?.MaxPriceTaxIncl || 0)), Attributes: attributes ? attributes.split(',').map(Number) : [], Min: priceMax > priceMin ? priceMin : 0, Max: priceMax > priceMin ? priceMax : 0, Promo: promo, PromoCount: Number(promoListing?.TotalProduct || 0) }
   const seo = (Array.isArray(category.SEO) ? category.SEO : []).find((s: any) => String(s.LanguageIsoCode || '').toLowerCase() === lang) || category.SEO?.[0] || {}
   const total = Number(listing?.TotalProduct || 0)
   let products = await shapeListed(event, (listing?.Products || []).filter(Boolean), lang, prefix, 'EUR', priceBase)
-  if (!products.length && total > 0 && !attributes && !filters.Max) {   // the listing named products it could not describe (a development server, another language): each is read on its own
+  if (!products.length && total > 0 && !attributes && !filters.Max && !promo) {   // the listing named products it could not describe (a development server, another language): each is read on its own
     const ids: number[] = ((await digipart(event, 'products.php', { Mode: 'category', IdCategory: Number(category.IdCategory), Limit: perPage }).catch(() => null))?.ProductIds as number[]) || []
     products = (await Promise.all(ids.map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean) as any[]
   }
@@ -151,7 +157,7 @@ export default defineEventHandler(async (event) => {
   const stage = await digipart(event, 'category-stage.php', { IdCategory: Number(category.IdCategory) }).catch(() => null)
   const display = { Columns: Math.max(0, Math.min(6, Number(stage?.Display?.Columns) || 0)), ColumnsMobile: Math.max(0, Math.min(2, Number(stage?.Display?.ColumnsMobile) || 0)) }
   let pages = Math.max(1, Math.ceil(total / perPage))
-  if (!sort && !attributes && !filters.Max) {
+  if (!sort && !attributes && !filters.Max && !promo) {
     const staged: any[] = Array.isArray(stage?.Items) ? stage.Items : []
     if (staged.length) {
       const stagedIds = new Set(staged.filter(i => i.Type === 'product').map(i => Number(i.IdProduct)))

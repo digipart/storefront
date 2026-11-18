@@ -2,8 +2,8 @@
 // The filters of a category: the sizes, colours... its products have, and a price range. Two places (site builder, section « Grille des produits », group Filtres): a side panel (« Voir les
 // produits » applies what was chosen) or a column beside the products (`inline`: each choice applies at once). The colours of a colour group are swatches (the picture of the swatch, else the colour
 // code, Catalogue > Attributs); the other values are buttons or check boxes; the price is a slider with two handles, two fields, or both. Each heading folds and unfolds its values.
-const props = defineProps<{ filters: any, currency: string, settings?: any, inline?: boolean }>()
-const emit = defineEmits<{ close: [], apply: [chosen: { attributes: number[], min: number, max: number }] }>()
+const props = defineProps<{ filters: any, currency: string, settings?: any, texts?: any, inline?: boolean }>()
+const emit = defineEmits<{ close: [], apply: [chosen: { attributes: number[], min: number, max: number, promo: boolean }] }>()
 const w = useWords()
 const site = inject<Ref<any> | null>('sfSite', null)
 const s = computed(() => props.settings || {})
@@ -30,17 +30,21 @@ const toggle = (key: string) => { const next = new Set(opened.value); if (next.h
 const swatch = (value: any) => (value.Image ? { backgroundImage: `url("${String(value.Image).replace(/"/g, '%22')}")` } : value.Code ? { background: value.Code } : null)
 const swatched = (group: any) => group.IsColor && colorMode.value !== 'text' && group.Values.some((v: any) => v.Image || v.Code)
 
+// « En promotion », at the end of the list: the products with a discount (their price struck through), with how many there are; shown when some are on sale (site builder: « Filtre En promotion »)
+const promo = ref<boolean>(!!props.filters.Promo)
+const hasPromo = computed(() => s.value.FilterPromo !== false && (Number(props.filters.PromoCount) > 0 || !!props.filters.Promo))
+const promoLabel = computed(() => props.texts?.FilterPromoLabel || w('En promotion'))
 const apply = () => {
   const full = lo.value <= floor.value && hi.value >= ceil.value
-  emit('apply', { attributes: chosen.value, min: full ? 0 : lo.value, max: full ? 0 : hi.value })
+  emit('apply', { attributes: chosen.value, min: full ? 0 : lo.value, max: full ? 0 : hi.value, promo: promo.value })
 }
-const clear = () => emit('apply', { attributes: [], min: 0, max: 0 })
+const clear = () => emit('apply', { attributes: [], min: 0, max: 0, promo: false })
 // in the column a choice applies at once (the slider when it is let go)
 const changed = () => { if (props.inline) { apply() } }
 const slideLo = () => { if (lo.value > hi.value) { lo.value = hi.value } }
 const slideHi = () => { if (hi.value < lo.value) { hi.value = lo.value } }
 const typed = () => { lo.value = Math.max(floor.value, Math.min(Number(lo.value) || floor.value, ceil.value)); hi.value = Math.min(ceil.value, Math.max(Number(hi.value) || ceil.value, lo.value)); changed() }
-const anyChosen = computed(() => props.filters.Attributes.length > 0 || !!props.filters.Max)
+const anyChosen = computed(() => props.filters.Attributes.length > 0 || !!props.filters.Max || !!props.filters.Promo)
 
 onMounted(() => { if (props.inline) { return } document.documentElement.style.overflow = 'hidden'; nextTick(() => panel.value?.focus()) })
 onBeforeUnmount(() => { if (!props.inline) { document.documentElement.style.overflow = '' } })
@@ -81,6 +85,9 @@ onBeforeUnmount(() => { if (!props.inline) { document.documentElement.style.over
                 <span class="sf-muted">{{ currency }}</span>
               </div>
             </div>
+          </section>
+          <section v-if="hasPromo" class="sf-fgroup sf-fpromo">
+            <label class="sf-check"><input v-model="promo" type="checkbox" @change="changed"><span>{{ promoLabel }}<small v-if="filters.PromoCount"> ({{ filters.PromoCount }})</small></span></label>
           </section>
           <button v-if="inline && anyChosen" type="button" class="sf-filters-clear" @click="clear">{{ w('Tout effacer') }}</button>
         </form>

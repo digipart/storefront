@@ -619,4 +619,6 @@ export default {
   'Cela pourrait vous intéresser': 'You may also like',
   'Recherche en cours…': 'Searching…',
   'Voir les {a} résultats': 'See all {a} results',
+  // the « En promotion » filter
+  'En promotion': 'On sale',
 } as Record<string, string>

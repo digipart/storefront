@@ -619,4 +619,6 @@ export default {
   'Cela pourrait vous intéresser': 'Das könnte Ihnen gefallen',
   'Recherche en cours…': 'Suche läuft…',
   'Voir les {a} résultats': 'Alle {a} Ergebnisse ansehen',
+  // the « En promotion » filter
+  'En promotion': 'Im Angebot',
 } as Record<string, string>

@@ -133,9 +133,9 @@ const filtersOpen = ref(false)
 // the filters in a column beside the products (the shop chose « Dans une colonne à gauche »)
 const sideFilters = computed(() => s.value.Filters === 'left' && hasFilters.value)
 const filterData = computed(() => catalog?.value?.Listing?.Filters || null)
-const hasFilters = computed(() => s.value.Filters !== 'none' && !!filterData.value && (filterData.value.Groups.length > 0 || filterData.value.PriceMax > filterData.value.PriceMin))
-const filterCount = computed(() => (filterData.value ? filterData.value.Attributes.length + (filterData.value.Max ? 1 : 0) : 0))
-function applyFilters(chosen: { attributes: number[], min: number, max: number }) { filtersOpen.value = false; navigateTo(listUrl({ attr: chosen.attributes.join(','), min: chosen.max ? chosen.min || '' : '', max: chosen.max || '', page: 1 })) }
+const hasFilters = computed(() => s.value.Filters !== 'none' && !!filterData.value && (filterData.value.Groups.length > 0 || filterData.value.PriceMax > filterData.value.PriceMin || (s.value.FilterPromo !== false && (filterData.value.PromoCount > 0 || filterData.value.Promo))))
+const filterCount = computed(() => (filterData.value ? filterData.value.Attributes.length + (filterData.value.Max ? 1 : 0) + (filterData.value.Promo ? 1 : 0) : 0))
+function applyFilters(chosen: { attributes: number[], min: number, max: number, promo?: boolean }) { filtersOpen.value = false; navigateTo(listUrl({ attr: chosen.attributes.join(','), min: chosen.max ? chosen.min || '' : '', max: chosen.max || '', promo: chosen.promo ? 'yes' : '', page: 1 })) }
 const navOpen = ref(false)
 watch(() => route.fullPath, () => { navOpen.value = false })
 // the logo of the shop: the copy closest to twice the height it is drawn at (sharp on a dense screen), else its name is written
@@ -348,7 +348,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
         </div>
       </div>
 
-      <LazySfFilters v-if="type === 'main_catalog' && catalog && filtersOpen" :filters="catalog.Listing.Filters" :currency="catalog.Listing.Products[0]?.Currency || 'EUR'" :settings="s" @close="filtersOpen = false" @apply="applyFilters" />
+      <LazySfFilters v-if="type === 'main_catalog' && catalog && filtersOpen" :filters="catalog.Listing.Filters" :currency="catalog.Listing.Products[0]?.Currency || 'EUR'" :settings="s" :texts="t" @close="filtersOpen = false" @apply="applyFilters" />
       <ClientOnly v-if="type === 'main_header'"><LazySfNavDrawer v-if="navOpen" :id="s.IdMenu" @close="navOpen = false" /></ClientOnly>
 
       <!-- the footer of the site: columns, then the bottom line -->
@@ -408,7 +408,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
         </div>
         <!-- the filters in a column beside the products (computer; on a phone it is the « Filtrer » button and its panel) -->
         <div class="sf-catalog-body" :class="{ 'has-side': sideFilters }" :style="sideFilters ? { '--fw': (s.FilterWidth || 260) + 'px' } : undefined">
-          <aside v-if="sideFilters" class="sf-catalog-side" :aria-label="w('Filtres')"><SfFilters :filters="catalog.Listing.Filters" :currency="catalog.Listing.Products[0]?.Currency || 'EUR'" :settings="s" inline @apply="applyFilters" /></aside>
+          <aside v-if="sideFilters" class="sf-catalog-side" :aria-label="w('Filtres')"><SfFilters :filters="catalog.Listing.Filters" :currency="catalog.Listing.Products[0]?.Currency || 'EUR'" :settings="s" :texts="t" inline @apply="applyFilters" /></aside>
           <div class="sf-catalog-main">
         <a v-if="basePage > 1 && loadMode !== 'pages'" :href="listUrl({ page: basePage - 1 })" rel="prev" class="sf-loadmore-prev">{{ w('Voir les produits précédents') }}</a>
         <div v-if="shownItems ? shownItems.length : shownProducts.length" class="sf-grid" :style="{ '--cols': perRow.desk, '--cols-m': perRow.mob, '--gx': (s.GapX ?? 16) + 'px', '--gy': (s.GapY ?? 32) + 'px' }">
