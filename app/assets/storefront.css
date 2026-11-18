@@ -1033,3 +1033,9 @@ button.sf-link:hover { opacity: .7; }
 @media (max-width: 480px) { .sf-ss-store.has-photo .sf-ss-store-main { grid-template-columns: 1fr; } .sf-ss-store-photo { height: 160px; min-height: 0; } }
 
 .sf-pbar-admin { display: contents; }
+/* « Disponibilité et réservation en boutique »: a fine line (1px), lighter than the buy button above it */
+.sf-stock-btn.is-outline { box-shadow: inset 0 0 0 1px currentColor; font-weight: 500; }
+.sf-stock-btn:focus:not(:focus-visible) { outline: none; }
+/* the headings that fold (Description, Avis clients…): no blue frame after a click; the keyboard keeps one */
+.sf-acc > summary:focus:not(:focus-visible) { outline: none; }
+.sf-acc > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

@@ -9,7 +9,10 @@ const { add, busy } = useCart()
 const lang = computed(() => site.value?.Route?.LanguageIsoCode || 'fr')
 const { data } = await useFetch<any>('/api/storefront/stories', { query: { place: props.place, product: props.product || '', lang, prefix: computed(() => site.value?.Route?.Prefix || ''), preview: computed(() => (typeof useRoute().query.preview === 'string' ? useRoute().query.preview : '')) }, key: 'sf-stories-' + props.place + '-' + (props.product || 0) })
 const stories = computed(() => data.value?.Stories || [])
-const playing = ref(-1), index = ref(0), paused = ref(false), progress = ref(0), muted = ref(true)
+const playing = ref(-1), index = ref(0), paused = ref(false), progress = ref(0), muted = ref(true), startMuted = ref(true)
+// the sound: each story says whether its videos start with their sound (Digipart, story « Son des vidéos activé »). A video is started with the sound wanted; if the browser refuses it
+// (no sound without a gesture of the visitor), the video does not move: after a moment it is started again without the sound
+let soundCheck: ReturnType<typeof setTimeout> | null = null, moving = false
 const story = computed(() => stories.value[playing.value] || null)
 const slide = computed(() => story.value?.Slides[index.value] || null)
 // the arrows only when there is somewhere to go: another slide of this story, or another story
@@ -40,18 +43,24 @@ function onMessage(event: MessageEvent) {
   try { message = typeof message === 'string' ? JSON.parse(message) : message } catch { return }
   const player = root.value?.querySelector('iframe')
   if (!message || !player || event.source !== player.contentWindow) { return }
+  if (message.event === 'ready') {
+    moving = false
+    if (soundCheck) { clearTimeout(soundCheck) }
+    if (!startMuted.value) { soundCheck = setTimeout(() => { if (!moving && !paused.value) { muted.value = true; video('setVolume', 0); video('play') } }, 2500) }
+  }
   if (message.event === 'ready') { for (const name of ['playProgress', 'finish']) { player.contentWindow?.postMessage(JSON.stringify({ method: 'addEventListener', value: name }), 'https://player.vimeo.com') } }
-  if (message.event === 'playProgress') { progress.value = Number(message.data?.percent) || 0 }
+  if (message.event === 'playProgress') { progress.value = Number(message.data?.percent) || 0; if (Number(message.data?.seconds) > 0) { moving = true } }
   if (message.event === 'finish') { show(index.value + 1) }
 }
 function open(which: number) {
   playing.value = which; index.value = 0; paused.value = false; elapsed = 0; last = 0; progress.value = 0
+  muted.value = startMuted.value = stories.value[which]?.Sound === false   // the sound the story asks for
   document.documentElement.style.overflow = 'hidden'
   window.addEventListener('message', onMessage)
   frame = requestAnimationFrame(tick)
   nextTick(() => root.value?.focus())
 }
-function close() { sheet.value = false; muted.value = true; playing.value = -1; cancelAnimationFrame(frame); window.removeEventListener('message', onMessage); document.documentElement.style.overflow = '' }
+function close() { if (soundCheck) { clearTimeout(soundCheck) } sheet.value = false; muted.value = true; playing.value = -1; cancelAnimationFrame(frame); window.removeEventListener('message', onMessage); document.documentElement.style.overflow = '' }
 function toggle() { paused.value = !paused.value; root.value?.querySelector('iframe')?.contentWindow?.postMessage(JSON.stringify({ method: paused.value ? 'pause' : 'play' }), 'https://player.vimeo.com') }
 function key(event: KeyboardEvent) { if (event.key === 'Escape') { if (sheet.value) { closeSheet(); return } close() } if (event.key === 'ArrowRight') { show(index.value + 1) } if (event.key === 'ArrowLeft') { show(index.value - 1) } }
 // the sheet of the product of the slide: opened over the video, which waits
@@ -71,7 +80,7 @@ async function buy() {
   // added: the story closes, so the cart that opens is seen at once (useCart opens it)
   if (await add(product.Id, pickedSize.value || 0, 1)) { close() } else { sheetError.value = w('Le produit n\'a pas pu être ajouté, merci de réessayer.') }
 }
-watch(slide, () => { sheet.value = false })
+watch(slide, () => { sheet.value = false; startMuted.value = muted.value })   // the next video starts as the visitor left the sound
 onBeforeUnmount(close)
 </script>
 
@@ -101,7 +110,7 @@ onBeforeUnmount(close)
       <button v-if="index > 0 || playing > 0" type="button" class="sf-splayer-nav" :aria-label="w('Slide précédente')" @click="show(index - 1)">‹</button><span v-else class="sf-splayer-nav is-off" />
       <div class="sf-splayer-screen">
         <div class="sf-splayer-media" :style="slide.Image ? { backgroundImage: 'url(\'' + slide.Image.replace(/'/g, '%27') + '\')' } : undefined">
-          <iframe v-if="slide.Vimeo" :key="slide.Id" :src="'https://player.vimeo.com/video/' + slide.Vimeo + (String(slide.Vimeo).includes('?') ? '&' : '?') + 'autoplay=1&muted=1&controls=0&playsinline=1&title=0&byline=0&portrait=0&api=1'" allow="autoplay; fullscreen" :title="slide.Title || story.Title" />
+          <iframe v-if="slide.Vimeo" :key="slide.Id" :src="'https://player.vimeo.com/video/' + slide.Vimeo + (String(slide.Vimeo).includes('?') ? '&' : '?') + 'autoplay=1&muted=' + (startMuted ? 1 : 0) + '&controls=0&playsinline=1&title=0&byline=0&portrait=0&api=1'" allow="autoplay; fullscreen" :title="slide.Title || story.Title" />
         </div>
         <button type="button" class="sf-splayer-tap is-prev" tabindex="-1" aria-hidden="true" @click="show(index - 1)" /><button type="button" class="sf-splayer-tap is-next" tabindex="-1" aria-hidden="true" @click="show(index + 1)" />
         <div class="sf-splayer-bars"><span v-for="(s, i) in story.Slides" :key="s.Id"><i :style="{ width: (i < index ? 100 : i > index ? 0 : progress * 100) + '%' }" /></span></div>

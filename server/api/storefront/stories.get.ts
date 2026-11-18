@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const vimeo = (value: string) => { const m = String(value || '').match(/(\d{6,12})(?:\/([0-9a-f]{6,20})|.*[?&]h=([0-9a-f]{6,20}))?/i); return m ? m[1] + ((m[2] || m[3]) ? '?h=' + (m[2] || m[3]).toLowerCase() : '') : '' }
   return {
     Stories: stories.map(story => ({
-      Id: Number(story.IdStory), Title: String(story.Title || ''), Cover: portrait(String(story.Cover || story.Slides?.[0]?.Image || '')),
+      Id: Number(story.IdStory), Title: String(story.Title || ''), Sound: story.Sound !== false, Cover: portrait(String(story.Cover || story.Slides?.[0]?.Image || '')),
       Slides: (story.Slides || []).map((slide: any) => {
         const product = products.get(Number(slide.IdProduct) || 0)
         const link = String(slide.Link || '')
