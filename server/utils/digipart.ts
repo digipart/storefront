@@ -10,14 +10,29 @@ const cache = new Map<string, { at: number, data: unknown }>()
 const run = promisify(execFile)
 // The stamp of the site (api/storefront/version.php): asked every few seconds; when it changes (the shop published or saved something) everything kept in memory is dropped, so a
 // publication shows within seconds while the answers can be kept for minutes.
-let stamp = '', stampAt = 0
-async function watch(read: () => Promise<any>) {
+// The products changed in Digipart (api/storefront/changes.php: a product saved, a stock moved by a sale or a synchronisation) are asked at the same time: what is kept of them is forgotten
+// (server/utils/shop.ts) and the pages are drawn again, so a product changed in Digipart shows on the site within seconds.
+let stamp = '', stampAt = 0, since = 0
+async function watch(ask: (file: string, query: Record<string, string>) => Promise<any>) {
   if (Date.now() - stampAt < 3000) { return }
   stampAt = Date.now()
   try {
-    const now = String((await read())?.Version || '')
+    const now = String((await ask('version.php', {}))?.Version || '')
     if (now && now !== stamp) { if (stamp) { cache.clear(); clearPages() } stamp = now }
   } catch { /* Digipart did not answer: what is in memory is kept its usual time */ }
+  try {
+    const changed = await ask('changes.php', since ? { Since: String(since) } : {})
+    if (changed && Number(changed.Now) > 0) {
+      if (since && changed.Complete === false) { cache.clear(); forgetProducts([], true); clearPages() }
+      else if (since && Array.isArray(changed.Products) && changed.Products.length) {
+        const ids = changed.Products.map(Number).filter((n: number) => n > 0)
+        forgetProducts(ids, false)
+        for (const key of [...cache.keys()]) { if (ids.some((id: number) => key.includes('IdProduct=' + id + '&') || key.endsWith('IdProduct=' + id))) { cache.delete(key) } }
+        clearPages()
+      }
+      since = Number(changed.Now)
+    }
+  } catch { /* a Digipart without changes.php: the short memory stays the rule */ }
 }
 // the same question asked several times at once (a page asks for the site in several places while it is drawn) is asked to Digipart once
 const asking = new Map<string, Promise<unknown>>()
@@ -28,10 +43,10 @@ export function touchStamp(event: H3Event) {
   if (config.fixtures || Date.now() - stampAt < 3000) { return }
   const id = String(config.idMarketPlace)
   if (config.localApp) {
-    watch(async () => JSON.parse((await run(String(config.localPhp || 'php'), [join(process.cwd(), 'dev', 'bridge.php'), String(config.localApp), 'version.php', JSON.stringify({ IdMarketPlace: id })], { timeout: 15000 })).stdout)).catch(() => {})
+    watch(async (file, query) => JSON.parse((await run(String(config.localPhp || 'php'), [join(process.cwd(), 'dev', 'bridge.php'), String(config.localApp), file, JSON.stringify({ IdMarketPlace: id, ...query })], { timeout: 15000 })).stdout)).catch(() => {})
   } else if (config.digipartUrl && config.clientId && config.clientSecret) {
     const base = String(config.digipartUrl).replace(/\/+$/, '')
-    watch(() => $fetch<any>(base + '/api/storefront/version.php', { query: { IdMarketPlace: id }, headers: { 'X-Client-Id': String(config.clientId), 'X-Client-Secret': String(config.clientSecret) }, timeout: 4000, retry: 0 })).catch(() => {})
+    watch((file, query) => $fetch<any>(base + '/api/storefront/' + file, { query: { IdMarketPlace: id, ...query }, headers: { 'X-Client-Id': String(config.clientId), 'X-Client-Secret': String(config.clientSecret) }, timeout: 4000, retry: 0 })).catch(() => {})
   }
 }
 
@@ -54,7 +69,7 @@ export async function digipart<T = any>(event: H3Event, path: string, query: Rec
   }
   const base = String(config.digipartUrl).replace(/\/+$/, ''), keys = { 'X-Client-Id': String(config.clientId), 'X-Client-Secret': String(config.clientSecret) }
   if (path === 'stripe-notify.php' || path === 'paypal-notify.php') { return local ? await bridge(path, full).catch(() => null) as T | null : null }   // a local action, never kept (server/utils/pay.ts)
-  await watch(local ? () => bridge('version.php', { IdMarketPlace: full.IdMarketPlace }) : () => $fetch<any>(base + '/api/storefront/version.php', { query: { IdMarketPlace: full.IdMarketPlace }, headers: keys, timeout: 4000, retry: 0 }))
+  await watch(local ? (file, query) => bridge(file, { IdMarketPlace: full.IdMarketPlace!, ...query }) : (file, query) => $fetch<any>(base + '/api/storefront/' + file, { query: { IdMarketPlace: full.IdMarketPlace, ...query }, headers: keys, timeout: 4000, retry: 0 }))
   const key = path + '?' + new URLSearchParams(full).toString()
   // a preview (it shows drafts) and an answer that depends on the visitor's address are kept two seconds: long enough for the page being drawn, never for the next change
   const life = full.PreviewToken || full.IP ? 2000 : Math.min(Number(config.cacheSeconds), local ? 30 : Infinity) * 1000

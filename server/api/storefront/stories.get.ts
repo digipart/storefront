@@ -19,7 +19,12 @@ export default defineEventHandler(async (event) => {
         return {
           Id: String(slide.Id), Image: String(slide.Image || ''), Vimeo: vimeo(slide.Video), Duration: Math.max(3, Math.min(30, Number(slide.Duration) || 6)), Title: String(slide.Texts?.Title || ''), Text: String(slide.Texts?.Text || ''), Button: String(slide.Texts?.Button || ''),
           Link: /^https:\/\//.test(link) ? link : (/^\/[^/]/.test(link) || link === '/' ? prefix + link : ''),
-          Product: product ? { Id: product.Id, Name: product.Name, Price: product.Price, Currency: product.Currency, Image: product.Images[0] || '', Url: product.Url, Sized: product.Variants.length > 0, Available: product.Available, TaxExcl: product.TaxExcl, PriceState: product.PriceState, PriceOld: 0 } : null,
+          Product: product ? {
+            Id: product.Id, Name: product.Name, Reference: product.Reference, Brand: product.Brand, Price: product.Price, PriceOld: product.PriceOld, Discount: product.Discount, Currency: product.Currency, Image: product.Images[0] || '', Images: product.Images.slice(0, 8), ImageSets: (product.ImageSets || []).slice(0, 8), Url: product.Url,
+            Sized: product.Variants.length > 0, Available: product.Available, TaxExcl: product.TaxExcl, PriceState: product.PriceState,
+            // the sizes, for the sheet that opens over the video (the visitor buys without leaving it)
+            Variants: product.Variants.map(v => ({ Id: v.Id, Label: v.Label, Size: v.Size, Color: v.Color, Available: v.Available })),
+          } : null,
         }
       }).filter((slide: any) => slide.Image || slide.Vimeo),
     })).filter(story => story.Slides.length),

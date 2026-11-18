@@ -28,7 +28,7 @@ $answer = match ($argv[2]) {
     'page.php' => $text('Slug') !== '' ? $api->page($idMarketPlace, $text('Slug'), $language, $preview) : (($pages = $api->pages($idMarketPlace, $language, $preview)) === null ? null : ['Pages' => $pages]),
     'lookbook.php' => $text('Slug') !== '' ? $api->lookbook($idMarketPlace, $text('Slug'), $language, $preview) : (($books = $api->lookbooks($idMarketPlace, $language, $preview)) === null ? null : ['Lookbooks' => $books]),
     'story.php' => ($stories = $api->stories($idMarketPlace, $text('Placement'), (int) $text('IdProduct'), $language, $preview)) === null ? null : ['Stories' => $stories],
-    'products.php' => $text('Mode') === 'paths' ? (($paths = $api->productPaths($idMarketPlace, (int) $text('IdProduct'))) === null ? null : ['Paths' => (object) $paths]) : ($text('Mode') === 'slug' ? (($found = $api->productIdBySlug($idMarketPlace, $text('Slug'))) === null ? null : ['ProductIds' => $found > 0 ? [$found] : []]) : (function () use ($api, $idMarketPlace, $text) { $ids = $api->productIds($idMarketPlace, in_array($text('Mode'), ['category', 'manual'], true) ? $text('Mode') : 'latest', (int) $text('IdCategory'), $text('ProductIds') === '' ? [] : explode(',', $text('ProductIds')), (int) ($text('Limit') ?: 12)); return $ids === null ? null : ['ProductIds' => $ids]; })()),
+    'products.php' => $text('Mode') === 'category_all' ? (($all = $api->categoryProductIds($idMarketPlace, (int) $text('IdCategory'))) === null ? null : ['ProductIds' => $all]) : ($text('Mode') === 'paths' ? (($paths = $api->productPaths($idMarketPlace, (int) $text('IdProduct'))) === null ? null : ['Paths' => (object) $paths]) : ($text('Mode') === 'slug' ? (($found = $api->productIdBySlug($idMarketPlace, $text('Slug'))) === null ? null : ['ProductIds' => $found > 0 ? [$found] : []]) : (function () use ($api, $idMarketPlace, $text) { $ids = $api->productIds($idMarketPlace, in_array($text('Mode'), ['category', 'manual'], true) ? $text('Mode') : 'latest', (int) $text('IdCategory'), $text('ProductIds') === '' ? [] : explode(',', $text('ProductIds')), (int) ($text('Limit') ?: 12)); return $ids === null ? null : ['ProductIds' => $ids]; })())),
     'shipping.php' => $api->freeShipping($idMarketPlace, $text('CountryIsoCode')),
     'search.php' => $api->search($idMarketPlace, $text('Term'), $language, (int) ($text('Limit') ?: 24), (int) $text('Offset')),
     'version.php' => $api->version($idMarketPlace),
@@ -40,6 +40,9 @@ $answer = match ($argv[2]) {
     'product-extra.php' => $api->productExtras($idMarketPlace, (int) $text('IdProduct'), (float) $text('Amount'), $language),
     'paypal-notify.php' => (require __DIR__ . '/paypal-notify.php')($pdo, $text('IdCapture'), (int) $text('IdCart'), (string) ($rootUrl ?? '')),   // local development only: see that file
     'stripe-notify.php' => (require __DIR__ . '/stripe-notify.php')($pdo, $text('ClientSecret'), (string) ($rootUrl ?? '')),   // local development only: see that file
+    'changes.php' => (float) $text('Since') > 0 ? \Digipart\Storefront\StorefrontChanges::since((float) $text('Since')) : ['Now' => microtime(true), 'Products' => [], 'Complete' => true],
+    'category-links.php' => $api->categoryLinks($idMarketPlace, (int) $text('IdCategory'), $language),
+    'attribute-looks.php' => $api->attributeLooks($idMarketPlace, array_map('intval', explode(',', $text('Ids')))),
     'sitemap.php' => $api->sitemap($idMarketPlace, in_array($text('Type'), ['product', 'category', 'brand', 'page'], true) ? $text('Type') : null, $language, max(1, (int) $text('Page'))),
     default => null,
 };

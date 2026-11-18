@@ -55,19 +55,22 @@ onBeforeUnmount(() => { document.documentElement.style.overflow = '' })
 </script>
 
 <template>
-  <div ref="root" class="sf-zoom" role="dialog" aria-modal="true" :aria-label="name" tabindex="-1" @keydown="key">
-    <button type="button" class="sf-zoom-close" :aria-label="w('Fermer')" @click="emit('close')">✕</button>
-    <div v-if="images.length > 1" class="sf-zoom-thumbs">
-      <button v-for="(src, i) in images" :key="src" type="button" :class="{ 'is-on': i === index }" :aria-label="w('Photo {a} sur {b}', { a: i + 1, b: images.length })" :aria-current="i === index ? 'true' : undefined" @click="go(i)"><img :src="src" alt="" loading="lazy"></button>
-    </div>
-    <div ref="track" class="sf-zoom-track" :class="{ 'is-zoomed': zoomed }" @scroll.passive="onScroll" @pointerdown="down" @pointermove="move" @pointerup="up" @pointercancel="up" @wheel="wheel">
-      <div v-for="(src, i) in images" :key="src" class="sf-zoom-slide">
-        <img :src="src" :alt="i === 0 ? name : ''" draggable="false" :style="i === index ? { transform: 'translate(' + view.x + 'px,' + view.y + 'px) scale(' + view.scale + ')' } : undefined" @dblclick="zoomTo(zoomed ? 1 : 2.5)">
+  <!-- drawn at the level of the page (not inside the column that opened it): always above the sticky header -->
+  <Teleport to="body">
+    <div ref="root" class="sf-zoom" role="dialog" aria-modal="true" :aria-label="name" tabindex="-1" @keydown="key">
+      <button type="button" class="sf-zoom-close" :aria-label="w('Fermer')" @click="emit('close')">✕</button>
+      <div v-if="images.length > 1" class="sf-zoom-thumbs">
+        <button v-for="(src, i) in images" :key="src" type="button" :class="{ 'is-on': i === index }" :aria-label="w('Photo {a} sur {b}', { a: i + 1, b: images.length })" :aria-current="i === index ? 'true' : undefined" @click="go(i)"><img :src="src" alt="" loading="lazy"></button>
       </div>
+      <div ref="track" class="sf-zoom-track" :class="{ 'is-zoomed': zoomed }" @scroll.passive="onScroll" @pointerdown="down" @pointermove="move" @pointerup="up" @pointercancel="up" @wheel="wheel">
+        <div v-for="(src, i) in images" :key="src" class="sf-zoom-slide">
+          <img :src="src" :alt="i === 0 ? name : ''" draggable="false" :style="i === index ? { transform: 'translate(' + view.x + 'px,' + view.y + 'px) scale(' + view.scale + ')' } : undefined" @dblclick="zoomTo(zoomed ? 1 : 2.5)">
+        </div>
+      </div>
+      <template v-if="images.length > 1 && !zoomed">
+        <button v-if="index > 0" type="button" class="sf-zoom-nav is-prev" :aria-label="w('Photo précédente')" @click="go(index - 1)">‹</button>
+        <button v-if="index < images.length - 1" type="button" class="sf-zoom-nav is-next" :aria-label="w('Photo suivante')" @click="go(index + 1)">›</button>
+      </template>
     </div>
-    <template v-if="images.length > 1 && !zoomed">
-      <button v-if="index > 0" type="button" class="sf-zoom-nav is-prev" :aria-label="w('Photo précédente')" @click="go(index - 1)">‹</button>
-      <button v-if="index < images.length - 1" type="button" class="sf-zoom-nav is-next" :aria-label="w('Photo suivante')" @click="go(index + 1)">›</button>
-    </template>
-  </div>
+  </Teleport>
 </template>

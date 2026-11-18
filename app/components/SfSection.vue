@@ -296,7 +296,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
           <LazySfStores v-else-if="type === 'store_locator'" :settings="s" />
           <SfProducts v-else-if="type === 'products'" :section="section" />
           <LazySfLookbookFeature v-else-if="type === 'lookbook'" :id="Number(s.IdLookbook) || 0" :button="t.ButtonText" :height="s.Height" />
-          <LazySfStories v-else-if="type === 'stories'" :place="catalog ? 'catalog' : product ? 'product' : 'home'" :product="product?.Id" :size="s.Size" :gap="s.Gap" />
+          <LazySfStories v-else-if="type === 'stories'" :place="catalog ? 'catalog' : product ? 'product' : 'home'" :product="product?.Id" :size="s.Size" :gap="s.Gap" :look="s.Look" :card-width="s.CardWidth" :previews="s.Previews !== false" :card-product="s.CardProduct !== false" />
           <LazySfReviews v-else-if="type === 'reviews'" :settings="s" />
           <SfSocial v-else-if="type === 'social'" :display="s.Display" :shape="s.Shape" :size="s.Size" :gap="s.Gap" :style="{ justifyContent: justify }" />
         </SfBlocks>

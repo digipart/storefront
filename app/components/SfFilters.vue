@@ -47,42 +47,45 @@ onBeforeUnmount(() => { if (!props.inline) { document.documentElement.style.over
 </script>
 
 <template>
-  <div :class="inline ? 'sf-filters-col' : 'sf-drawer'" @keydown.esc="!inline && emit('close')">
-    <div v-if="!inline" class="sf-drawer-veil" @click="emit('close')" />
-    <component :is="inline ? 'div' : 'aside'" ref="panel" class="sf-filters" :class="inline ? 'is-inline' : 'sf-drawer-panel'" v-bind="inline ? {} : { role: 'dialog', 'aria-modal': 'true', 'aria-label': w('Filtres'), tabindex: '-1' }">
-      <header v-if="!inline" class="sf-drawer-head"><h2>{{ w('Filtres') }}</h2><button type="button" :aria-label="w('Fermer')" @click="emit('close')">✕</button></header>
-      <form :class="{ 'sf-drawer-body': !inline }" @submit.prevent="apply">
-        <section v-for="group in filters.Groups" :key="group.Name" class="sf-fgroup">
-          <button type="button" class="sf-fhead" :aria-expanded="opened.has('g:' + group.Name) ? 'true' : 'false'" @click="toggle('g:' + group.Name)">{{ group.Name }}<span class="sf-fchev" aria-hidden="true" /></button>
-          <div v-show="opened.has('g:' + group.Name)" class="sf-fvalues" :class="swatched(group) ? 'is-colors is-' + colorMode + (s.FilterSwatch === 'square' ? ' is-square' : '') : 'is-' + valueMode">
-            <label v-for="value in group.Values" :key="value.Id" :class="{ 'is-on': chosen.includes(value.Id) }" :title="swatched(group) && colorMode === 'dots' ? value.Name : undefined">
-              <input v-model="chosen" type="checkbox" :value="value.Id" @change="changed">
-              <span v-if="swatched(group)" class="sf-swatch" :class="{ 'is-none': !swatch(value) }" :style="swatch(value) || undefined" aria-hidden="true" />
-              <span :class="{ 'sf-sr': swatched(group) && colorMode === 'dots' }">{{ value.Name }}</span>
-            </label>
-          </div>
-        </section>
-        <section v-if="hasPrice" class="sf-fgroup">
-          <button type="button" class="sf-fhead" :aria-expanded="opened.has('price') ? 'true' : 'false'" @click="toggle('price')">{{ w('Prix') }}<span class="sf-fchev" aria-hidden="true" /></button>
-          <div v-show="opened.has('price')" class="sf-fprice">
-            <template v-if="priceMode !== 'inputs'">
-              <div class="sf-range-values"><span>{{ money(lo) }}</span><span>{{ money(hi) }}</span></div>
-              <div class="sf-range" :style="{ '--a': pct(lo) + '%', '--b': pct(hi) + '%' }">
-                <input v-model.number="lo" type="range" :min="floor" :max="ceil" step="1" :aria-label="w('Prix minimum')" :aria-valuetext="money(lo)" @input="slideLo" @change="changed">
-                <input v-model.number="hi" type="range" :min="floor" :max="ceil" step="1" :aria-label="w('Prix maximum')" :aria-valuetext="money(hi)" @input="slideHi" @change="changed">
-              </div>
-            </template>
-            <div v-if="priceMode !== 'slider'" class="sf-filters-price">
-              <input v-model.number="lo" type="number" inputmode="numeric" :min="floor" :max="ceil" :aria-label="w('Prix minimum')" @change="typed">
-              <span aria-hidden="true">–</span>
-              <input v-model.number="hi" type="number" inputmode="numeric" :min="floor" :max="ceil" :aria-label="w('Prix maximum')" @change="typed">
-              <span class="sf-muted">{{ currency }}</span>
+  <!-- drawn at the level of the page (not inside the column that opened it): always above the sticky header -->
+  <Teleport to="body" :disabled="!!inline">
+    <div :class="inline ? 'sf-filters-col' : 'sf-drawer'" @keydown.esc="!inline && emit('close')">
+      <div v-if="!inline" class="sf-drawer-veil" @click="emit('close')" />
+      <component :is="inline ? 'div' : 'aside'" ref="panel" class="sf-filters" :class="inline ? 'is-inline' : 'sf-drawer-panel'" v-bind="inline ? {} : { role: 'dialog', 'aria-modal': 'true', 'aria-label': w('Filtres'), tabindex: '-1' }">
+        <header v-if="!inline" class="sf-drawer-head"><h2>{{ w('Filtres') }}</h2><button type="button" :aria-label="w('Fermer')" @click="emit('close')">✕</button></header>
+        <form :class="{ 'sf-drawer-body': !inline }" @submit.prevent="apply">
+          <section v-for="group in filters.Groups" :key="group.Name" class="sf-fgroup">
+            <button type="button" class="sf-fhead" :aria-expanded="opened.has('g:' + group.Name) ? 'true' : 'false'" @click="toggle('g:' + group.Name)">{{ group.Name }}<span class="sf-fchev" aria-hidden="true" /></button>
+            <div v-show="opened.has('g:' + group.Name)" class="sf-fvalues" :class="swatched(group) ? 'is-colors is-' + colorMode + (s.FilterSwatch === 'square' ? ' is-square' : '') : 'is-' + valueMode">
+              <label v-for="value in group.Values" :key="value.Id" :class="{ 'is-on': chosen.includes(value.Id) }" :title="swatched(group) && colorMode === 'dots' ? value.Name : undefined">
+                <input v-model="chosen" type="checkbox" :value="value.Id" @change="changed">
+                <span v-if="swatched(group)" class="sf-swatch" :class="{ 'is-none': !swatch(value) }" :style="swatch(value) || undefined" aria-hidden="true" />
+                <span :class="{ 'sf-sr': swatched(group) && colorMode === 'dots' }">{{ value.Name }}</span>
+              </label>
             </div>
-          </div>
-        </section>
-        <button v-if="inline && anyChosen" type="button" class="sf-filters-clear" @click="clear">{{ w('Tout effacer') }}</button>
-      </form>
-      <footer v-if="!inline" class="sf-drawer-foot"><button type="button" class="sf-btn" @click="apply">{{ w('Voir les produits') }}</button><button type="button" class="sf-btn is-outline" @click="clear">{{ w('Tout effacer') }}</button></footer>
-    </component>
-  </div>
+          </section>
+          <section v-if="hasPrice" class="sf-fgroup">
+            <button type="button" class="sf-fhead" :aria-expanded="opened.has('price') ? 'true' : 'false'" @click="toggle('price')">{{ w('Prix') }}<span class="sf-fchev" aria-hidden="true" /></button>
+            <div v-show="opened.has('price')" class="sf-fprice">
+              <template v-if="priceMode !== 'inputs'">
+                <div class="sf-range-values"><span>{{ money(lo) }}</span><span>{{ money(hi) }}</span></div>
+                <div class="sf-range" :style="{ '--a': pct(lo) + '%', '--b': pct(hi) + '%' }">
+                  <input v-model.number="lo" type="range" :min="floor" :max="ceil" step="1" :aria-label="w('Prix minimum')" :aria-valuetext="money(lo)" @input="slideLo" @change="changed">
+                  <input v-model.number="hi" type="range" :min="floor" :max="ceil" step="1" :aria-label="w('Prix maximum')" :aria-valuetext="money(hi)" @input="slideHi" @change="changed">
+                </div>
+              </template>
+              <div v-if="priceMode !== 'slider'" class="sf-filters-price">
+                <input v-model.number="lo" type="number" inputmode="numeric" :min="floor" :max="ceil" :aria-label="w('Prix minimum')" @change="typed">
+                <span aria-hidden="true">–</span>
+                <input v-model.number="hi" type="number" inputmode="numeric" :min="floor" :max="ceil" :aria-label="w('Prix maximum')" @change="typed">
+                <span class="sf-muted">{{ currency }}</span>
+              </div>
+            </div>
+          </section>
+          <button v-if="inline && anyChosen" type="button" class="sf-filters-clear" @click="clear">{{ w('Tout effacer') }}</button>
+        </form>
+        <footer v-if="!inline" class="sf-drawer-foot"><button type="button" class="sf-btn" @click="apply">{{ w('Voir les produits') }}</button><button type="button" class="sf-btn is-outline" @click="clear">{{ w('Tout effacer') }}</button></footer>
+      </component>
+    </div>
+  </Teleport>
 </template>

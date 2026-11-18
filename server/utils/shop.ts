@@ -4,7 +4,15 @@ import type { H3Event } from 'h3'
 // An answer that cannot be read is `null`: a section is then drawn without its products, never an error page.
 const cache = new Map<string, { at: number, data: unknown }>()
 
-export async function shopApi<T = any>(event: H3Event, path: string, query: Record<string, string | number> = {}): Promise<T | null> {
+/** Forgets what was kept of these products (their answers, and every list of a category: a listing carries prices and stock); `all`: everything. */
+export function forgetProducts(ids: number[], all: boolean) {
+  if (all) { cache.clear(); return }
+  for (const key of [...cache.keys()]) {
+    if (key.startsWith('category/') || ids.some(id => key.startsWith('product/' + id + '?') || key.includes('IdProduct=' + id + '&') || key.endsWith('IdProduct=' + id))) { cache.delete(key) }
+  }
+}
+
+export async function shopApi<T = any>(event: H3Event, path: string, query: Record<string, string | number> = {}, keepSeconds?: number): Promise<T | null> {   // keepSeconds: a shorter memory (the live stock)
   const config = useRuntimeConfig(event)
   const base = String(config.digipartUrl || config.localUrl).replace(/\/+$/, '')
   if (!base) { return null }
@@ -12,7 +20,7 @@ export async function shopApi<T = any>(event: H3Event, path: string, query: Reco
   for (const [name, value] of Object.entries(query)) { if (value !== '' && value !== undefined && value !== null) { full[name] = String(value) } }
   const key = path + '?' + new URLSearchParams(full).toString()
   const hit = cache.get(key)
-  if (hit && Date.now() - hit.at < Number(config.cacheSeconds) * 1000) { return hit.data as T }
+  if (hit && Date.now() - hit.at < (keepSeconds ?? Number(config.cacheSeconds)) * 1000) { return hit.data as T }
   try {
     const raw = await $fetch<string>(base + '/api/' + path, { query: full, responseType: 'text', retry: 0, timeout: 10000 })
     const start = raw.search(/[[{]/)   // a development server may print a notice before its JSON

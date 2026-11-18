@@ -26,6 +26,8 @@ const inStock = (v: any) => !soldOut.value && v.Available !== false
 const alertOn = computed(() => theme.value.StockAlert !== false)
 const alertFor = ref<number | null>(null)
 const pickSize = (v: any) => { if (inStock(v)) { quickAdd(v.Id) } else if (alertOn.value) { alertFor.value = v.Id; open.value = false } }
+// the sizes shown under the pointer say the stock of now, not the one of when the page was drawn
+const live = () => { if (buyable.value) { refreshStock([props.product]) } }
 const buyable = computed(() => props.quick !== false && (props.product.PriceState || 'ok') === 'ok' && !props.product.TaxExcl)
 const open = ref(false), adding = ref(0)
 async function quickAdd(variant: number) { if (busy.value) { return } adding.value = variant || -1; try { await add(props.product.Id, variant, 1) } finally { adding.value = 0; open.value = false } }
@@ -44,7 +46,7 @@ const shown = computed(() => (mode.value === 'row' ? props.product.Images.slice(
 
 <template>
   <article class="sf-card">
-    <div class="sf-card-top" :class="{ 'is-open': open }">
+    <div class="sf-card-top" :class="{ 'is-open': open }" @mouseenter="live" @focusin="live">
     <a :href="product.LookUrl || product.Url" class="sf-card-media" :class="'is-' + mode" :aria-label="product.Name">
       <span v-if="mode === 'carousel' && shown.length" ref="track" class="sf-card-track" @scroll.passive="onTrack">
         <img v-for="(src, index) in shown" :key="src" :src="src" :srcset="product.ImageSets?.[props.product.Images.indexOf(src)] || undefined" :sizes="perRow ? `(max-width: 767px) ${Math.round(100 / perRow.mob)}vw, ${Math.round(100 / perRow.desk)}vw` : '(max-width: 767px) 50vw, (max-width: 1200px) 33vw, 25vw'" :alt="index === 0 ? product.Name : ''" :loading="eager && index === 0 ? 'eager' : 'lazy'" decoding="async" @error="broken = [...broken, src]">
@@ -64,7 +66,7 @@ const shown = computed(() => (mode.value === 'row' ? props.product.Images.slice(
       </template>
       <button v-if="heart !== false" type="button" class="sf-card-heart" :class="{ 'is-on': isFavorite(product.Id) }" :aria-pressed="isFavorite(product.Id)" :aria-label="w(isFavorite(product.Id) ? 'Retirer de mes favoris' : 'Ajouter à mes favoris')" @click="toggleFavorite(product.Id)">{{ isFavorite(product.Id) ? '♥' : '♡' }}</button>
       <template v-if="buyable">
-        <button type="button" class="sf-card-plus" :aria-expanded="open" :aria-label="w('Ajouter au panier')" @click="open = !open">+</button>
+        <button type="button" class="sf-card-plus" :aria-expanded="open" :aria-label="w('Ajouter au panier')" @click="live(); open = !open">+</button>
         <div class="sf-card-quick" role="group" :aria-label="w(sizes.length ? 'Choisir une taille' : 'Ajouter au panier')">
           <span v-if="soldOut" class="sf-card-soldout">{{ w('Épuisé') }}</span>
           <template v-if="sizes.length"><button v-for="v in sizes" :key="v.Id" type="button" :disabled="(!inStock(v) && !alertOn) || !!adding" :class="{ 'is-busy': adding === v.Id, 'is-out': !inStock(v), 'is-alert': !inStock(v) && alertOn }" :title="inStock(v) ? w('Ajouter au panier') : alertOn ? w('M\'avertir du retour en stock') : w('Épuisé')" @click="pickSize(v)">{{ labelOf(v) }}<span v-if="!inStock(v)" class="sf-sr"> ({{ w('Épuisé') }})</span></button></template>

@@ -11,12 +11,15 @@ const join = () => { emit('close'); nextTick(() => show('account')) }
 </script>
 
 <template>
-  <div class="sf-drawer" @keydown.esc="emit('close')">
-    <div class="sf-drawer-veil" @click="emit('close')" />
-    <aside ref="panel" class="sf-drawer-panel" role="dialog" aria-modal="true" :aria-label="w('Nouveau client professionnel ?')" tabindex="-1">
-      <header class="sf-drawer-head"><h2>{{ w('Nouveau client professionnel ?') }}</h2><button type="button" :aria-label="w('Fermer')" @click="emit('close')">✕</button></header>
-      <ol class="sf-drawer-body sf-prosteps"><li v-for="(step, index) in steps" :key="step[0]"><span aria-hidden="true">{{ index + 1 }}</span><div><strong>{{ w(step[0]) }}</strong><p>{{ w(step[1]) }}</p></div></li></ol>
-      <footer class="sf-drawer-foot"><button type="button" class="sf-btn" @click="join">{{ w('Créer mon compte professionnel') }}</button></footer>
-    </aside>
-  </div>
+  <!-- drawn at the level of the page (not inside the column that opened it): always above the sticky header -->
+  <Teleport to="body">
+    <div class="sf-drawer" @keydown.esc="emit('close')">
+      <div class="sf-drawer-veil" @click="emit('close')" />
+      <aside ref="panel" class="sf-drawer-panel" role="dialog" aria-modal="true" :aria-label="w('Nouveau client professionnel ?')" tabindex="-1">
+        <header class="sf-drawer-head"><h2>{{ w('Nouveau client professionnel ?') }}</h2><button type="button" :aria-label="w('Fermer')" @click="emit('close')">✕</button></header>
+        <ol class="sf-drawer-body sf-prosteps"><li v-for="(step, index) in steps" :key="step[0]"><span aria-hidden="true">{{ index + 1 }}</span><div><strong>{{ w(step[0]) }}</strong><p>{{ w(step[1]) }}</p></div></li></ol>
+        <footer class="sf-drawer-foot"><button type="button" class="sf-btn" @click="join">{{ w('Créer mon compte professionnel') }}</button></footer>
+      </aside>
+    </div>
+  </Teleport>
 </template>

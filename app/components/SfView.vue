@@ -17,6 +17,8 @@ const view = computed(() => loaded.value || missing.value)
 if (error.value && !missing.value) { throw createError({ statusCode: error.value.statusCode || 500, statusMessage: error.value.statusCode === 404 ? 'Page introuvable' : 'Le site est momentanément indisponible', fatal: true }) }
 provide('sfPage', computed(() => view.value?.Page || null))
 provide('sfProduct', computed(() => view.value?.Product || null))
+// the page may have been drawn a few minutes ago: the stock of the product is read again as it opens (a size sold out since is shown sold out)
+onMounted(() => { if (view.value?.Kind === 'product' && view.value.Product) { refreshStock([view.value.Product]) } })
 provide('sfSearch', computed(() => (view.value?.Kind === 'search' ? view.value.Search : null)))
 provide('sfCatalog', computed(() => (view.value?.Kind === 'catalog' ? { Category: view.value.Category, Listing: view.value.Listing } : null)))
 const w = useWords()
