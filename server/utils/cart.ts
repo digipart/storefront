@@ -33,14 +33,14 @@ function keep(event: H3Event, id: number) {
 }
 
 /** One call to a cart API of Digipart (form fields, as these APIs read them). The answer is its JSON, `null` when Digipart did not answer. */
-export async function cartCall(event: H3Event, method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, fields: Record<string, string | number>): Promise<any> {
+export async function cartCall(event: H3Event, method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, fields: Record<string, string | number>, extraHeaders: Record<string, string> = {}): Promise<any> {
   const root = base(event)
   if (!root) { return null }
   const full: Record<string, string> = { IdMarketPlace: String(useRuntimeConfig(event).idMarketPlace) }
   for (const [name, value] of Object.entries(fields)) { if (value !== '' && value !== undefined && value !== null) { full[name] = String(value) } }
   // the customer of this visit (server/utils/session.ts): Digipart then knows whose cart, addresses and prices these are
   const token = sessionToken(event)
-  const headers: Record<string, string> = token ? { Authorization: 'Bearer ' + token } : {}
+  const headers: Record<string, string> = { ...extraHeaders, ...(token ? { Authorization: 'Bearer ' + token } : {}) }
   if (method !== 'GET') { headers['Content-Type'] = 'application/x-www-form-urlencoded'; forget(event) }   // this visitor changes something: what was kept for them is dropped (server/utils/visitor.ts)
   try {
     const raw = await $fetch<string>(root + '/api/' + path, {

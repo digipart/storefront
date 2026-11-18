@@ -50,7 +50,9 @@ async function buy() {
   if (needsChoice.value) { ask.value = true; return }
   await add(product.value.Id, chosen.value ? chosen.value.Id : 0, 1)
 }
-const guideOpen = ref(false), reserveOpen = ref(false), reviewOpen = ref(false)
+const guideOpen = ref(false), storesOpen = ref(false), reviewOpen = ref(false), alertOpen = ref(false)
+// « M'avertir du retour en stock » when nothing is left (the sold-out sizes it can be asked for)
+const alertSizes = computed(() => (product.value?.Variants || []).filter((v: any) => v.Label && !v.Available))
 const w = useWords()
 // the points a purchase earns and the reviews of the product: asked once for the page, only when one of these blocks is drawn
 const extra = ref<any>(null)
@@ -113,7 +115,9 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
     </template>
     <div v-else-if="block.Type === 'p_buy'" class="sf-buy" :class="{ 'is-full': s.Full }">
       <button v-if="locked" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="product.PriceState === 'pending'" @click="showPanel('account')">{{ w(product.PriceState === 'pending' ? 'Compte en cours de validation' : product.PriceState === 'business' ? 'Prix réservés aux professionnels' : 'Se connecter pour commander') }}</button>
+      <button v-else-if="!product.Available && alertSizes.length && site?.Theme?.Settings?.StockAlert !== false" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" @click="alertOpen = true">{{ w('M\'avertir du retour en stock') }}</button>
       <button v-else type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="!product.Available || cartBusy" @click="buy">{{ w(product.Available ? (cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) : 'Épuisé') }}</button>
+      <LazySfStockAlert v-if="alertOpen" :product="product" @close="alertOpen = false" />
       <button type="button" class="sf-heart" :class="{ 'is-on': isFavorite(product.Id) }" :aria-pressed="isFavorite(product.Id)" :aria-label="w(isFavorite(product.Id) ? 'Retirer de mes favoris' : 'Ajouter à mes favoris')" @click="toggleFavorite(product.Id)">{{ isFavorite(product.Id) ? '♥' : '♡' }}</button>
       <button v-if="product.TaxExcl && locked" type="button" class="sf-prohelp" aria-haspopup="dialog" @click="proOpen = true"><strong>{{ w('Nouveau client professionnel ?') }}</strong><span>{{ w('Découvrez les étapes pour commander') }}</span></button>
       <LazySfLot v-if="lotOpen" :product="product" @close="lotOpen = false" />
@@ -127,12 +131,11 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
       <!-- eslint-disable-next-line vue/no-v-html : the description of a product is written by the shop in Digipart and comes from its product API -->
       <div class="sf-rte" v-html="product.Description" />
     </details>
+    <!-- the shops: where the size is in stock, and (when the shop allows it) a reservation, in a side panel step by step (SfStoreStock.vue) -->
     <div v-else-if="block.Type === 'p_stock'" class="sf-stock-wrap">
-      <p class="sf-stock">{{ w(product.Available ? 'En stock' : 'Épuisé') }}</p>
-      <template v-if="extra?.Reservation?.Stores?.length">
-        <button type="button" class="sf-link sf-reserve-open" aria-haspopup="dialog" @click="reserveOpen = true">{{ w('Réserver en boutique') }}</button>
-        <LazySfReserve v-if="reserveOpen" :product="product" :stores="extra.Reservation.Stores" :variant="picked" @close="reserveOpen = false" />
-      </template>
+      <p v-if="s.ShowOnline !== false" class="sf-stock"><i :class="product.Available ? 'is-in' : 'is-out'" aria-hidden="true" />{{ w(product.Available ? 'En stock en ligne' : 'Épuisé en ligne') }}</p>
+      <button v-if="extra?.Reservation?.Stores?.length" type="button" class="sf-btn is-outline sf-stock-btn" aria-haspopup="dialog" @click="storesOpen = true">{{ t.Text || w(s.Reserve !== false ? 'Disponibilité et réservation en boutique' : 'Vérifier la disponibilité en boutique') }}</button>
+      <LazySfStoreStock v-if="storesOpen" :product="product" :variant="picked" :reserve="s.Reserve !== false" @close="storesOpen = false" />
     </div>
     <LazySfStories v-else-if="block.Type === 'p_stories'" place="product" :product="product.Id" :size="s.Size || 64" :gap="14" />
     <p v-else-if="block.Type === 'p_points' && earn > 0" class="sf-points">{{ w('Gagnez') }} <strong>{{ earn }}</strong> {{ w(earn > 1 ? 'points de fidélité avec cet achat' : 'point de fidélité avec cet achat') }}</p>
@@ -141,7 +144,7 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
       <p v-if="!(extra?.Reviews?.Total > 0)" class="sf-muted">{{ w('Aucun avis pour le moment.') }}</p>
       <div class="sf-review-give">
         <LazySfReviewForm v-if="reviewOpen" :product="product" @close="reviewOpen = false" />
-        <button v-else type="button" class="sf-link" @click="customer && !customer.Guest ? (reviewOpen = true) : showPanel('account')">{{ w('Donner mon avis') }}</button>
+        <button v-else type="button" class="sf-btn is-outline sf-review-btn" @click="customer && !customer.Guest ? (reviewOpen = true) : showPanel('account')"><span aria-hidden="true">★</span> {{ w('Donner mon avis') }}</button>
       </div>
       <ul v-if="extra?.Reviews?.Items?.length" class="sf-review-list">
         <li v-for="(r, i) in extra.Reviews.Items" :key="i">

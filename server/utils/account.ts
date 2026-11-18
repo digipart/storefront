@@ -68,7 +68,7 @@ async function readProfile(event: H3Event): Promise<any | null> {
   if (!found || !found.Id) { if (answer) { setSession(event, '') } return null }   // a Digipart that did not answer drops nothing
   if (Number(found.IdFavorite) > 0 && !favId(event)) { keepFav(event, Number(found.IdFavorite)) }
   return {
-    Email: String(found.Email || ''), Firstname: String(found.Firstname || ''), Lastname: String(found.Lastname || ''), Birthday: String(found.Birthday || ''), Phone: String(found.Phone || ''),
+    Id: Number(found.Id) || 0, Email: String(found.Email || ''), Firstname: String(found.Firstname || ''), Lastname: String(found.Lastname || ''), Birthday: String(found.Birthday || ''), Phone: String(found.Phone || ''),
     LanguageIsoCode: String(found.LanguageIsoCode || ''), CurrencyIsoCode: String(found.CurrencyIsoCode || 'EUR'), Guest: yes(found.Guest) && !loggedIn(event), Newsletter: yes(found.NewsletterSubscribe), Loyalty: yes(found.LoyaltySubscribe), Business: found.Type === 'business', Active: yes(found.Active), Company: String(found.Company?.CompanyName || found.Company?.Name || (typeof found.Company === 'string' ? found.Company : '') || ''),
   }
 }

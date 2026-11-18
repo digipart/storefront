@@ -19,7 +19,14 @@ const sizes = computed(() => (props.product.Variants || []).filter((v: any) => v
 // one colour only: the choices say the size (« 2(42/44) »), not « COLOUR / 2(42/44) »; several colours keep the full name, which tells them apart
 const oneColor = computed(() => sizes.value.length > 0 && new Set(sizes.value.map((v: any) => v.Color || '')).size === 1 && sizes.value.every((v: any) => v.Size && String(v.Label).split(' / ').length <= 2))
 const labelOf = (v: any) => (oneColor.value ? v.Size : v.Label)
-const buyable = computed(() => props.quick !== false && (props.product.PriceState || 'ok') === 'ok' && !props.product.TaxExcl && props.product.Available !== false)
+// the sizes are shown under the pointer even when none is left: each one says it is sold out (struck through, not clickable), as on the product page
+const soldOut = computed(() => props.product.Available === false)
+const inStock = (v: any) => !soldOut.value && v.Available !== false
+// a sold-out size opens « M'avertir du retour en stock » (Thème > Produits et images: « Alerte de retour en stock »)
+const alertOn = computed(() => theme.value.StockAlert !== false)
+const alertFor = ref<number | null>(null)
+const pickSize = (v: any) => { if (inStock(v)) { quickAdd(v.Id) } else if (alertOn.value) { alertFor.value = v.Id; open.value = false } }
+const buyable = computed(() => props.quick !== false && (props.product.PriceState || 'ok') === 'ok' && !props.product.TaxExcl)
 const open = ref(false), adding = ref(0)
 async function quickAdd(variant: number) { if (busy.value) { return } adding.value = variant || -1; try { await add(props.product.Id, variant, 1) } finally { adding.value = 0; open.value = false } }
 // the carousel of the photos: a strip that scrolls (swiped on a phone, the trackpad on a computer) with arrows and dots, as the theme sets them (Thème > Produits et images); a photo that cannot
@@ -59,11 +66,13 @@ const shown = computed(() => (mode.value === 'row' ? props.product.Images.slice(
       <template v-if="buyable">
         <button type="button" class="sf-card-plus" :aria-expanded="open" :aria-label="w('Ajouter au panier')" @click="open = !open">+</button>
         <div class="sf-card-quick" role="group" :aria-label="w(sizes.length ? 'Choisir une taille' : 'Ajouter au panier')">
-          <template v-if="sizes.length"><button v-for="v in sizes" :key="v.Id" type="button" :disabled="!v.Available || !!adding" :class="{ 'is-busy': adding === v.Id }" :title="v.Available ? w('Ajouter au panier') : w('Épuisé')" @click="quickAdd(v.Id)">{{ labelOf(v) }}</button></template>
-          <button v-else type="button" class="is-wide" :disabled="!!adding" @click="quickAdd(0)">{{ w(adding ? 'Ajout…' : 'Ajouter au panier') }}</button>
+          <span v-if="soldOut" class="sf-card-soldout">{{ w('Épuisé') }}</span>
+          <template v-if="sizes.length"><button v-for="v in sizes" :key="v.Id" type="button" :disabled="(!inStock(v) && !alertOn) || !!adding" :class="{ 'is-busy': adding === v.Id, 'is-out': !inStock(v), 'is-alert': !inStock(v) && alertOn }" :title="inStock(v) ? w('Ajouter au panier') : alertOn ? w('M\'avertir du retour en stock') : w('Épuisé')" @click="pickSize(v)">{{ labelOf(v) }}<span v-if="!inStock(v)" class="sf-sr"> ({{ w('Épuisé') }})</span></button></template>
+          <button v-else-if="!soldOut" type="button" class="is-wide" :disabled="!!adding" @click="quickAdd(0)">{{ w(adding ? 'Ajout…' : 'Ajouter au panier') }}</button>
         </div>
       </template>
     </div>
+    <LazySfStockAlert v-if="alertFor !== null" :product="product" :variant="alertFor" @close="alertFor = null" />
     <a :href="product.Url" class="sf-card-name">{{ product.Name }}</a>
     <div class="sf-card-price"><SfPrice :product="product" /></div>
   </article>
