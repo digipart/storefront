@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Fragment } from 'vue'
 // A menu of Digipart: as the navigation of the header (`nav`: its tabs, and under each the columns of the large menu, shown on hover or with the keyboard) or as the links of a footer column (`list`).
 const props = defineProps<{ id?: number, mode: 'nav' | 'list', split?: number }>()
 const site = inject<Ref<any>>('sfSite')!
@@ -11,7 +10,7 @@ const tabs = computed(() => menus.value?.[props.id || 0]?.Tabs || [])
 const onlyPictures = (column: any) => column.Groups.length > 0 && column.Groups.every((g: any) => g.Links.length > 0 && g.Links.every((l: any) => l.Image))
 const firstPictures = (tab: any) => tab.Columns.findIndex(onlyPictures)
 // a list longer than the header's limit (« Couper les listes au-delà de ») runs over several columns, filled top to bottom
-const cut = (links: any[]) => { const limit = Math.max(0, Math.floor(Number(props.split) || 0)); return limit > 0 && links.length > limit ? Math.ceil(links.length / Math.ceil(links.length / limit)) : 0 }
+const cut = (links: any[]) => { if (links.some((l: any) => l.Image)) { return 0 } const limit = Math.max(0, Math.floor(Number(props.split) || 0)); return limit > 0 && links.length > limit ? Math.ceil(links.length / Math.ceil(links.length / limit)) : 0 }
 </script>
 
 <template>
@@ -22,13 +21,15 @@ const cut = (links: any[]) => { const limit = Math.max(0, Math.floor(Number(prop
         <div v-for="(column, c) in tab.Columns" :key="c + column.Name" class="sf-mega-col" :class="{ 'is-pics': onlyPictures(column), 'is-pics-start': c === firstPictures(tab) }">
           <template v-for="(group, g) in column.Groups" :key="g + group.Name">
             <div v-if="group.Name" class="sf-mega-title">{{ group.Name }}</div>
-            <component :is="cut(group.Links) ? 'div' : Fragment" v-bind="cut(group.Links) ? { class: 'sf-mega-split', style: { '--mg-rows': cut(group.Links) } } : {}">
-              <template v-for="(item, i) in group.Links" :key="i + item.Name">
-                <!-- an element « Image » of the menu: its picture, its caption under it -->
-                <component :is="item.Url ? 'a' : 'span'" v-if="item.Image" :href="href(item.Url)" class="sf-mega-img"><span class="sf-mega-pic"><img :src="item.Image" :alt="item.Name || ''" loading="lazy" decoding="async"></span><span v-if="item.Name" class="sf-mega-caption">{{ item.Name }}</span></component>
-                <component :is="item.Url ? 'a' : 'span'" v-else :href="href(item.Url)">{{ item.Name }}</component>
-              </template>
-            </component>
+            <!-- a long list: over several columns -->
+            <div v-if="cut(group.Links)" class="sf-mega-split" :style="{ '--mg-rows': cut(group.Links) }">
+              <component :is="item.Url ? 'a' : 'span'" v-for="(item, i) in group.Links" :key="i + item.Name" :href="href(item.Url)">{{ item.Name }}</component>
+            </div>
+            <template v-for="(item, i) in group.Links" v-else :key="i + item.Name">
+              <!-- an element « Image » of the menu: its picture, its caption under it -->
+              <component :is="item.Url ? 'a' : 'span'" v-if="item.Image" :href="href(item.Url)" class="sf-mega-img"><span class="sf-mega-pic"><img :src="item.Image" :alt="item.Name || ''" loading="lazy" decoding="async"></span><span v-if="item.Name" class="sf-mega-caption">{{ item.Name }}</span></component>
+              <component :is="item.Url ? 'a' : 'span'" v-else :href="href(item.Url)">{{ item.Name }}</component>
+            </template>
           </template>
         </div>
       </div>
