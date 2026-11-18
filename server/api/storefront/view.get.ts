@@ -70,7 +70,8 @@ export default defineEventHandler(async (event) => {
     const searchDesign = await design('search').catch(() => null)
     const own = (searchDesign?.Sections || []).find((x: any) => x.Type === 'main_search')?.Settings || {}
     const size = Math.max(4, Math.min(48, (Number(own.Columns) || 4) * 6))
-    return { Kind: 'search', Design: searchDesign, Page: null, Search: await readSearch(event, searchAsk(query, size), lang, prefix, priceBase) }
+    const [found, view] = await Promise.all([readSearch(event, searchAsk(query, size), lang, prefix, priceBase), catalogView(event, lang)])
+    return { Kind: 'search', Design: searchDesign, Page: null, Search: { ...found, View: view } }
   }
 
   // the page after a payment

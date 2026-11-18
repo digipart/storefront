@@ -20,6 +20,13 @@ export function searchAsk(query: Record<string, any>, size = 24): SearchAsk {
   }
 }
 
+// « Affichage 1 2 3 »: the same choice as on a category page (site builder, page catalogue, section « Grille des produits »), so the visitor finds the same buttons and keeps his choice
+export async function catalogView(event: H3Event, lang: string) {
+  const catalog = await digipart(event, 'design.php', { LanguageIsoCode: lang, Key: 'catalog' }).catch(() => null)
+  const c = (catalog?.Sections || []).find((x: any) => x.Type === 'main_catalog')?.Settings || {}
+  return { Switch: c.ViewSwitch !== false, Desktop: String(c.ViewDesktop || '2,4,6'), Mobile: String(c.ViewMobile || '1,2,3') }
+}
+
 export async function readSearch(event: H3Event, ask: SearchAsk, lang: string, prefix: string, priceBase: string) {
   const empty = { Term: ask.term, Total: 0, Products: [] as any[], Page: 1, Pages: 1, Sort: ask.sort, Tab: ask.tab, Tabs: [] as any[], Suggestions: [] as any[], Filters: { Groups: [] as any[], PriceMin: 0, PriceMax: 0, Attributes: [] as number[], Min: 0, Max: 0 } }
   if (!ask.term) { return empty }

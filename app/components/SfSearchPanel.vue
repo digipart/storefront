@@ -13,7 +13,7 @@ const term = ref('')
 const ask = ref<Record<string, string | number>>({})
 const result = ref<any>(null)
 const busy = ref(false)
-const design = useState<{ Settings: any, Texts: any } | null>('sf-search-design', () => null)   // read once, kept while the visitor stays on the site
+const design = useState<{ Settings: any, Texts: any, View?: any } | null>('sf-search-design', () => null)   // read once, kept while the visitor stays on the site
 const field = ref<HTMLInputElement | null>(null)
 const s = computed(() => design.value?.Settings || {})
 const t = computed(() => design.value?.Texts || {})
@@ -33,7 +33,7 @@ async function read(more: Record<string, string | number> = {}) {
   try {
     const answer = await $fetch<any>('/api/storefront/search', { query: { ...ask.value, lang: lang.value, prefix: prefix.value, size: 24, ...(design.value ? {} : { design: 1 }) } })
     if (number !== asked) { return }   // an older answer, after a newer question
-    if (!design.value && answer) { design.value = { Settings: answer.Settings || {}, Texts: answer.Texts || {} } }
+    if (!design.value && answer) { design.value = { Settings: answer.Settings || {}, Texts: answer.Texts || {}, View: answer.View || null } }
     result.value = answer
   } catch { if (number === asked) { result.value = { Term: q, Total: 0, Products: [] } } } finally { if (number === asked) { busy.value = false } }
 }
@@ -50,7 +50,7 @@ watch(open, async (now) => {
   if (now) {
     opener = document.activeElement
     window.addEventListener('keydown', onKey)
-    if (!design.value) { $fetch<any>('/api/storefront/search', { query: { design: 1, lang: lang.value, prefix: prefix.value } }).then((a) => { design.value = { Settings: a?.Settings || {}, Texts: a?.Texts || {} } }).catch(() => { design.value = { Settings: {}, Texts: {} } }) }
+    if (!design.value) { $fetch<any>('/api/storefront/search', { query: { design: 1, lang: lang.value, prefix: prefix.value } }).then((a) => { design.value = { Settings: a?.Settings || {}, Texts: a?.Texts || {}, View: a?.View || null } }).catch(() => { design.value = { Settings: {}, Texts: {} } }) }
   } else {
     window.removeEventListener('keydown', onKey)
     ;(opener as HTMLElement | null)?.focus?.()
@@ -90,7 +90,7 @@ const submit = () => { if (term.value.trim().length >= 2) { close(); navigateTo(
         </template>
         <template v-else>
           <p v-if="busy && !result" class="sf-muted">{{ w('Recherche en cours…') }}</p>
-          <SfSearchResults v-if="result" :result="result" :settings="s" :texts="t" panel :busy="busy" @change="change">
+          <SfSearchResults v-if="result" :result="result" :settings="s" :texts="t" :view="design?.View" panel :busy="busy" @change="change">
             <template #after>
               <p v-if="result.Total > (result.Products?.length || 0)" class="sf-spanel-all"><a :href="pageUrl + '?q=' + encodeURIComponent(result.Term)" class="sf-btn is-outline" @click="close">{{ w('Voir les {a} résultats', { a: result.Total }) }}</a></p>
             </template>

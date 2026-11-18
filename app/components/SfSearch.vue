@@ -20,7 +20,7 @@ const go = (ask: Record<string, string | number>) => navigateTo(action.value + '
 <template>
   <div :class="own ? 'sf-search-own' : 'sf-acc-page'">
     <component :is="tag" v-if="!own || texts?.Title !== ''" :class="own ? 'sf-h' : undefined" :style="titleStyle">{{ own && texts?.Title ? texts.Title : w('Recherche') }}</component>
-    <form v-if="!own || settings.ShowSearchBox !== false" class="sf-searchform" role="search" :action="action" method="get">
+    <form v-if="!own || settings.ShowSearchBox !== false" class="sf-searchform is-wide" role="search" :action="action" method="get">
       <input v-model="term" type="search" name="q" maxlength="80" :placeholder="w('Que cherchez-vous ?')" :aria-label="w('Que cherchez-vous ?')" autocomplete="off" required>
       <button type="submit" class="sf-btn">{{ w('Chercher') }}</button>
     </form>

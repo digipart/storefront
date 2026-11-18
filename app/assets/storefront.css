@@ -1172,23 +1172,30 @@ html.sf-noscroll { overflow: hidden; }
 .sf-srch-tabs small { font-size: 12px; }
 .sf-srch-count { margin: 0; padding: 12px 0; font-size: 14px; opacity: .75; }
 .sf-srch-tools { display: flex; align-items: center; gap: 20px; padding: 8px 0; }
+.sf-srch-tools .sf-view { margin-left: 0; }
 .sf-srch-tool { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .sf-srch-sort { position: relative; }
 .sf-srch-sort select { appearance: none; padding: 4px 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
 .sf-srch-sort .sf-srch-caret { order: 2; pointer-events: none; }
-.sf-srch-density { display: inline-flex; gap: 10px; }
-.sf-srch-density button { display: inline-flex; gap: 2px; padding: 4px 0; border: 0; background: none; color: inherit; opacity: .35; cursor: pointer; }
-.sf-srch-density button[aria-pressed="true"] { opacity: 1; }
-.sf-srch-density i { display: block; width: 3px; height: 16px; background: currentColor; }
 .sf-srch-tool.is-phone { display: none; }
 .sf-srch-body.has-side { display: grid; grid-template-columns: var(--fw, 260px) minmax(0, 1fr); gap: 32px; align-items: start; }
 .sf-srch-side { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
 .sf-spanel .sf-srch-side { top: 0; max-height: none; }
 @media (max-width: 991px) {
   .sf-srch-body.has-side { display: block; } .sf-srch-side { display: none; }
-  .sf-srch-tool.is-desk, .sf-srch-density.is-desk { display: none; } .sf-srch-tool.is-phone { display: inline-flex; }
+  .sf-srch-tool.is-desk { display: none; } .sf-srch-tool.is-phone { display: inline-flex; }
 }
 @media (max-width: 767px) {
   .sf-spanel-bar { padding: 10px 16px; gap: 10px; } .sf-spanel-body > * { padding-left: 16px; padding-right: 16px; }
   .sf-srch-head { flex-direction: column; align-items: stretch; } .sf-srch-tabs { overflow-x: auto; flex-wrap: nowrap; } .sf-srch-tabs button { white-space: nowrap; }
 }
+
+/* the search page: the field takes the width of the content */
+.sf-searchform.is-wide { max-width: none; }
+
+/* the fields and the choices follow the theme (Thème > Boutons > « Arrondi des champs et des choix »): square at 0, a pill at 40. The buttons keep their own setting (--t-btn-radius). */
+body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), body select, body textarea,
+.sf-news, .sf-spanel-field, .sf-stores-near, .sf-sizes button:not(.sf-swatch), .sf-srch-chip, .sf-subnav.is-chips a, .sf-ss-store-state, .sf-sr-chip { border-radius: var(--t-input-radius, 0); }
+.sf-news { overflow: hidden; }
+/* inside a framed field, the input itself has no corner of its own */
+body .sf-spanel-field input, body .sf-news input { border-radius: 0; }
