@@ -14,6 +14,27 @@ export default defineEventHandler(async (event) => {
   const idProduct = Math.floor(Number(query.IdProduct) || 0)
   setResponseHeader(event, 'Cache-Control', 'private, no-store')
   if (idProduct < 1) { return { Stores: [] } }
+  const here0 = Number.isFinite(Number(query.Lat)) && Number.isFinite(Number(query.Lng)) && query.Lat !== undefined && query.Lng !== undefined ? [Number(query.Lat), Number(query.Lng)] as [number, number] : null
+  // Digipart's own reading (api/storefront/store-stock.php): the stock of each shop is the one of its location and of the locations under it (its aisles…). The older reading below is kept for a
+  // Digipart that does not know it yet.
+  const own = await digipart(event, 'store-stock.php', { IdProduct: idProduct, LanguageIsoCode: lang }).catch(() => null)
+  if (own && Array.isArray(own.Stores)) {
+    const list = own.Stores.map((s: any) => {
+      const lat = Number(s.Latitude), lng = Number(s.Longitude), placed = Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)
+      const stock: Record<string, number> = {}
+      for (const [k, v] of Object.entries(s.Stock && typeof s.Stock === 'object' ? s.Stock : {})) { if (Number(k) > 0) { stock[k] = Math.max(0, Number(v) || 0) } }
+      const name = text(s.Name, 120), address = text(s.Address, 200), city = text(s.City, 100)
+      return {
+        Id: Number(s.Id) || 0, Name: name, Address: address, PostalCode: text(s.PostalCode, 20), City: city, Phone: text(s.Phone, 30), Known: !!s.Known, Stock: stock,
+        Hours: (Array.isArray(s.Hours) ? s.Hours : []).slice(0, 7).map((d: any) => ({ Day: text(d?.Day, 20), Weekday: Number.isInteger(Number(d?.Weekday)) ? Number(d.Weekday) : null, Slots: text(d?.Slots, 120) })),
+        Images: (Array.isArray(s.Images) ? s.Images : []).filter((u: any) => /^https:\/\/[^\s"'<>]+$/.test(String(u))).slice(0, 4),
+        MapsUrl: /^https:\/\//.test(String(s.MapsUrl)) ? String(s.MapsUrl) : placed ? 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([name, address, text(s.PostalCode, 20), city].filter(Boolean).join(' ')),
+        Distance: here0 && placed ? Math.round(km(here0, [lat, lng]) * 10) / 10 : null,
+      }
+    }).filter((s: any) => s.Id > 0)
+    if (here0) { list.sort((a: any, b: any) => (a.Distance ?? 1e9) - (b.Distance ?? 1e9)) }
+    return { Stores: list }
+  }
   // the shops that show their stock (and take reservations): the list Digipart gives with the product
   const extra = await digipart(event, 'product-extra.php', { IdProduct: idProduct, LanguageIsoCode: lang }).catch(() => null)
   const shown = new Map<number, { Name: string, City: string, Images: string[] }>(((extra?.Reservation?.Stores || []) as any[]).map((s: any) => [Number(s.Id) || 0, { Name: text(s.Name, 120), City: text(s.City, 100), Images: (Array.isArray(s.Images) ? s.Images : []).filter((u: any) => /^https:\/\/[^\s"'<>]+$/.test(String(u))).slice(0, 4) }]))

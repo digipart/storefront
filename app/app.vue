@@ -110,7 +110,8 @@ if (import.meta.server && closed.value) {
         <button type="button" @click="barHidden = true">Masquer la barre</button>
         <a :href="here + '?preview=off'">Quitter l'aperçu</a>
         <!-- what this page shows, opened in Digipart (a new tab: the preview stays) -->
-        <a v-for="link in (site.PreviewAdminUrl ? adminLinks : [])" :key="link.Path" :href="site.PreviewAdminUrl + '?module=' + link.Path" target="_blank" rel="noopener">{{ link.Label }}</a>
+        <!-- drawn in the browser only: the page tells its links once it is drawn, after this bar on the server (drawn there, the bar would be patched wrongly when the page wakes up) -->
+        <ClientOnly><span class="sf-pbar-admin"><a v-for="link in (site.PreviewAdminUrl ? adminLinks : [])" :key="link.Path" :href="site.PreviewAdminUrl + '?module=' + link.Path" target="_blank" rel="noopener">{{ link.Label }}</a></span></ClientOnly>
         <a v-if="site.PreviewEditUrl" :href="site.PreviewEditUrl" class="is-main">Modifier le thème</a>
       </div>
     </aside>

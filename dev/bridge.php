@@ -40,6 +40,7 @@ $answer = match ($argv[2]) {
     'product-extra.php' => $api->productExtras($idMarketPlace, (int) $text('IdProduct'), (float) $text('Amount'), $language),
     'paypal-notify.php' => (require __DIR__ . '/paypal-notify.php')($pdo, $text('IdCapture'), (int) $text('IdCart'), (string) ($rootUrl ?? '')),   // local development only: see that file
     'stripe-notify.php' => (require __DIR__ . '/stripe-notify.php')($pdo, $text('ClientSecret'), (string) ($rootUrl ?? '')),   // local development only: see that file
+    'store-stock.php' => $api->storeStock($idMarketPlace, (int) $text('IdProduct'), $language),
     'changes.php' => (float) $text('Since') > 0 ? \Digipart\Storefront\StorefrontChanges::since((float) $text('Since')) : ['Now' => microtime(true), 'Products' => [], 'Complete' => true],
     'category-links.php' => $api->categoryLinks($idMarketPlace, (int) $text('IdCategory'), $language),
     'attribute-looks.php' => $api->attributeLooks($idMarketPlace, array_map('intval', explode(',', $text('Ids')))),

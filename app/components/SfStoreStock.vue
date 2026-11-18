@@ -53,7 +53,7 @@ const now = ref(new Date())
 const openState = (s: any) => {
   const byDay: Record<number, { from: number, to: number, label: string, at: string }[]> = {}
   for (const d of s.Hours || []) {
-    const day = DAYS[plain(String(d.Day)).trim()]
+    const day = Number.isInteger(d.Weekday) ? d.Weekday : DAYS[plain(String(d.Day)).trim()]   // the weekday Digipart gives (0 = Sunday), else read from the name
     if (day === undefined) { continue }
     byDay[day] = String(d.Slots || '').split(',').map((slot: string) => { const [a, b] = slot.split(/[–-]/).map(x => x.trim()); return { from: minutes(a || ''), to: minutes(b || ''), label: String(d.Day), at: a || '' } }).filter(x => x.from >= 0 && x.to > x.from)
   }
