@@ -12,6 +12,8 @@ const stories = computed(() => data.value?.Stories || [])
 const playing = ref(-1), index = ref(0), paused = ref(false), progress = ref(0), muted = ref(true)
 const story = computed(() => stories.value[playing.value] || null)
 const slide = computed(() => story.value?.Slides[index.value] || null)
+// the arrows only when there is somewhere to go: another slide of this story, or another story
+const hasNext = computed(() => !!story.value && (index.value < story.value.Slides.length - 1 || playing.value < stories.value.length - 1))
 const root = ref<HTMLElement | null>(null)
 let frame = 0, last = 0, elapsed = 0
 
@@ -66,7 +68,8 @@ async function buy() {
   if (!product) { return }
   if (sizes.value.length && !pickedSize.value) { sheetError.value = w('Choisissez une taille.'); return }
   sheetError.value = ''
-  if (await add(product.Id, pickedSize.value || 0, 1)) { added.value = true } else { sheetError.value = w('Le produit n\'a pas pu être ajouté, merci de réessayer.') }
+  // added: the story closes, so the cart that opens is seen at once (useCart opens it)
+  if (await add(product.Id, pickedSize.value || 0, 1)) { close() } else { sheetError.value = w('Le produit n\'a pas pu être ajouté, merci de réessayer.') }
 }
 watch(slide, () => { sheet.value = false })
 onBeforeUnmount(close)
@@ -78,7 +81,7 @@ onBeforeUnmount(close)
       <!-- shoppable videos: each story as a vertical card, its first slide playing silently (or its picture), its product on it -->
       <button v-for="(item, i) in stories" :key="item.Id" type="button" class="sf-vcard" :aria-label="w('Voir la story {a}', { a: item.Title })" @click="open(i)">
         <span class="sf-vcard-media" :style="item.Slides[0]?.Image || item.Cover ? { backgroundImage: 'url(\'' + String(item.Slides[0]?.Image || item.Cover).replace(/'/g, '%27') + '\')' } : undefined">
-          <iframe v-if="previews !== false && item.Slides[0]?.Vimeo" :src="'https://player.vimeo.com/video/' + item.Slides[0].Vimeo + '?background=1&autoplay=1&loop=1&muted=1&dnt=1'" title="" loading="lazy" allow="autoplay" tabindex="-1" aria-hidden="true" />
+          <iframe v-if="previews !== false && item.Slides[0]?.Vimeo" :src="'https://player.vimeo.com/video/' + item.Slides[0].Vimeo + (String(item.Slides[0].Vimeo).includes('?') ? '&' : '?') + 'background=1&autoplay=1&loop=1&muted=1&dnt=1'" title="" loading="lazy" allow="autoplay" tabindex="-1" aria-hidden="true" />
         </span>
         <span v-if="item.Title" class="sf-vcard-title">{{ item.Title }}</span>
         <span v-if="cardProduct !== false && item.Slides[0]?.Product" class="sf-vcard-product">
@@ -92,11 +95,13 @@ onBeforeUnmount(close)
         <span class="sf-story-ring"><img v-if="item.Cover" :src="item.Cover" alt="" loading="lazy"></span><span class="sf-story-name">{{ item.Title }}</span>
       </button>
     </template>
+    <!-- drawn at the level of the page (not inside the column that holds the stories): always above the sticky header -->
+    <Teleport to="body">
     <div v-if="story && slide" ref="root" class="sf-splayer" role="dialog" aria-modal="true" :aria-label="story.Title" tabindex="-1" @keydown="key" @click.self="close">
       <button v-if="index > 0 || playing > 0" type="button" class="sf-splayer-nav" :aria-label="w('Slide précédente')" @click="show(index - 1)">‹</button><span v-else class="sf-splayer-nav is-off" />
       <div class="sf-splayer-screen">
         <div class="sf-splayer-media" :style="slide.Image ? { backgroundImage: 'url(\'' + slide.Image.replace(/'/g, '%27') + '\')' } : undefined">
-          <iframe v-if="slide.Vimeo" :key="slide.Id" :src="'https://player.vimeo.com/video/' + slide.Vimeo + '?autoplay=1&muted=1&controls=0&playsinline=1&title=0&byline=0&portrait=0&api=1'" allow="autoplay; fullscreen" :title="slide.Title || story.Title" />
+          <iframe v-if="slide.Vimeo" :key="slide.Id" :src="'https://player.vimeo.com/video/' + slide.Vimeo + (String(slide.Vimeo).includes('?') ? '&' : '?') + 'autoplay=1&muted=1&controls=0&playsinline=1&title=0&byline=0&portrait=0&api=1'" allow="autoplay; fullscreen" :title="slide.Title || story.Title" />
         </div>
         <button type="button" class="sf-splayer-tap is-prev" tabindex="-1" aria-hidden="true" @click="show(index - 1)" /><button type="button" class="sf-splayer-tap is-next" tabindex="-1" aria-hidden="true" @click="show(index + 1)" />
         <div class="sf-splayer-bars"><span v-for="(s, i) in story.Slides" :key="s.Id"><i :style="{ width: (i < index ? 100 : i > index ? 0 : progress * 100) + '%' }" /></span></div>
@@ -129,7 +134,8 @@ onBeforeUnmount(close)
         </div>
         <a v-else-if="slide.Link && slide.Button" :href="slide.Link" class="sf-btn sf-splayer-cta">{{ slide.Button }}</a>
       </div>
-      <button type="button" class="sf-splayer-nav" :aria-label="w('Slide suivante')" @click="show(index + 1)">›</button>
+      <button v-if="hasNext" type="button" class="sf-splayer-nav" :aria-label="w('Slide suivante')" @click="show(index + 1)">›</button><span v-else class="sf-splayer-nav is-off" />
     </div>
+    </Teleport>
   </div>
 </template>

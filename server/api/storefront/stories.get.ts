@@ -9,7 +9,8 @@ export default defineEventHandler(async (event) => {
   const ids = [...new Set(stories.flatMap(story => (story.Slides || []).map((slide: any) => Number(slide.IdProduct) || 0)).filter(id => id > 0))].slice(0, 40)
   const products = new Map<number, any>()
   await Promise.all(ids.map(async (id) => { const product = await loadProduct(event, id, lang, prefix).catch(() => null); if (product) { products.set(id, product) } }))
-  const vimeo = (value: string) => (String(value || '').match(/(\d{6,})/) || [])[1] || ''
+  // the id of a Vimeo video, with the key of an unlisted one (player.vimeo.com/video/123?h=abc → « 123?h=abc »)
+  const vimeo = (value: string) => { const m = String(value || '').match(/(\d{6,12})(?:\/([0-9a-f]{6,20})|.*[?&]h=([0-9a-f]{6,20}))?/i); return m ? m[1] + ((m[2] || m[3]) ? '?h=' + (m[2] || m[3]).toLowerCase() : '') : '' }
   return {
     Stories: stories.map(story => ({
       Id: Number(story.IdStory), Title: String(story.Title || ''), Cover: String(story.Cover || story.Slides?.[0]?.Image || ''),
