@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // A product in a grid: its photo (the second on hover, or all of them swiped through, as the section says), its name, its price and its discount. On the photo: the heart of the favourites, and the
 // sizes that put the product in the cart in one click (shown under the pointer; on a touch screen a « + » opens them). A product that cannot be bought here (prices hidden, sold by lot) has no sizes.
-const props = withDefaults(defineProps<{ product: any, images?: string, dots?: boolean, eager?: boolean, quick?: boolean, heart?: boolean, video?: string, count?: number }>(), { quick: true, heart: true })   // a boolean that is not given would be false
+const props = withDefaults(defineProps<{ product: any, images?: string, dots?: boolean, eager?: boolean, quick?: boolean, heart?: boolean, video?: string, count?: number, perRow?: { desk: number, mob: number } }>(), { quick: true, heart: true })   // a boolean that is not given would be false
 const site = inject<Ref<any>>('sfSite')!
 const lang = computed(() => site.value?.Route?.LanguageIsoCode || 'fr')
 const mode = computed(() => (props.images === 'wide' ? 'wide' : props.images === 'row' ? 'row' : props.images === 'carousel' && props.product.Images.length > 1 ? 'carousel' : props.images === 'hover' && props.product.Images.length > 1 ? 'hover' : 'single'))
@@ -25,7 +25,7 @@ const shown = computed(() => (mode.value === 'row' ? props.product.Images.slice(
     <div class="sf-card-top" :class="{ 'is-open': open }">
     <a :href="product.LookUrl || product.Url" class="sf-card-media" :class="'is-' + mode" :aria-label="product.Name">
       <template v-if="shown.length">
-        <img v-for="(src, index) in shown" :key="src" :src="src" :srcset="product.ImageSets?.[index] || undefined" sizes="(max-width: 767px) 50vw, (max-width: 1200px) 33vw, 25vw" :alt="index === 0 ? product.Name : ''" :loading="eager && index === 0 ? 'eager' : 'lazy'" decoding="async">
+        <img v-for="(src, index) in shown" :key="src" :src="src" :srcset="product.ImageSets?.[index] || undefined" :sizes="perRow ? `(max-width: 767px) ${Math.round(100 / perRow.mob)}vw, ${Math.round(100 / perRow.desk)}vw` : '(max-width: 767px) 50vw, (max-width: 1200px) 33vw, 25vw'" :alt="index === 0 ? product.Name : ''" :loading="eager && index === 0 ? 'eager' : 'lazy'" decoding="async">
       </template>
       <span v-else class="sf-card-empty" aria-hidden="true" />
       <span v-if="film" class="sf-hero-video"><iframe :src="film" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>

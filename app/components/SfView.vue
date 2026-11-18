@@ -50,7 +50,7 @@ const structured = computed(() => {
       offers: { '@type': 'Offer', url: canonical.value, priceCurrency: product.Currency, price: product.Price.toFixed(2), availability: 'https://schema.org/' + (product.Available ? 'InStock' : 'OutOfStock') } })
   }
   if (view.value?.Kind === 'home') { list.push({ '@context': 'https://schema.org', '@type': 'WebSite', name: site.value?.Name, url: canonical.value }) }
-  if (view.value?.Kind === 'catalog') { list.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: w('Accueil'), item: address(site.value?.Route?.LanguageIsoCode || 'fr', '') }, { '@type': 'ListItem', position: 2, name: view.value.Category.Name, item: canonical.value.split('?')[0] }] }) }
+  if (view.value?.Kind === 'catalog') { list.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: w('Accueil'), item: address(site.value?.Route?.LanguageIsoCode || 'fr', '') }, ...(view.value.Category.Links?.Parent ? [{ '@type': 'ListItem', position: 2, name: view.value.Category.Links.Parent.Name, item: origin.value + view.value.Category.Links.Parent.Url }] : []), { '@type': 'ListItem', position: view.value.Category.Links?.Parent ? 3 : 2, name: view.value.Category.Name, item: canonical.value.split('?')[0] }] }) }
   return list
 })
 useHead(() => {
@@ -76,7 +76,10 @@ const prefs = computed(() => site.value?.Preferences || {})
 useHead(() => view.value?.Kind === 'product'
   ? { title: view.value.Product.SeoTitle, meta: [{ name: 'description', content: view.value.Product.SeoDescription || view.value.Product.DescriptionShort }] }
   : view.value?.Kind === 'catalog'
-  ? { title: view.value.Category.SeoTitle || view.value.Category.Name, meta: [{ name: 'description', content: view.value.Category.SeoDescription }] }
+  ? { title: (view.value.Category.SeoTitle || view.value.Category.Name) + (view.value.Listing.Page > 1 ? ' – ' + w('Page {a}', { a: view.value.Listing.Page }) : ''), meta: [{ name: 'description', content: view.value.Category.SeoDescription }],
+      // the pages of a category, linked to each other (the address of each one is its own: ?page=n)
+      link: [...(view.value.Listing.Page > 1 ? [{ rel: 'prev', href: canonical.value.replace(/\?page=\d+$/, '') + (view.value.Listing.Page > 2 ? '?page=' + (view.value.Listing.Page - 1) : '') }] : []),
+        ...(view.value.Listing.Page < view.value.Listing.Pages && !view.value.Listing.Sort && !view.value.Listing.Filters?.Attributes?.length && !view.value.Listing.Filters?.Max ? [{ rel: 'next', href: canonical.value.replace(/\?page=\d+$/, '') + '?page=' + (view.value.Listing.Page + 1) }] : [])] }
   : view.value?.Kind === 'lookbook'
   ? { title: view.value.Lookbook.SeoTitle, meta: [{ name: 'description', content: view.value.Lookbook.SeoDescription }] }
   : view.value?.Kind === 'brand'

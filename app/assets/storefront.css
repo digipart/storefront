@@ -784,3 +784,49 @@ h3.sf-h, h4.sf-h, h5.sf-h, h6.sf-h, p.sf-h, div.sf-h { margin: 0; }
 .sf-notfound-text { margin: 0 0 22px; line-height: 1.6; opacity: .8; }
 .sf-notfound-search { margin: 28px auto 0; justify-content: center; }
 .sf-search-own .sf-searchform { margin-left: 0; }
+
+/* the catalogue: how many products were seen, and the link to the next ones (read in place as the visitor scrolls) */
+.sf-more { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 48px; font-size: 14px; }
+.sf-more-count { margin: 0; opacity: .75; }
+.sf-more-bar { display: block; width: min(240px, 60vw); height: 2px; background: color-mix(in srgb, currentColor 15%, transparent); } .sf-more-bar i { display: block; height: 100%; background: currentColor; transition: width .3s ease; }
+.sf-more-mark { display: block; width: 1px; height: 1px; }
+.sf-more-btn[aria-busy="true"] { opacity: .6; pointer-events: none; }
+.sf-more-prev { display: table; margin: 0 auto 24px; padding: 9px 18px; border: 1px solid currentColor; font-size: 14px; text-decoration: none; }
+
+/* the links to the sub-categories (or the categories next to it) under the name of a category: a line that slides sideways on a phone */
+.sf-subnav { display: flex; gap: 6px 22px; margin: 4px 0 20px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+.sf-subnav::-webkit-scrollbar { display: none; }
+.sf-subnav a { flex: 0 0 auto; color: inherit; text-decoration: none; font-size: 14px; scroll-snap-align: start; opacity: .7; transition: opacity .15s ease; }
+.sf-subnav a:hover, .sf-subnav a[aria-current] { opacity: 1; }
+.sf-subnav small { margin-left: 3px; font-size: .8em; opacity: .7; }
+.sf-subnav.is-links a { padding: 4px 0; border-bottom: 1.5px solid transparent; }
+.sf-subnav.is-links a[aria-current] { font-weight: 600; border-bottom-color: currentColor; }
+.sf-subnav.is-chips { gap: 8px; }
+.sf-subnav.is-chips a { padding: 7px 16px; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 99px; opacity: 1; }
+.sf-subnav.is-chips a:hover { border-color: currentColor; }
+.sf-subnav.is-chips a[aria-current] { background: var(--t-text, #1e2129); border-color: var(--t-text, #1e2129); color: var(--t-bg, #fff); }
+.sf-subnav.is-images { gap: 16px; }
+.sf-subnav.is-images a { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 96px; text-align: center; opacity: 1; }
+.sf-subnav.is-images img { width: 96px; height: 96px; object-fit: cover; border-radius: 50%; background: color-mix(in srgb, currentColor 8%, transparent); }
+.sf-subnav.is-images a[aria-current] img { box-shadow: 0 0 0 2px var(--t-bg, #fff), 0 0 0 3.5px currentColor; }
+.sf-subnav.is-images a[aria-current] span { font-weight: 600; }
+@media (max-width: 767px) { .sf-subnav { margin-right: -16px; padding-right: 16px; } .sf-subnav.is-images a { width: 76px; } .sf-subnav.is-images img { width: 76px; height: 76px; } }
+
+/* the sub-categories as a band of large pictures (their covers), the name on or under each one; it slides sideways when they do not fit */
+.sf-subnav.is-tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(var(--tw, 200px), 1fr); gap: var(--tg, 0px); margin: 8px 0 24px; scroll-snap-type: x mandatory; }
+.sf-subnav.is-tiles.is-full { width: 100vw; margin-left: calc(50% - 50vw); padding-right: 0; }
+.sf-subnav.is-tiles a { position: relative; display: flex; flex-direction: column; opacity: 1; }
+.sf-subtile-pic { position: relative; display: block; height: var(--th, 380px); overflow: hidden; background: color-mix(in srgb, currentColor 8%, transparent); }
+.sf-subtile-pic img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease; }
+.sf-subnav.is-tiles a:hover .sf-subtile-pic img { transform: scale(1.03); }
+.sf-subtile-pic::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, var(--tv, .1)); pointer-events: none; }
+.sf-subnav.is-tiles:not(.is-below) .sf-subnav-name { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 8px; color: #fff; text-align: center; font-weight: 500; text-shadow: 0 1px 8px rgba(0, 0, 0, .25); }
+.sf-subnav.is-tiles.is-below .sf-subnav-name { padding: 8px 4px 0; }
+.sf-subnav.is-tiles a[aria-current] .sf-subnav-name { text-decoration: underline; text-underline-offset: 4px; }
+.sf-subnav.is-upper .sf-subnav-name, .sf-subnav.is-upper.is-links a, .sf-subnav.is-upper.is-chips a { text-transform: uppercase; letter-spacing: .04em; }
+@media (max-width: 767px) { .sf-subnav.is-tiles { grid-auto-columns: minmax(42vw, 1fr); margin-right: 0; padding-right: 0; } .sf-subtile-pic { height: var(--thm, 220px); } }
+/* « Affichage 1 2 3 »: how many products a line holds, chosen by the visitor */
+.sf-view { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 13px; }
+.sf-view > span { margin-right: 8px; text-transform: uppercase; letter-spacing: .04em; }
+.sf-view button { min-width: 28px; height: 28px; padding: 0 6px; border: 1px solid transparent; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.sf-view button[aria-pressed="true"] { border-color: currentColor; }

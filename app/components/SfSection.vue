@@ -116,6 +116,120 @@ const logoFile = computed(() => {
 const searchUrl = computed(() => (site.value?.Route?.Prefix || '') + (lang.value === 'fr' ? '/recherche' : '/search'))
 const zoomAt = ref(-1)   // the photo of the product shown full screen (-1 = none)
 const w = useWords()
+// the catalogue grows as the visitor scrolls: the next page of the category is read and its cards go under the others. Every page keeps its own address (?page=n, a real link the search engines
+// follow, written in the address bar as the pages come) and the page drawn by the server holds only its own cards. Two pages come by themselves, then a button asks: the footer stays reachable.
+// the links to other categories under the title: the sub-categories; without any, the categories next to it (when the shop chose « auto »), led by « Tout voir » (the parent) when asked
+const subOwn = computed(() => !!catalog?.value?.Category?.Links?.Children?.length)
+const subLinks = computed(() => {
+  const links = catalog?.value?.Category?.Links, mode = s.value.SubNav || 'auto'
+  if (!links || mode === 'none') { return [] }
+  if (links.Children?.length) { return links.Children }
+  if (mode !== 'auto' || (links.Siblings?.length || 0) < 2) { return [] }
+  return [...(s.value.SubNavAll && links.Parent ? [{ ...links.Parent, Id: -1, Name: w('Tout voir'), Image: links.Parent.Image || '' }] : []), ...links.Siblings]
+})
+// « Affichage 1 2 3 »: the visitor chooses how many products a line holds (the lists the shop chose, one for a computer and one for a phone, level by level). Kept in the browser for every
+// category; without a choice, the grid has the columns of the section (or those of the staging of the category)
+const levels = (value: unknown, fallback: string) => { const list = String(value || fallback).split(',').map(Number).filter(n => n >= 1 && n <= 8); return list.length ? list : fallback.split(',').map(Number) }
+const viewDesk = computed(() => levels(s.value.ViewDesktop, '2,4,6'))
+const viewMob = computed(() => levels(s.value.ViewMobile, '1,2,3'))
+const viewCount = computed(() => Math.max(viewDesk.value.length, viewMob.value.length))
+const viewLevel = ref<number | null>(null)
+const baseCols = computed(() => ({ desk: Number(catalog?.value?.Listing?.Display?.Columns || s.value.Columns || 4), mob: Number(catalog?.value?.Listing?.Display?.ColumnsMobile || s.value.ColumnsMobile || 2) }))
+const perRow = computed(() => {
+  if (!s.value.ViewSwitch || viewLevel.value === null) { return baseCols.value }
+  const at = viewLevel.value
+  return { desk: viewDesk.value[Math.min(at, viewDesk.value.length - 1)]!, mob: viewMob.value[Math.min(at, viewMob.value.length - 1)]! }
+})
+// the level shown as chosen: the visitor's, else the one closest to the columns of the grid
+const viewShown = computed(() => {
+  if (viewLevel.value !== null) { return viewLevel.value }
+  let best = 0
+  viewDesk.value.forEach((n, i) => { if (Math.abs(n - baseCols.value.desk) < Math.abs(viewDesk.value[best]! - baseCols.value.desk)) { best = i } })
+  return best
+})
+const chooseView = (at: number) => { viewLevel.value = at; try { localStorage.setItem('sf-view', String(at)) } catch { /* refused: the choice lasts for this page */ } }
+onMounted(() => { if (type.value !== 'main_catalog' || !s.value.ViewSwitch) { return } try { const kept = Number(localStorage.getItem('sf-view')); if (localStorage.getItem('sf-view') !== null && kept >= 0 && kept < viewCount.value) { viewLevel.value = kept } } catch { /* no storage */ } })
+// the size of the pictures of the sub-categories shown as a band of large images
+const tileStyle = computed(() => ({ '--th': (s.value.SubTileHeight || 380) + 'px', '--thm': (s.value.SubTileHeightMobile || 220) + 'px', '--tw': (s.value.SubTileWidth || 200) + 'px', '--tg': (s.value.SubTileGap || 0) + 'px', '--tv': (s.value.SubTileVeil ?? 10) / 100 }))
+const subStyle = computed(() => String(s.value.SubNavStyle || 'links'))
+const listing = computed(() => (type.value === 'main_catalog' ? catalog?.value?.Listing || null : null))
+const more = ref<any[]>([])   // the cards added under the page drawn by the server (staged items, or products)
+const morePage = ref(0)   // the last page added (0: none)
+const moreBusy = ref(false)
+const moreFailed = ref(false)
+let moreAuto = 0
+const restored = ref<{ page: number, cards: any[] } | null>(null)   // the first cards the visitor saw, when the list he had scrolled is put back (return from a product)
+watch(listing, () => { more.value = []; morePage.value = 0; moreAuto = 0; restored.value = null })   // another category, sort or filter
+const baseCards = computed(() => restored.value?.cards || (listing.value ? (listing.value.Items || listing.value.Products) : []))
+const basePage = computed(() => restored.value?.page || listing.value?.Page || 1)
+const lastPage = computed(() => morePage.value || listing.value?.Page || 1)
+const hasMore = computed(() => !!listing.value && lastPage.value < (listing.value.Pages || 1))
+const shownItems = computed(() => (listing.value?.Items ? [...baseCards.value, ...more.value] : null))
+const shownProducts = computed(() => (listing.value && !listing.value.Items ? [...baseCards.value, ...more.value] : []))
+const shownCount = computed(() => {
+  const L = listing.value
+  if (!L) { return 0 }
+  const here = shownItems.value ? shownItems.value.filter((i: any) => i.Kind === 'product').length : shownProducts.value.length
+  return Math.min(L.Total || here, (basePage.value - 1) * (L.PerPage || 24) + here)
+})
+const cardKey = (entry: any) => (entry.Kind ? entry.Kind + (entry.Id || entry.Product?.Id) : 'product' + entry.Id)
+const loadMore = async (auto = false) => {
+  const L = listing.value
+  if (moreBusy.value || !hasMore.value || !L) { return }
+  moreBusy.value = true
+  moreFailed.value = false
+  const next = lastPage.value + 1
+  try {
+    const query: Record<string, string> = {}
+    for (const [k, v] of Object.entries(route.query)) { if (typeof v === 'string') { query[k] = v } }
+    const answer = await $fetch<any>('/api/storefront/view', { query: { ...query, rest: site.value?.Route?.Rest || '', lang: site.value?.Route?.LanguageIsoCode || '', prefix: site.value?.Route?.Prefix || '', page: String(next) } })
+    const got = answer?.Listing
+    if (!got) { throw new Error('no listing') }
+    // the same kind of cards as the page drawn (a staged category gives items, the others products)
+    const cards: any[] = L.Items ? (got.Items || (got.Products || []).map((p: any) => ({ Kind: 'product', Size: '1x1', Product: p }))) : (got.Products || (got.Items || []).filter((i: any) => i.Kind === 'product').map((i: any) => i.Product))
+    const seen = new Set([...baseCards.value, ...more.value].map(cardKey))
+    more.value = [...more.value, ...cards.filter(card => !seen.has(cardKey(card)))]
+    morePage.value = next
+    if (auto) { moreAuto++ }
+    const address = listUrl({ page: next })
+    history.replaceState({ ...(history.state || {}), current: address }, '', address)
+  } catch {
+    moreFailed.value = true
+  } finally {
+    moreBusy.value = false
+  }
+}
+const moreMark = ref<HTMLElement | null>(null)
+let moreWatcher: IntersectionObserver | null = null
+watch(moreMark, (el) => {
+  moreWatcher?.disconnect()
+  if (!el || typeof IntersectionObserver === 'undefined') { return }
+  moreWatcher = new IntersectionObserver((entries) => { if (entries.some(e => e.isIntersecting) && moreAuto < 2 && !moreFailed.value) { loadMore(true) } }, { rootMargin: '600px 0px' })
+  moreWatcher.observe(el)
+})
+onBeforeUnmount(() => moreWatcher?.disconnect())
+// back from a product: the list comes back as the visitor left it (the pages he had loaded, where he was in it). What he loaded is kept for this tab only (sessionStorage), under the address of the
+// page, for 30 minutes; it is put back only when the visitor comes BACK to that address (not when he opens it again), then the browser is told not to move the page itself
+const keepKey = () => 'sf-list:' + location.pathname + location.search
+const keepList = () => {
+  if (!listing.value || !morePage.value) { return }
+  try { sessionStorage.setItem(keepKey(), JSON.stringify({ at: Date.now(), page: basePage.value, cards: baseCards.value, more: more.value, morePage: morePage.value, auto: moreAuto, y: window.scrollY })) } catch { /* full or refused: the page simply comes back as the server draws it */ }
+}
+onMounted(() => {
+  if (!listing.value) { return }
+  window.addEventListener('pagehide', keepList)
+  const navigation = performance.getEntriesByType?.('navigation')?.[0] as PerformanceNavigationTiming | undefined
+  let kept: any = null
+  try { kept = JSON.parse(sessionStorage.getItem(keepKey()) || 'null') } catch { kept = null }
+  if (!kept || navigation?.type !== 'back_forward' || Date.now() - Number(kept.at || 0) > 30 * 60 * 1000 || !Array.isArray(kept.cards) || !Array.isArray(kept.more)) { return }
+  if ('scrollRestoration' in history) { history.scrollRestoration = 'manual' }
+  restored.value = { page: Number(kept.page) || 1, cards: kept.cards }
+  more.value = kept.more
+  morePage.value = Number(kept.morePage) || 0
+  moreAuto = Number(kept.auto) || 0
+  nextTick(() => requestAnimationFrame(() => window.scrollTo(0, Number(kept.y) || 0)))
+})
+onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.removeEventListener('pagehide', keepList) } })
 </script>
 
 <template>
@@ -222,10 +336,18 @@ const w = useWords()
             <div v-if="coverText" class="sf-rte" v-html="catalog.Category.Description" />
           </div>
         </div>
-        <nav class="sf-crumb" :aria-label="w('Fil d\'Ariane')"><a :href="home">{{ w('Accueil') }}</a> / {{ catalog.Category.Name }}</nav>
+        <nav class="sf-crumb" :aria-label="w('Fil d\'Ariane')"><a :href="home">{{ w('Accueil') }}</a> / <template v-if="catalog.Category.Links?.Parent"><a :href="catalog.Category.Links.Parent.Url">{{ catalog.Category.Links.Parent.Name }}</a> / </template>{{ catalog.Category.Name }}</nav>
         <component :is="titleTag" v-if="!(s.CoverTitle === 'over' && hasCover)" class="sf-h" :style="titleStyle">{{ catalog.Category.Name }}</component>
         <!-- eslint-disable-next-line vue/no-v-html : the description of a category is written by the shop in Digipart and comes from its category API -->
         <div v-if="s.ShowDescription && catalog.Category.Description && !coverText" class="sf-rte sf-muted" v-html="catalog.Category.Description" />
+        <!-- the sub-categories of the category, or (when it has none and the shop chose so) the categories next to it, the open one put forward: real links, read by the search engines -->
+        <nav v-if="subLinks.length" class="sf-subnav" :class="['is-' + subStyle, { 'is-full': subStyle === 'tiles' && s.SubTileFull !== false, 'is-upper': s.SubNavCase === 'uppercase', 'is-below': s.SubTileLabel === 'below' }]" :style="subStyle === 'tiles' ? tileStyle : undefined" :aria-label="w(subOwn ? 'Sous-catégories' : 'Catégories')">
+          <a v-for="link in subLinks" :key="link.Id" :href="link.Url" :aria-current="link.Id === catalog.Category.Id ? 'page' : undefined">
+            <img v-if="subStyle === 'images'" :src="link.Image || undefined" alt="" loading="lazy" decoding="async" :class="{ 'is-empty': !link.Image }">
+            <span v-if="subStyle === 'tiles'" class="sf-subtile-pic" :class="{ 'is-empty': !link.Image }"><img v-if="link.Image" :src="link.Image" :srcset="link.Srcset || undefined" :sizes="`(max-width: 767px) 45vw, ${Math.max(10, Math.round(100 / Math.max(1, subLinks.length)))}vw`" alt="" loading="lazy" decoding="async"></span>
+            <span class="sf-subnav-name">{{ link.Name }}<small v-if="s.SubNavCount && link.Count"> {{ link.Count }}</small></span>
+          </a>
+        </nav>
         <div class="sf-bar">
           <span>{{ w(catalog.Listing.Total > 1 ? '{a} produits' : '{a} produit', { a: catalog.Listing.Total }) }}</span>
           <button v-if="hasFilters" type="button" class="sf-filterbtn" aria-haspopup="dialog" @click="filtersOpen = true">{{ w('Filtrer') }}<template v-if="filterCount"> ({{ filterCount }})</template></button>
@@ -235,26 +357,33 @@ const w = useWords()
             <a :href="listUrl({ sort: 'price_asc', page: 1 })" :aria-current="catalog.Listing.Sort === 'price_asc' ? 'true' : undefined">{{ w('Prix croissant') }}</a>
             <a :href="listUrl({ sort: 'price_desc', page: 1 })" :aria-current="catalog.Listing.Sort === 'price_desc' ? 'true' : undefined">{{ w('Prix décroissant') }}</a>
           </nav>
+          <div v-if="s.ViewSwitch" class="sf-view" role="group" :aria-label="w('Produits par ligne')">
+            <span>{{ w('Affichage') }}</span>
+            <button v-for="i in viewCount" :key="i" type="button" :aria-pressed="viewShown === i - 1 ? 'true' : 'false'" :title="w('{a} produits par ligne', { a: viewDesk[Math.min(i - 1, viewDesk.length - 1)] })" @click="chooseView(i - 1)">{{ i }}</button>
+          </div>
         </div>
-        <div v-if="catalog.Listing.Products.length" class="sf-grid" :style="{ '--cols': catalog.Listing.Display?.Columns || s.Columns || 4, '--cols-m': catalog.Listing.Display?.ColumnsMobile || s.ColumnsMobile || 2, '--gx': (s.GapX ?? 16) + 'px', '--gy': (s.GapY ?? 32) + 'px' }">
-          <template v-if="catalog.Listing.Items">
-            <template v-for="(item, index) in catalog.Listing.Items" :key="item.Kind + (item.Id || item.Product.Id)">
+        <a v-if="basePage > 1" :href="listUrl({ page: basePage - 1 })" rel="prev" class="sf-more-prev">{{ w('Voir les produits précédents') }}</a>
+        <div v-if="shownItems ? shownItems.length : shownProducts.length" class="sf-grid" :style="{ '--cols': perRow.desk, '--cols-m': perRow.mob, '--gx': (s.GapX ?? 16) + 'px', '--gy': (s.GapY ?? 32) + 'px' }">
+          <template v-if="shownItems">
+            <template v-for="(item, index) in shownItems" :key="cardKey(item)">
               <component :is="item.Url ? 'a' : 'div'" v-if="item.Kind === 'edito'" :href="item.Url || undefined" class="sf-edito" :class="['is-' + item.Size, { 'has-height': item.Height > 0 || item.HeightMobile > 0 }]" :style="item.Height > 0 || item.HeightMobile > 0 ? { '--eh': (item.Height || item.HeightMobile) + 'px', '--ehm': (item.HeightMobile || item.Height) + 'px' } : undefined">
                 <img v-if="item.Image" :src="item.Image" alt="" :loading="index < 4 ? 'eager' : 'lazy'" decoding="async">
                 <span v-if="vimeo(item.Video)" class="sf-hero-video"><iframe :src="vimeo(item.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
                 <span v-if="item.Title" class="sf-edito-title">{{ item.Title }}</span>
               </component>
-              <SfProductCard v-else :product="item.Product" :count="item.Count" :images="item.Size === 'full' ? (item.Layout === 'cover' ? 'wide' : 'row') : item.Size === '2x2' ? 'carousel' : s.CardImages" :dots="item.Size === '2x2' ? true : s.CardDots" :eager="index < 4" :quick="s.QuickAdd !== false" :video="item.Video" :class="'is-' + item.Size" />
+              <SfProductCard v-else :product="item.Product" :count="item.Count" :images="item.Size === 'full' ? (item.Layout === 'cover' ? 'wide' : 'row') : item.Size === '2x2' ? 'carousel' : s.CardImages" :dots="item.Size === '2x2' ? true : s.CardDots" :eager="index < 4" :quick="s.QuickAdd !== false" :video="item.Video" :per-row="perRow" :class="'is-' + item.Size" />
             </template>
           </template>
-          <SfProductCard v-for="(item, index) in catalog.Listing.Products" v-else :key="item.Id" :product="item" :images="s.CardImages" :dots="s.CardDots" :eager="index < 4" :quick="s.QuickAdd !== false" />
+          <SfProductCard v-for="(item, index) in shownProducts" v-else :key="item.Id" :product="item" :images="s.CardImages" :dots="s.CardDots" :eager="index < 4" :quick="s.QuickAdd !== false" :per-row="perRow" />
         </div>
         <p v-else class="sf-muted">{{ w('Aucun produit dans cette catégorie pour le moment.') }}</p>
-        <nav v-if="catalog.Listing.Pages > 1" class="sf-pages" :aria-label="w('Pages de produits')">
-          <a v-if="catalog.Listing.Page > 1" :href="listUrl({ page: catalog.Listing.Page - 1 })" rel="prev">{{ w('Page précédente') }}</a>
-          <span>{{ w('Page {a} sur {b}', { a: catalog.Listing.Page, b: catalog.Listing.Pages }) }}</span>
-          <a v-if="catalog.Listing.Page < catalog.Listing.Pages" :href="listUrl({ page: catalog.Listing.Page + 1 })" rel="next">{{ w('Page suivante') }}</a>
-        </nav>
+        <!-- more products: a real link to the next page (followed by the search engines, and by a visitor without script), read in place by the page -->
+        <div v-if="catalog.Listing.Pages > 1" class="sf-more">
+          <p class="sf-more-count" aria-live="polite">{{ w('Vous avez vu {a} produits sur {b}', { a: shownCount, b: catalog.Listing.Total }) }}</p>
+          <span class="sf-more-bar" aria-hidden="true"><i :style="{ width: Math.min(100, Math.round(shownCount * 100 / Math.max(1, catalog.Listing.Total))) + '%' }" /></span>
+          <span v-if="hasMore" ref="moreMark" class="sf-more-mark" />
+          <a v-if="hasMore" :href="listUrl({ page: lastPage + 1 })" rel="next" class="sf-btn is-outline sf-more-btn" :aria-busy="moreBusy ? 'true' : undefined" @click.prevent="loadMore()">{{ moreBusy ? w('Chargement…') : moreFailed ? w('Réessayer') : w('Voir plus de produits') }}</a>
+        </div>
       </div>
 
       <!-- a product: its photos beside its blocks (name, price, sizes, buy button, description...) in the order the shop gave them -->

@@ -117,10 +117,12 @@ export default defineEventHandler(async (event) => {
   const priceMin = Math.max(0, Math.floor(Number(query.min) || 0)), priceMax = Math.max(0, Math.floor(Number(query.max) || 0))
   const filtered = { ...(attributes ? { FilterAttribute: attributes } : {}), ...(priceMax > priceMin ? { FilterPrice: priceMin + ',' + priceMax } : {}) }
   const same = { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR' }
-  const [listing, filterAttributes, filterPrice, media] = await Promise.all([
+  const [listing, filterAttributes, filterPrice, media, links] = await Promise.all([
     shopApi(event, 'category/product', { ...same, Offset: (pageNumber - 1) * perPage, Limit: perPage, ...(SORTS[sort] || {}), ...filtered }),
     shopApi(event, 'category/filterAttribute', same), shopApi(event, 'category/filterPrice', same),
     digipart(event, 'category-cover.php', { IdCategory: Number(category.IdCategory) }).catch(() => null),
+    // the sub-categories and the categories next to it (api/storefront/category-links.php), when the section links to them
+    settings.SubNav === 'none' ? null : digipart(event, 'category-links.php', { ...language, IdCategory: Number(category.IdCategory) }).catch(() => null),
   ])
   // the cover of the category (Catalogue > Catégories > Couverture): its sizes from the smallest to the largest, or its Vimeo video. The addresses follow where the shop keeps its pictures (disk or bucket)
   const coverSizes = (Array.isArray(media?.Sizes) ? media.Sizes : []).filter((i: any) => /^https?:\/\//.test(String(i?.Src || ''))).map((i: any) => ({ Src: String(i.Src), Width: Number(i.Width) || 0, Height: Number(i.Height) || 0 })).sort((a: any, b: any) => a.Width - b.Width)
@@ -140,14 +142,14 @@ export default defineEventHandler(async (event) => {
   // the staging of the category: read for every view of the page, because it also holds the cards per line chosen for this category (it applies when the visitor sorts or filters too)
   const stage = await digipart(event, 'category-stage.php', { IdCategory: Number(category.IdCategory) }).catch(() => null)
   const display = { Columns: Math.max(0, Math.min(6, Number(stage?.Display?.Columns) || 0)), ColumnsMobile: Math.max(0, Math.min(2, Number(stage?.Display?.ColumnsMobile) || 0)) }
+  let pages = Math.max(1, Math.ceil(total / perPage))
   if (!sort && !attributes && !filters.Max) {
     const staged: any[] = Array.isArray(stage?.Items) ? stage.Items : []
     if (staged.length) {
       const stagedIds = new Set(staged.filter(i => i.Type === 'product').map(i => Number(i.IdProduct)))
       const byId = new Map(products.map((p: any) => [p.Id, p]))
-      const rest = products.filter((p: any) => !stagedIds.has(p.Id)).map((p: any) => ({ Kind: 'product', Size: '1x1', Product: p }))
-      if (pageNumber === 1) {
-        const first = (await Promise.all(staged.map(async (i) => {
+      // a staged item drawn as the staging says: an editorial block, or a product put forward
+      const stagedItem = async (i: any) => {
           if (i.Type === 'edito') { return { Kind: 'edito', Id: String(i.Id), Size: String(i.Size), Image: /^https?:\/\//.test(String(i.Image)) ? String(i.Image) : '', Video: String(i.Video || ''), Title: String(i.Title || '').slice(0, 120), Height: Math.max(0, Math.min(1200, Number(i.Height) || 0)), HeightMobile: Math.max(0, Math.min(1200, Number(i.HeightMobile) || 0)), Url: /^(https?:\/\/|\/(?!\/))/.test(String(i.Url)) ? String(i.Url) : '' } }
           // a product put forward is read like its own page does (its price, its promotion and its old price are those of the product page), the listing only when that fails
           const product: any = (await loadProduct(event, Number(i.IdProduct), lang, prefix, 'EUR', priceBase).catch(() => null)) || byId.get(Number(i.IdProduct))
@@ -155,16 +157,35 @@ export default defineEventHandler(async (event) => {
           const own = (Array.isArray(i.Images) ? i.Images : []).filter((x: any) => /^https?:\/\//.test(String(x?.Src)))
           const shown = own.length ? { ...product, Images: [own[own.length - 1].Src, ...product.Images.filter((src: string) => !own.some((x: any) => x.Src === src))], ImageSets: [own.map((x: any) => x.Src + ' ' + x.Width + 'w').join(', '), ...(product.ImageSets || [])] } : product
           return { Kind: 'product', Size: String(i.Size), Video: String(i.Video || ''), Layout: i.Layout === 'cover' ? 'cover' : 'photos', Count: Math.max(2, Math.min(4, Number(i.Count) || 3)), Product: shown }
+      }
+      // the whole order of the category: the staged items first, then every other product of the category in its own order (ids only, api/storefront/products.php `category_all`); the page
+      // shows its slice of it, so a category staged with hundreds of products still sends `perPage` cards a page
+      const all = await digipart(event, 'products.php', { Mode: 'category_all', IdCategory: Number(category.IdCategory) }).catch(() => null)
+      const others: number[] | null = Array.isArray(all?.ProductIds) ? (all.ProductIds as number[]).map(Number).filter(id => id > 0 && !stagedIds.has(id)) : null
+      if (others) {
+        const order: Array<{ staged?: any, id?: number }> = [...staged.map(i => ({ staged: i })), ...others.map(id => ({ id }))]
+        const start = (pageNumber - 1) * perPage
+        items = (await Promise.all(order.slice(start, start + perPage).map(async (entry) => {
+          if (entry.staged) { return stagedItem(entry.staged) }
+          const product = (await loadProduct(event, entry.id!, lang, prefix, 'EUR', priceBase).catch(() => null)) || byId.get(entry.id)   // as the product page reads it (its promotion), like the staged ones
+          return product ? { Kind: 'product', Size: '1x1', Product: product } : null
         }))).filter(Boolean)
-        items = [...first, ...rest]
-      } else {
-        items = rest
+        pages = Math.max(1, Math.ceil(order.length / perPage))
+      } else {   // a Digipart that does not know `category_all` yet: the staged items are cut in pages too, the products of the listing follow them
+        const start = (pageNumber - 1) * perPage
+        const rest = products.filter((p: any) => !stagedIds.has(p.Id)).map((p: any) => ({ Kind: 'product', Size: '1x1', Product: p }))
+        items = [...(await Promise.all(staged.slice(start, start + perPage).map(stagedItem))).filter(Boolean), ...(start + perPage >= staged.length ? rest : [])]
       }
     }
   }
+  // a link to a category of the site: its address in the language of the page (with the language part of the address), its name, how many products it has, its small picture
+  const linkOf = (c: any) => ({ Id: Number(c?.Id) || 0, Name: text(c?.Name, 100), Url: prefix + '/' + String(c?.Slug || '').replace(/^\/+|\/+$/g, ''), Count: Number(c?.Count) || 0, Image: /^https?:\/\//.test(String(c?.Image)) ? String(c.Image) : '',
+    Srcset: (Array.isArray(c?.Sizes) ? c.Sizes : []).filter((x: any) => /^https?:\/\/[^\s,]+$/.test(String(x?.Src)) && Number(x?.Width) > 0).map((x: any) => x.Src + ' ' + Number(x.Width) + 'w').join(', ') })
+  const linkList = (list: unknown) => (Array.isArray(list) ? list : []).filter((c: any) => c && c.Slug && /^[\p{L}\p{N}_.\/-]{1,200}$/u.test(String(c.Slug))).map(linkOf)
+  const categoryLinks = links ? { Parent: links.Parent?.Slug ? linkOf(links.Parent) : null, Children: linkList(links.Children), Siblings: linkList(links.Siblings) } : null
   return {
     Kind: 'catalog', Design: catalog, Page: null,
-    Category: { Alternates: Object.fromEntries((Array.isArray(category.SEO) ? category.SEO : []).map((s: any) => [String(s.LanguageIsoCode || '').toLowerCase(), String(s.URL || '').replace(/^\/+|\/+$/g, '')]).filter(([iso, url]: string[]) => /^[a-z]{2,3}$/.test(iso) && url)), Id: Number(category.IdCategory), Slug: rest, Cover: { Sizes: coverSizes, Video: /vimeo\.com/i.test(coverVideo) ? coverVideo : '' }, Name: String(category.Description?.Title || seo.MetaTitle || rest), Description: String(category.Description?.Description || ''), SeoTitle: String(seo.MetaTitle || ''), SeoDescription: String(seo.MetaDescription || '') },
-    Listing: { Items: items, Display: display, Products: products, Total: total, Page: pageNumber, Pages: Math.max(1, Math.ceil(total / perPage)), Sort: sort, Filters: filters },
+    Category: { Alternates: Object.fromEntries((Array.isArray(category.SEO) ? category.SEO : []).map((s: any) => [String(s.LanguageIsoCode || '').toLowerCase(), String(s.URL || '').replace(/^\/+|\/+$/g, '')]).filter(([iso, url]: string[]) => /^[a-z]{2,3}$/.test(iso) && url)), Id: Number(category.IdCategory), Slug: rest, Links: categoryLinks, Cover: { Sizes: coverSizes, Video: /vimeo\.com/i.test(coverVideo) ? coverVideo : '' }, Name: String(category.Description?.Title || seo.MetaTitle || rest), Description: String(category.Description?.Description || ''), SeoTitle: String(seo.MetaTitle || ''), SeoDescription: String(seo.MetaDescription || '') },
+    Listing: { Items: items, Display: display, Products: products, Total: total, Page: pageNumber, Pages: pages, PerPage: perPage, Sort: sort, Filters: filters },
   }
 })
