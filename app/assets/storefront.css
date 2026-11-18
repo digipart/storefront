@@ -34,6 +34,7 @@ h1, h2, p { margin: 0; }
 .sf-slides { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .sf-slides::-webkit-scrollbar { display: none; }
 .sf-slide { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
+.sf-slide-link { position: absolute; inset: 0; z-index: 1; } .sf-slide .sf-hero-copy { z-index: 2; pointer-events: none; } .sf-slide .sf-hero-copy a, .sf-slide .sf-hero-copy button { pointer-events: auto; }
 .sf-tile { position: relative; display: block; aspect-ratio: 3 / 4; overflow: hidden; background: #e9eaf0; border-radius: var(--t-card-radius, 0); text-decoration: none; }
 .sf-tile.is-square { aspect-ratio: 1; } .sf-tile.is-landscape { aspect-ratio: 4 / 3; }
 .sf-tile img { width: 100%; height: 100%; object-fit: cover; }

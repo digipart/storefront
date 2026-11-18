@@ -132,7 +132,7 @@ const w = useWords()
       </div>
 
       <!-- a carousel: slides the visitor swipes through (scroll snap: no script is needed to read it) -->
-      <div v-else-if="type === 'slideshow'" :style="picture"><SfSlides :slides="slides" :settings="s" :first="first" /></div>
+      <div v-else-if="type === 'slideshow'" :style="picture"><SfSlides :slides="slides" :blocks="blocks" :settings="s" :first="first" /></div>
 
       <!-- two to four pictures side by side, each a link -->
       <div v-else-if="type === 'banners'" :style="align">

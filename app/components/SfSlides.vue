@@ -2,16 +2,14 @@
 // A carousel: slides the visitor swipes through (scroll snap, so it reads without any script), with what the shop chose in the site builder: arrows (shape, place, size, colours, border, distance
 // from the edges), dots (round, square or dashes; on the picture or under the carousel), and the slides moving on by themselves (paused under the pointer, when the page is hidden, and for
 // visitors who asked for less motion).
-const props = defineProps<{ slides: any[], settings: any, first?: boolean }>()
+const props = defineProps<{ slides: any[], blocks?: any[], settings: any, first?: boolean }>()
 const w = useWords()
 const s = computed(() => props.settings || {})
 const track = ref<HTMLElement | null>(null)
 const at = ref(0)
-// what the shop chose for the texts and the buttons of the slides (site builder: groups Titres, Textes and Boutons of the carousel)
-const titleCss = computed(() => { const v = s.value; return { '--size': (v.TitleSize || 44) + 'px', fontWeight: Number(v.TitleWeight) && Number(v.TitleWeight) !== 600 ? v.TitleWeight : undefined, textTransform: v.TitleCase === 'uppercase' ? 'uppercase' : undefined, letterSpacing: Number(v.TitleSpacing) ? v.TitleSpacing + 'px' : undefined, color: v.TitleColorMode === 'custom' ? v.TitleColor : undefined } })
-const textCss = computed(() => { const v = s.value; return { fontSize: Number(v.TextSize) && Number(v.TextSize) !== 16 ? v.TextSize + 'px' : undefined, fontWeight: Number(v.TextWeight) && Number(v.TextWeight) !== 400 ? v.TextWeight : undefined, textTransform: v.TextCase === 'uppercase' ? 'uppercase' : undefined, color: v.TextColorMode === 'custom' ? v.TextColor : undefined } })
-// the section's look for every button, unless a slide has its own (switch « Style propre à cette diapositive »)
-const buttonOf = (slide: any) => buttonLook(slide.Settings?.ButtonOwn ? slide.Settings : s.value, 'Button', true)
+// what sits on a slide: the blocks that name it (title, text, button... as on a banner); a slide that holds a button block is not a link as a whole (a link cannot hold a link)
+const blocksOf = (slide: any) => (props.blocks || []).filter((b: any) => b.Slide === slide.Id && b.Type !== 'slide')
+const linked = (slide: any) => !!slide.Settings.Url && !blocksOf(slide).some((b: any) => b.Type === 'button' || b.Type === 'icon')
 const many = computed(() => props.slides.length > 1)
 const vimeo = (value: unknown) => { const found = String(value || '').match(/vimeo\.com\/(?:video\/)?(\d{6,12})(?:\/([0-9a-f]{6,20}))?/i); return found ? 'https://player.vimeo.com/video/' + found[1] + '?background=1&autoplay=1&loop=1&muted=1&dnt=1' + (found[2] ? '&h=' + found[2] : '') : '' }
 const rgba = (hex: string, alpha: number) => { let h = String(hex || '#ffffff').replace('#', ''); if (h.length === 3) { h = h.split('').map(c => c + c).join('') } const n = parseInt(h, 16) || 0; return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})` }
@@ -51,11 +49,8 @@ onBeforeUnmount(() => { if (timer) { clearInterval(timer) } })
             <img :src="slide.Settings.Image" alt="" :loading="first && slide === slides[0] ? 'eager' : 'lazy'" decoding="async">
           </picture>
           <span v-if="vimeo(slide.Settings.Video)" class="sf-hero-video"><iframe :src="vimeo(slide.Settings.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
-          <component :is="slide.Settings.Url && !slide.Texts.ButtonText ? 'a' : 'div'" :href="slide.Settings.Url && !slide.Texts.ButtonText ? slide.Settings.Url : undefined" class="sf-hero-copy">
-            <h2 v-if="slide.Texts.Title" class="sf-h" :style="titleCss">{{ slide.Texts.Title }}</h2>
-            <p v-if="slide.Texts.Text" class="sf-text" :style="textCss">{{ slide.Texts.Text }}</p>
-            <a v-if="slide.Texts.ButtonText" :href="slide.Settings.Url || undefined" class="sf-btn" :class="buttonOf(slide).class" :style="buttonOf(slide).style">{{ slide.Texts.ButtonText }}</a>
-          </component>
+          <a v-if="linked(slide)" :href="slide.Settings.Url" class="sf-slide-link" :aria-label="w('Voir')" />
+          <div class="sf-hero-copy"><SfBlocks :blocks="blocksOf(slide)" :light="true" /></div>
         </div>
       </div>
       <template v-if="many && s.Arrows !== false">
