@@ -1103,3 +1103,12 @@ a.sf-reassure-item:hover b { text-decoration: underline; }
 .sf-nav-item:hover .sf-mega, .sf-nav-item:focus-within .sf-mega { visibility: visible; opacity: 1; pointer-events: auto; transition: opacity .15s ease, visibility 0s; }
 .sf-mega:empty { display: none; }
 @media (prefers-reduced-motion: reduce) { .sf-mega, .sf-nav-item:hover .sf-mega { transition: none; } }
+/* the large menu as the site builder sets it (header, group « Sous-menu »): spaces, titles, links, rules between the columns, full width or under its tab */
+.sf-mega { gap: var(--mg-gap, 48px); justify-content: var(--mg-align, center); padding-top: var(--mg-pad, 28px); padding-bottom: var(--mg-pad, 28px); font-size: var(--mg-xsize, 14px); }
+.sf-mega-col { gap: var(--mg-line, 8px); }
+.sf-mega-col a, .sf-mega-col > span { text-transform: var(--mg-xcase, none); }
+.sf-mega-title { font-size: var(--mg-tsize, 14px); font-weight: var(--mg-tweight, 600); text-transform: var(--mg-tcase, none); letter-spacing: 0; }
+.sf-nav.has-mega-rules .sf-mega-col + .sf-mega-col { border-left: 1px solid var(--t-border, #ececf1); padding-left: var(--mg-gap, 48px); }
+.sf-nav.has-mega-rules .sf-mega { column-gap: var(--mg-gap, 48px); }
+.sf-nav.is-mega-tab .sf-nav-item { position: relative; }
+.sf-nav.is-mega-tab .sf-mega { right: auto; width: max-content; max-width: min(90vw, 1100px); justify-content: flex-start; }
