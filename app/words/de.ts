@@ -317,6 +317,8 @@ export default {
   'de fidélité gagnés avec cet achat': 'Treuepunkte mit diesem Kauf gesammelt',
   'Comment ça marche ?': 'Wie funktioniert es?',
   'En savoir plus': 'Mehr erfahren',
+  'Annonce précédente': 'Vorherige Ankündigung',
+  'Annonce suivante': 'Nächste Ankündigung',
   'Page suivante': 'Nächste Seite',
   'Page {a} sur {b}': 'Seite {a} von {b}',
   'Cette page n\'est pas encore publiée.': 'Diese Seite ist noch nicht veröffentlicht.',

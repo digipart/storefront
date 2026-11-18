@@ -317,6 +317,8 @@ export default {
   'de fidélité gagnés avec cet achat': 'loyalty points earned with this purchase',
   'Comment ça marche ?': 'How does it work?',
   'En savoir plus': 'Learn more',
+  'Annonce précédente': 'Previous announcement',
+  'Annonce suivante': 'Next announcement',
   'Page suivante': 'Next page',
   'Page {a} sur {b}': 'Page {a} of {b}',
   'Cette page n\'est pas encore publiée.': 'This page is not published yet.',
