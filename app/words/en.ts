@@ -606,4 +606,17 @@ export default {
   'En {a} fois par carte bancaire': 'In {a} instalments by card',
   'Nombre de fois': 'Number of instalments',
   '{a} fois': '{a} instalments',
+  // the search panel and its results
+  'Suggestions': 'Suggestions',
+  'Tout': 'All',
+  'Masquer les filtres': 'Hide filters',
+  'Afficher les filtres': 'Show filters',
+  'Trier par': 'Sort by',
+  'Meilleures ventes': 'Best sellers',
+  'Effacer': 'Clear',
+  'Fermer la recherche': 'Close the search',
+  'Recherches populaires': 'Popular searches',
+  'Cela pourrait vous intéresser': 'You may also like',
+  'Recherche en cours…': 'Searching…',
+  'Voir les {a} résultats': 'See all {a} results',
 } as Record<string, string>

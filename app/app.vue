@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const searchOpen = useState<boolean>('sf-search-open', () => false)
 const adminLinks = useState<{ Label: string, Path: string }[]>('sf-admin-links', () => [])   // set by the page shown (SfView.vue)
 // The frame of every page of the site: the theme (its settings as CSS variables on <html>), the header and the footer written in Digipart, and between them the page of the address.
 const route = useRoute()
@@ -99,6 +100,8 @@ if (import.meta.server && closed.value) {
     <header v-else-if="site.Header" ref="headerBox" :class="{ 'sf-sticky': stickyHeader }"><SfSection v-for="section in site.Header.Sections" :key="section.Id" :section="section" /></header>
     <NuxtPage />
     <ClientOnly><LazySfCart /></ClientOnly>
+    <!-- the search panel (opened by the search of the header) -->
+    <ClientOnly><LazySfSearchPanel v-if="searchOpen" /></ClientOnly>
     <footer v-if="site.Footer && !ordering"><SfSection v-for="section in site.Footer.Sections" :key="section.Id" :section="section" /></footer>
     <!-- the bar of a preview: which theme is shown, in which language, and the way out. Only whoever holds a preview link sees it. -->
     <aside v-if="site.Preview && !barHidden" class="sf-pbar" aria-label="Aperçu du thème">

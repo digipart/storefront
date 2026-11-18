@@ -1130,3 +1130,65 @@ a.sf-mega-img:hover .sf-mega-caption { text-decoration: underline; }
 .sf-mega-col.is-pics > .sf-mega-title { flex: 0 0 100%; }
 .sf-mega-split { display: grid; grid-template-rows: repeat(var(--mg-rows, 8), auto); grid-auto-flow: column; grid-auto-columns: max-content; column-gap: var(--mg-gap, 48px); row-gap: var(--mg-line, 8px); }
 .sf-mega-split > a, .sf-mega-split > span { text-transform: var(--mg-xcase, none); }
+
+/* checkout: the newsletter box is a box, not a full-width field; the reassurance lines one under the other (the grid of the product page's reassurance block is not theirs) */
+.sf-co-form .sf-check { align-items: flex-start; font-weight: 400; }
+.sf-co-form .sf-check input { flex: 0 0 auto; width: 18px; height: 18px; margin: 1px 0 0; padding: 0; accent-color: currentColor; }
+.sf-co-form .sf-check span { flex: 1 1 auto; line-height: 1.45; }
+.sf-reassure.is-list { display: block; border: 0; border-top: 1px solid var(--t-line, #e0e0e0); }
+.sf-reassure.is-list li > * { padding: 14px 2px; }
+
+/* ---- search: the panel opened by the header, and the results (panel and page /recherche) ---- */
+html.sf-noscroll { overflow: hidden; }
+.sf-spanel { position: fixed; inset: 0; z-index: 200; }
+.sf-spanel-shade { position: absolute; inset: 0; background: rgba(0, 0, 0, .35); }
+.sf-spanel-box { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--t-bg, #fff); color: var(--t-text, #1e2129); animation: sf-spanel-in .18s ease-out; }
+@keyframes sf-spanel-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sf-spanel-box { animation: none; } }
+.sf-spanel-bar { display: flex; align-items: center; gap: 16px; max-width: var(--t-page, 1440px); width: 100%; margin: 0 auto; padding: 14px 32px; box-sizing: border-box; border-bottom: 1px solid var(--t-border, #ececf1); }
+.sf-spanel-field { flex: 1 1 auto; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 0 18px; border: 1px solid var(--t-border, #d9dbe1); border-radius: 999px; }
+.sf-spanel-field input { flex: 1 1 auto; min-width: 0; padding: 12px 0; border: 0; background: none; color: inherit; font: inherit; font-size: 16px; outline: none; }
+.sf-spanel-field input::-webkit-search-cancel-button { display: none; }
+.sf-spanel-field:focus-within { border-color: currentColor; }
+.sf-spanel-clear { border: 0; background: none; color: inherit; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.sf-spanel-close { display: inline-flex; padding: 6px; border: 0; background: none; color: inherit; cursor: pointer; }
+.sf-spanel-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+.sf-spanel-body > * { max-width: var(--t-page, 1440px); margin-left: auto; margin-right: auto; padding-left: 32px; padding-right: 32px; box-sizing: border-box; }
+.sf-spanel-body > :first-child { padding-top: 24px; }
+.sf-spanel-reco { padding-top: 24px; padding-bottom: 40px; }
+.sf-spanel-title { margin: 0 0 18px; font-size: 18px; font-weight: 600; }
+.sf-spanel-all { margin: 32px 0 48px; text-align: center; }
+.sf-srch { padding-bottom: 40px; }
+.sf-srch.is-busy .sf-srch-main { opacity: .55; transition: opacity .15s; }
+.sf-srch-suggest { margin-bottom: 24px; }
+.sf-srch-label { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+.sf-srch-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.sf-srch-chip { display: inline-block; padding: 8px 12px; border: 1px solid var(--t-border, #d9dbe1); border-radius: var(--t-btn-radius, 0); background: none; color: inherit; font: inherit; font-size: 13px; text-decoration: none; cursor: pointer; }
+.sf-srch-chip:hover { border-color: currentColor; }
+.sf-srch-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-bottom: 24px; border-bottom: 1px solid var(--t-border, #ececf1); }
+.sf-srch-tabs { display: flex; flex-wrap: wrap; gap: 0 24px; }
+.sf-srch-tabs button { padding: 12px 0; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; color: inherit; font: inherit; font-size: 14px; opacity: .65; cursor: pointer; }
+.sf-srch-tabs button[aria-pressed="true"] { border-bottom-color: currentColor; font-weight: 600; opacity: 1; }
+.sf-srch-tabs small { font-size: 12px; }
+.sf-srch-count { margin: 0; padding: 12px 0; font-size: 14px; opacity: .75; }
+.sf-srch-tools { display: flex; align-items: center; gap: 20px; padding: 8px 0; }
+.sf-srch-tool { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.sf-srch-sort { position: relative; }
+.sf-srch-sort select { appearance: none; padding: 4px 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.sf-srch-sort .sf-srch-caret { order: 2; pointer-events: none; }
+.sf-srch-density { display: inline-flex; gap: 10px; }
+.sf-srch-density button { display: inline-flex; gap: 2px; padding: 4px 0; border: 0; background: none; color: inherit; opacity: .35; cursor: pointer; }
+.sf-srch-density button[aria-pressed="true"] { opacity: 1; }
+.sf-srch-density i { display: block; width: 3px; height: 16px; background: currentColor; }
+.sf-srch-tool.is-phone { display: none; }
+.sf-srch-body.has-side { display: grid; grid-template-columns: var(--fw, 260px) minmax(0, 1fr); gap: 32px; align-items: start; }
+.sf-srch-side { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.sf-spanel .sf-srch-side { top: 0; max-height: none; }
+@media (max-width: 991px) {
+  .sf-srch-body.has-side { display: block; } .sf-srch-side { display: none; }
+  .sf-srch-tool.is-desk, .sf-srch-density.is-desk { display: none; } .sf-srch-tool.is-phone { display: inline-flex; }
+}
+@media (max-width: 767px) {
+  .sf-spanel-bar { padding: 10px 16px; gap: 10px; } .sf-spanel-body > * { padding-left: 16px; padding-right: 16px; }
+  .sf-srch-head { flex-direction: column; align-items: stretch; } .sf-srch-tabs { overflow-x: auto; flex-wrap: nowrap; } .sf-srch-tabs button { white-space: nowrap; }
+}

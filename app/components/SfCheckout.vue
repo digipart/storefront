@@ -485,7 +485,7 @@ onMounted(async () => { await load(); await backFromAlma() })
           <div v-for="card in giftCards" :key="card.Id" class="sf-total-row"><span>{{ w('Carte cadeau') }} {{ card.Code }}</span><span>−{{ money(card.Used, total.Currency, lang) }}</span></div>
           <div class="sf-total-row is-main"><span>{{ w('Reste à payer') }}</span><span>{{ money(leftToPay, total.Currency, lang) }}</span></div>
         </template>
-        <ul v-if="reassurances.length" class="sf-reassure">
+        <ul v-if="reassurances.length" class="sf-reassure is-list">
           <li v-for="item in reassurances" :key="item.Id">
             <button v-if="item.Texts.Text" type="button" aria-haspopup="dialog" @click="told = item"><span aria-hidden="true"><SfIcon :name="item.Settings?.Icon || 'check'" :size="20" /></span><span>{{ item.Texts.Title }}</span><span aria-hidden="true">›</span></button>
             <div v-else><span aria-hidden="true"><SfIcon :name="item.Settings?.Icon || 'check'" :size="20" /></span><span>{{ item.Texts.Title }}</span></div>

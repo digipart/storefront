@@ -66,11 +66,11 @@ export default defineEventHandler(async (event) => {
 
   // the search: the products whose name or reference holds the words typed (api/storefront/search.php)
   if (rest === 'recherche' || rest === 'search') {
-    const term = String(query.q ?? '').trim().slice(0, 80)
-    const size = 24, pageNumber = Math.max(1, Math.min(200, Number(query.page) || 1))
-    const found = term ? await digipart(event, 'search.php', { ...language, Term: term, Limit: size, Offset: (pageNumber - 1) * size }).catch(() => null) : null
-    const products = (await Promise.all(((found?.ProductIds as number[]) || []).map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean)
-    return { Kind: 'search', Design: await design('search').catch(() => null), Page: null, Search: { Term: term, Total: Number(found?.Total || 0), Products: products, Page: pageNumber, Pages: Math.max(1, Math.ceil(Number(found?.Total || 0) / size)) } }
+    // with its filters, main categories, suggestions and sort (server/utils/search.ts), as in the search panel
+    const searchDesign = await design('search').catch(() => null)
+    const own = (searchDesign?.Sections || []).find((x: any) => x.Type === 'main_search')?.Settings || {}
+    const size = Math.max(4, Math.min(48, (Number(own.Columns) || 4) * 6))
+    return { Kind: 'search', Design: searchDesign, Page: null, Search: await readSearch(event, searchAsk(query, size), lang, prefix, priceBase) }
   }
 
   // the page after a payment

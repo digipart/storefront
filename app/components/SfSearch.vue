@@ -10,7 +10,11 @@ const term = ref(props.search.Term)
 const own = computed(() => !!props.settings)
 const tag = computed(() => (own.value && ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div'].includes(String(props.settings.TitleTag)) ? String(props.settings.TitleTag) : 'h1'))
 const titleStyle = computed(() => (own.value ? { '--size': ({ xl: 42, lg: 34, md: 26, sm: 19 } as Record<string, number>)[props.settings.TitleSize || 'md'] + 'px', fontWeight: props.settings.TitleWeight || 600, textTransform: props.settings.TitleCase === 'uppercase' ? 'uppercase' : undefined, textAlign: props.settings.TitleAlign || undefined, marginBottom: (props.settings.TitleGap ?? 20) + 'px' } : undefined))
-const grid = computed(() => ({ '--cols': own.value ? Number(props.settings.Columns) || 4 : 4, '--cols-m': own.value ? Number(props.settings.ColumnsMobile) || 2 : 2, '--gx': (own.value ? props.settings.GapX ?? 16 : 16) + 'px', '--gy': (own.value ? props.settings.GapY ?? 32 : 32) + 'px' }))
+// the address of the results with what the visitor chose (filters, main category, sort, page)
+const query = (ask: Record<string, string | number>) => Object.entries(ask).filter(([k, v]) => v !== '' && v !== 0 && !(k === 'page' && v === 1)).map(([k, v]) => k + '=' + encodeURIComponent(String(v))).join('&')
+const current = computed(() => ({ q: props.search.Term, attr: (props.search.Filters?.Attributes || []).join(','), min: props.search.Filters?.Min || 0, max: props.search.Filters?.Max || 0, tab: props.search.Tab || 0, sort: props.search.Sort || '' }))
+const pageUrl = (page: number) => action.value + '?' + query({ ...current.value, page })
+const go = (ask: Record<string, string | number>) => navigateTo(action.value + '?' + query(ask))
 </script>
 
 <template>
@@ -20,17 +24,15 @@ const grid = computed(() => ({ '--cols': own.value ? Number(props.settings.Colum
       <input v-model="term" type="search" name="q" maxlength="80" :placeholder="w('Que cherchez-vous ?')" :aria-label="w('Que cherchez-vous ?')" autocomplete="off" required>
       <button type="submit" class="sf-btn">{{ w('Chercher') }}</button>
     </form>
-    <template v-if="search.Term">
-      <p class="sf-muted" aria-live="polite">{{ w(search.Total > 1 ? '{a} résultats pour « {b} »' : '{a} résultat pour « {b} »', { a: search.Total, b: search.Term }) }}</p>
-      <div v-if="search.Products.length" class="sf-grid" :style="grid">
-        <SfProductCard v-for="(item, index) in search.Products" :key="item.Id" :product="item" :images="own ? settings.CardImages : undefined" :dots="own ? settings.CardDots !== false : undefined" :quick="!own || settings.QuickAdd !== false" :eager="index < 4" />
-      </div>
-      <p v-else class="sf-muted">{{ (own && texts?.EmptyText) || w('Aucun produit ne correspond à votre recherche.') }}</p>
-      <nav v-if="search.Pages > 1" class="sf-pages" :aria-label="w('Pages')">
-        <a v-if="search.Page > 1" :href="action + '?q=' + encodeURIComponent(search.Term) + '&page=' + (search.Page - 1)" rel="prev">{{ w('Page précédente') }}</a>
-        <span>{{ w('Page {a} sur {b}', { a: search.Page, b: search.Pages }) }}</span>
-        <a v-if="search.Page < search.Pages" :href="action + '?q=' + encodeURIComponent(search.Term) + '&page=' + (search.Page + 1)" rel="next">{{ w('Page suivante') }}</a>
-      </nav>
-    </template>
+    <!-- the results with their suggestions, main categories, filters and sort (as in the search panel); a choice reads the page again by its address -->
+    <SfSearchResults v-if="search.Term" :result="search" :settings="own ? settings : undefined" :texts="own ? texts : undefined" @change="go">
+      <template #after>
+        <nav v-if="search.Pages > 1" class="sf-pages" :aria-label="w('Pages')">
+          <a v-if="search.Page > 1" :href="pageUrl(search.Page - 1)" rel="prev">{{ w('Page précédente') }}</a>
+          <span>{{ w('Page {a} sur {b}', { a: search.Page, b: search.Pages }) }}</span>
+          <a v-if="search.Page < search.Pages" :href="pageUrl(search.Page + 1)" rel="next">{{ w('Page suivante') }}</a>
+        </nav>
+      </template>
+    </SfSearchResults>
   </div>
 </template>
