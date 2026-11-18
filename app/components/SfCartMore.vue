@@ -21,7 +21,7 @@ const shown = computed(() => products.value.filter(product => product.Available 
     <h3>{{ w('Complétez votre panier') }}</h3>
     <div class="sf-more-row">
       <article v-for="product in shown" :key="product.Id" class="sf-more-card">
-        <a :href="product.Url" class="sf-line-pic" tabindex="-1" aria-hidden="true"><img v-if="product.Images[0]" :src="product.Images[0]" alt="" loading="lazy"></a>
+        <a :href="product.Url" class="sf-line-pic" tabindex="-1" aria-hidden="true"><img v-if="product.Images[0]" :src="product.Images[0]" alt="" loading="lazy" @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"></a>
         <a :href="product.Url" class="sf-more-name">{{ product.Name }}</a>
         <button v-if="!product.Variants.length && !product.TaxExcl" type="button" class="sf-btn" :disabled="busy" @click="add(product.Id, 0, 1)">{{ w('Ajouter') }} – {{ money(product.Price, product.Currency, lang) }}</button>
         <a v-else :href="product.Url" class="sf-btn is-outline">{{ w('Choisir') }} – {{ money(product.Price, product.Currency, lang) }}</a>
