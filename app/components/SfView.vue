@@ -2,14 +2,22 @@
 // What an address of the site shows (the two pages of the engine use it): the home page, or a content page of the shop drawn with the design of its page template.
 const route = useRoute()
 const site = inject<Ref<any>>('sfSite')!
-const { data: view, error } = await useFetch<any>('/api/storefront/view', {
+const { data: loaded, error } = await useFetch<any>('/api/storefront/view', {
   query: { rest: computed(() => site.value?.Route?.Rest || ''), lang: computed(() => site.value?.Route?.LanguageIsoCode || ''), prefix: computed(() => site.value?.Route?.Prefix || ''), preview: computed(() => (typeof route.query.preview === 'string' ? route.query.preview : '')),
     page: computed(() => (typeof route.query.page === 'string' ? route.query.page : '')), q: computed(() => (typeof route.query.q === 'string' ? route.query.q : '')), attr: computed(() => (typeof route.query.attr === 'string' ? route.query.attr : '')), min: computed(() => (typeof route.query.min === 'string' ? route.query.min : '')), max: computed(() => (typeof route.query.max === 'string' ? route.query.max : '')), sort: computed(() => (typeof route.query.sort === 'string' ? route.query.sort : '')) },
   key: computed(() => 'sf-view-' + route.fullPath),
 })
-if (error.value) { throw createError({ statusCode: error.value.statusCode || 500, statusMessage: error.value.statusCode === 404 ? 'Page introuvable' : 'Le site est momentanément indisponible', fatal: true }) }
+// an address that is nothing of the site: the page « Page introuvable » of the site builder is drawn (the answer stays a 404 for the search engines); only when even that cannot be read is the error page shown
+const missing = ref<any>(null)
+if (error.value?.statusCode === 404) {
+  const { data: notFound } = await useFetch<any>('/api/storefront/view', { query: { notfound: '1', lang: computed(() => site.value?.Route?.LanguageIsoCode || ''), prefix: computed(() => site.value?.Route?.Prefix || ''), preview: computed(() => (typeof route.query.preview === 'string' ? route.query.preview : '')) }, key: 'sf-404-' + route.fullPath })
+  if (notFound.value) { missing.value = notFound.value; if (import.meta.server) { setResponseStatus(useRequestEvent()!, 404) } }
+}
+const view = computed(() => loaded.value || missing.value)
+if (error.value && !missing.value) { throw createError({ statusCode: error.value.statusCode || 500, statusMessage: error.value.statusCode === 404 ? 'Page introuvable' : 'Le site est momentanément indisponible', fatal: true }) }
 provide('sfPage', computed(() => view.value?.Page || null))
 provide('sfProduct', computed(() => view.value?.Product || null))
+provide('sfSearch', computed(() => (view.value?.Kind === 'search' ? view.value.Search : null)))
 provide('sfCatalog', computed(() => (view.value?.Kind === 'catalog' ? { Category: view.value.Category, Listing: view.value.Listing } : null)))
 const w = useWords()
 // ---- for the search engines and the social networks: the one address of the page, the same page in the other languages, how it looks when shared, and what it is (a product, a path) ----
@@ -77,6 +85,8 @@ useHead(() => view.value?.Kind === 'product'
   ? { title: 'Shop the look · ' + view.value.Look.Product.Name, meta: [{ name: 'description', content: view.value.Look.Product.SeoDescription || view.value.Look.Product.DescriptionShort }] }
   : view.value?.Kind === 'brands'
   ? { title: w('Nos marques') }
+  : view.value?.Kind === 'notfound'
+  ? { title: w('Page introuvable'), meta: [{ name: 'robots', content: 'noindex' }] }
   : view.value?.Kind === 'search'
   ? { title: w('Recherche'), meta: [{ name: 'robots', content: 'noindex' }] }
   : view.value?.Kind === 'whatsapp'
@@ -106,13 +116,15 @@ useHead(() => view.value?.Kind === 'product'
     <LazySfLook v-else-if="view?.Kind === 'look'" :look="view.Look" />
     <LazySfBrand v-else-if="view?.Kind === 'brand'" :brand="view.Brand" />
     <LazySfBrands v-else-if="view?.Kind === 'brands'" :brands="view.Brands" />
-    <LazySfSearch v-else-if="view?.Kind === 'search'" :key="route.fullPath" :search="view.Search" />
+    <LazySfSearch v-else-if="view?.Kind === 'search' && !view.Design" :key="route.fullPath" :search="view.Search" />
     <LazySfThanks v-else-if="view?.Kind === 'thanks'" />
     <LazySfReferralLanding v-else-if="view?.Kind === 'referral'" :code="view.Code" />
     <div v-else-if="view?.Kind === 'whatsapp'" class="sf-thanks sf-wa-page"><h1>{{ w('Rejoignez-nous sur WhatsApp') }}</h1><p>{{ w('Nouveautés, ventes privées et conseils, directement sur WhatsApp.') }}</p><LazySfWhatsapp /></div>
     <template v-else-if="view?.Design">
       <SfSection v-for="(section, index) in view.Design.Sections" :key="section.Id" :section="section" :first="index === 0" />
     </template>
+    <!-- an unknown address, the design of its page never published in the site builder: the usual message -->
+    <SfSection v-else-if="view?.Kind === 'notfound'" :section="{ Id: 'nf', Type: 'main_404', Settings: { PaddingTop: 64, PaddingBottom: 64, PaddingMobile: 60 }, Texts: {}, Blocks: [] }" :first="true" />
     <!-- a page whose template was never published in the site builder still shows its text -->
     <SfSection v-else-if="view?.Page" :section="{ Id: 'page', Type: 'main_page', Settings: { ShowTitle: true, Width: 'narrow', PaddingTop: 48, PaddingBottom: 48, PaddingMobile: 60, TextSize: 15, TextLine: 1.7 }, Texts: {}, Blocks: [] }" />
     <div v-else class="sf-note"><h1>{{ site?.Name }}</h1><p>{{ w('Cette page n\'est pas encore publiée.') }}</p></div>

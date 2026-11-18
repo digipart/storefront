@@ -18,6 +18,9 @@ const iconMob = computed(() => (s.value.IconModeMobile && s.value.IconModeMobile
 const hasIcons = computed(() => iconDesk.value !== 'text' || iconMob.value !== 'text')
 // the HTML the shop wrote, with its variables ({{ shop.name }}, {{ year }}...) replaced (app/utils/htmlVars.ts)
 const customHtml = computed(() => withHtmlVars(String(s.value.Html || ''), site.value))
+const searchData = inject<Ref<any> | null>('sfSearch', null)
+// the search the visitor made (the page « Recherche » draws it inside its section)
+const searchResults = computed(() => searchData?.value || null)
 const titleTag = computed(() => (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div'].includes(String(s.value.TitleTag)) ? String(s.value.TitleTag) : 'h1'))
 const titleStyle = computed(() => ({ '--size': ({ xl: 42, lg: 34, md: 26, sm: 19 } as Record<string, number>)[s.value.TitleSize || 'md'] + 'px', fontWeight: s.value.TitleWeight || 600, textTransform: s.value.TitleCase === 'uppercase' ? 'uppercase' : undefined, textAlign: s.value.TitleAlign, marginBottom: (s.value.TitleGap ?? 20) + 'px' }))
 const pdp = computed(() => { const w = s.value.GalleryWidth || 60; return { '--cols': s.value.GalleryPosition === 'right' ? (100 - w) + 'fr ' + w + 'fr' : w + 'fr ' + (100 - w) + 'fr', '--gap': (s.value.Gap ?? 48) + 'px' } })
@@ -91,7 +94,7 @@ const columnPicture = (i: number) => {
     ...(align === 'center' || align === 'bottom' ? { display: 'flex', flexDirection: 'column', justifyContent: align === 'center' ? 'center' : 'flex-end' } : {}) }
 }
 const columnsReverse = computed(() => !!s.value.ReverseMobile && ratios(s.value.LayoutMobile, '1').length === 1)
-const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'announcement', 'custom_html', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart']
+const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'announcement', 'custom_html', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart', 'main_search', 'main_404']
 const { cart, show: showPanel } = useCart()
 const { customer, favorites, url: accountUrl, favoritesUrl } = useAccount()
 // the filters of a category (sizes, colours, price): chosen in a panel, kept in the address so a filtered list can be shared
@@ -207,6 +210,8 @@ const w = useWords()
 
       <!-- a category of the catalogue: its name, its description, the sort, its products, the pages -->
       <LazySfCartPage v-else-if="type === 'main_cart'" :settings="s" :texts="t" />
+      <LazySfSearch v-else-if="type === 'main_search' && searchResults" :key="route.fullPath" :search="searchResults" :settings="s" :texts="t" />
+      <LazySfNotFound v-else-if="type === 'main_404'" :settings="s" :texts="t" />
       <div v-else-if="type === 'main_catalog' && catalog">
         <div v-if="hasCover" class="sf-hero sf-catcover" :class="{ 'is-full': s.CoverFull }" :style="{ '--h': (s.CoverHeight || 280) + 'px', '--hm': (s.CoverHeightMobile || 180) + 'px', '--shade': (s.CoverVeil ?? 20) / 100, '--pad': '24px', '--jc': ({ top: 'flex-start', bottom: 'flex-end' } as Record<string, string>)[s.CoverPosition] || 'center', color: '#fff', textAlign: s.CoverAlign || 'center' }">
           <picture v-if="catalogCover"><img :src="catalogCover.Src" :srcset="catalog.Category.Cover.Sizes.map((c: any) => c.Src + ' ' + c.Width + 'w').join(', ')" sizes="100vw" alt="" fetchpriority="high" decoding="async"></picture>

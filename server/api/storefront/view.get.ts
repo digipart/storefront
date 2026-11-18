@@ -11,6 +11,8 @@ export default defineEventHandler(async (event) => {
   // the address of the product in every language of the site (for the search engines): asked once per product page
   const withPaths = async (product: any) => { const found = await digipart(event, 'products.php', { Mode: 'paths', IdProduct: product.Id }).catch(() => null); const paths = found?.Paths && typeof found.Paths === 'object' ? found.Paths : {}; return { ...product, Alternates: { ...product.Alternates, ...paths }, Canonical: paths[lang] || product.Canonical } }
   const design = (key: string) => digipart(event, 'design.php', { ...preview, ...language, Key: key })
+  // the page an address that is nothing of the site shows (the page asks for it after a 404, with `notfound=1`): the design « Page introuvable » of the site builder, or none
+  if (String(query.notfound) === '1') { return { Kind: 'notfound', Design: await design('not_found').catch(() => null), Page: null } }
   if (rest === '') { return { Kind: 'home', Design: await design('home'), Page: null } }
   const segments = rest.split('/')
   if (segments.length > 3 || segments.some(segment => !/^[\p{L}\p{N}_.-]{1,200}$/u.test(segment))) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
@@ -68,7 +70,7 @@ export default defineEventHandler(async (event) => {
     const size = 24, pageNumber = Math.max(1, Math.min(200, Number(query.page) || 1))
     const found = term ? await digipart(event, 'search.php', { ...language, Term: term, Limit: size, Offset: (pageNumber - 1) * size }).catch(() => null) : null
     const products = (await Promise.all(((found?.ProductIds as number[]) || []).map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean)
-    return { Kind: 'search', Design: null, Page: null, Search: { Term: term, Total: Number(found?.Total || 0), Products: products, Page: pageNumber, Pages: Math.max(1, Math.ceil(Number(found?.Total || 0) / size)) } }
+    return { Kind: 'search', Design: await design('search').catch(() => null), Page: null, Search: { Term: term, Total: Number(found?.Total || 0), Products: products, Page: pageNumber, Pages: Math.max(1, Math.ceil(Number(found?.Total || 0) / size)) } }
   }
 
   // the page after a payment

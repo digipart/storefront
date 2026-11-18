@@ -777,3 +777,9 @@ h3.sf-h, h4.sf-h, h5.sf-h, h6.sf-h, p.sf-h, div.sf-h { margin: 0; }
 .sf-reviews.is-carousel .sf-reviews-list { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
 .sf-reviews.is-carousel .sf-review { flex: 0 0 min(340px, 85%); scroll-snap-align: start; }
 @media (max-width: 767px) { .sf-reviews.is-grid .sf-reviews-list { grid-template-columns: 1fr; } }
+
+/* the page « Page introuvable » and the page « Recherche » drawn by their sections of the site builder */
+.sf-notfound { max-width: 640px; margin: 0 auto; text-align: center; }
+.sf-notfound-text { margin: 0 0 22px; line-height: 1.6; opacity: .8; }
+.sf-notfound-search { margin: 28px auto 0; justify-content: center; }
+.sf-search-own .sf-searchform { margin-left: 0; }
