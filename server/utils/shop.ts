@@ -8,7 +8,7 @@ const cache = new Map<string, { at: number, data: unknown }>()
 export function forgetProducts(ids: number[], all: boolean) {
   if (all) { cache.clear(); return }
   for (const key of [...cache.keys()]) {
-    if (key.startsWith('category/') || ids.some(id => key.startsWith('product/' + id + '?') || key.includes('IdProduct=' + id + '&') || key.endsWith('IdProduct=' + id))) { cache.delete(key) }
+    if (key.startsWith('category/') || ids.some(id => key.startsWith('product/' + id + '?') || key.startsWith('product-card/' + id + '?') || key.includes('IdProduct=' + id + '&') || key.endsWith('IdProduct=' + id))) { cache.delete(key) }
   }
 }
 
@@ -161,8 +161,8 @@ async function withLook<T extends ShopProduct | null>(event: H3Event, product: T
   return ids.includes(product.Id) ? { ...product, LookUrl: prefix + '/shop-the-look/' + product.Slug + '-' + product.Id } : product
 }
 
-// The products a request reads at the same moment (a grid, a section, the results of a search) are asked to Digipart in ONE question (api/storefront/product-batch.php: each one exactly as
-// api/product answers it), instead of one question each. Each answer is then kept like a single api/product answer, so the product page opened next finds it. A product the batch could not
+// The products a request reads at the same moment (a grid, a section, the results of a search) are asked to Digipart in ONE question (api/storefront/product-batch.php, `Fields=card`:
+// each one as api/product answers it, reduced to what a card reads), instead of one question each. The cards are kept apart from the whole products: a product page reads its product whole. A product the batch could not
 // read (`Failed`), or a Digipart that does not know the batch yet, is asked to api/product on its own, as before.
 type Waiting = { ids: Set<number>, waiters: Map<number, Array<(raw: any) => void>> }
 function productQuery(event: H3Event, id: number, lang: string, currency: string) {
@@ -170,7 +170,9 @@ function productQuery(event: H3Event, id: number, lang: string, currency: string
 }
 async function rawProduct(event: H3Event, id: number, lang: string, currency: string): Promise<any> {
   const { path, query } = productQuery(event, id, lang, currency)
-  if (keptShop(event, path, query) !== undefined) { return shopApi(event, path, query) }   // already in memory
+  if (keptShop(event, path, query) !== undefined) { return shopApi(event, path, query) }   // the whole product already in memory (a product page read it)
+  const card = keptShop(event, 'product-card/' + id, query)
+  if (card !== undefined) { noteCall(event, 'shop', 'product-card', -1); return card }   // its card already in memory
   const box = (event.context.sfBatch = event.context.sfBatch || new Map<string, Waiting>()) as Map<string, Waiting>
   const group = lang.toUpperCase() + '|' + currency
   let waiting = box.get(group)
@@ -191,13 +193,14 @@ async function flushBatch(event: H3Event, waiting: Waiting, lang: string, curren
   if (ids.length === 1) { await single(ids[0]!); return }
   for (let at = 0; at < ids.length; at += 60) {
     const part = ids.slice(at, at + 60)
-    const batch: any = await digipart(event, 'product-batch.php', { Ids: part.join(','), LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: currency }).catch(() => null)
+    // the cards only (Fields=card: what a card reads, about a fourth of the whole product); a product page reads its product whole from api/product
+    const batch: any = await digipart(event, 'product-batch.php', { Ids: part.join(','), LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: currency, Fields: 'card' }).catch(() => null)
     if (!batch || typeof batch.Products !== 'object') { await Promise.all(part.map(single)); continue }   // a Digipart without the batch: one by one, as before
     const failed = new Set<number>((Array.isArray(batch.Failed) ? batch.Failed : []).map(Number))
     await Promise.all(part.map(async (id) => {
       if (failed.has(id)) { return single(id) }
       const raw = batch.Products[String(id)] ?? null
-      if (raw) { const { path, query } = productQuery(event, id, lang, currency); keepShop(event, path, query, raw) }
+      if (raw) { const { query } = productQuery(event, id, lang, currency); keepShop(event, 'product-card/' + id, query, raw) }   // kept as a card: never taken for the whole product
       answer(id, raw || { status: 'error' })
     }))
   }

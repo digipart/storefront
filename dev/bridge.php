@@ -43,7 +43,7 @@ $answer = match ($argv[2]) {
     'product-extra.php' => $api->productExtras($idMarketPlace, (int) $text('IdProduct'), (float) $text('Amount'), $language),
     'product-batch.php' => (function () use ($api, $idMarketPlace, $text) {   // as api/storefront/product-batch.php (no reserved category is checked here: development only)
         $ids = preg_match('/^\d{1,10}(,\d{1,10}){0,59}$/', $text('Ids')) === 1 ? array_values(array_unique(array_map('intval', explode(',', $text('Ids'))))) : [];
-        $batch = $api->productBatch($idMarketPlace, $ids, $text('LanguageIsoCode') ?: 'FR', $text('CurrencyIsoCode') ?: 'EUR');
+        $batch = $api->productBatch($idMarketPlace, $ids, $text('LanguageIsoCode') ?: 'FR', $text('CurrencyIsoCode') ?: 'EUR', $text('Fields') === 'card');
         $products = [];
         foreach ($ids as $id) { $products[(string) $id] = $batch['products'][$id] ?? null; }
         return ['Products' => (object) $products, 'Cached' => $batch['cached'], 'Failed' => $batch['failed']];
