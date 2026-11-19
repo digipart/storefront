@@ -74,12 +74,14 @@ export async function digipart<T = any>(event: H3Event, path: string, query: Rec
   // a preview (it shows drafts) and an answer that depends on the visitor's address are kept two seconds: long enough for the page being drawn, never for the next change
   const life = full.PreviewToken || full.IP ? 2000 : Math.min(Number(config.cacheSeconds), local ? 30 : Infinity) * 1000
   const hit = cache.get(key)
-  if (hit && Date.now() - hit.at < life) { return hit.data as T }
+  if (hit && Date.now() - hit.at < life) { noteCall(event, 'digipart', path, -1); return hit.data as T }
   const running = asking.get(key)
-  if (running) { return running as Promise<T | null> }
+  if (running) { noteCall(event, 'digipart', path, -1); return running as Promise<T | null> }
   const ask = (async (): Promise<T | null> => {
+    const began = Date.now()
     try {
       const data = local ? await bridge(path, full) as T | null : await $fetch<T>(base + '/api/storefront/' + path, { query: full, headers: keys, retry: 0, timeout: 8000 })
+      noteCall(event, 'digipart', path || 'site', Date.now() - began)
       cache.set(key, { at: Date.now(), data })
       if (cache.size > 500) { cache.delete(cache.keys().next().value as string) }
       return data

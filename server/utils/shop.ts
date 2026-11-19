@@ -12,6 +12,23 @@ export function forgetProducts(ids: number[], all: boolean) {
   }
 }
 
+function shopKey(event: H3Event, path: string, query: Record<string, string | number>) {
+  const config = useRuntimeConfig(event)
+  const full: Record<string, string> = { IdMarketPlace: String(config.idMarketPlace) }
+  for (const [name, value] of Object.entries(query)) { if (value !== '' && value !== undefined && value !== null) { full[name] = String(value) } }
+  return path + '?' + new URLSearchParams(full).toString()
+}
+/** What the memory holds for this question (undefined: nothing, or too old). */
+function keptShop(event: H3Event, path: string, query: Record<string, string | number>): unknown {
+  const hit = cache.get(shopKey(event, path, query))
+  return hit && Date.now() - hit.at < Number(useRuntimeConfig(event).cacheSeconds) * 1000 ? hit.data : undefined
+}
+/** Keeps an answer read another way (the batch of products) as if this question had been asked. */
+function keepShop(event: H3Event, path: string, query: Record<string, string | number>, data: unknown) {
+  if (cache.size > 2000) { cache.delete(cache.keys().next().value as string) }
+  cache.set(shopKey(event, path, query), { at: Date.now(), data })
+}
+
 export async function shopApi<T = any>(event: H3Event, path: string, query: Record<string, string | number> = {}, keepSeconds?: number): Promise<T | null> {   // keepSeconds: a shorter memory (the live stock)
   const config = useRuntimeConfig(event)
   const base = String(config.digipartUrl || config.localUrl).replace(/\/+$/, '')
@@ -20,9 +37,11 @@ export async function shopApi<T = any>(event: H3Event, path: string, query: Reco
   for (const [name, value] of Object.entries(query)) { if (value !== '' && value !== undefined && value !== null) { full[name] = String(value) } }
   const key = path + '?' + new URLSearchParams(full).toString()
   const hit = cache.get(key)
-  if (hit && Date.now() - hit.at < (keepSeconds ?? Number(config.cacheSeconds)) * 1000) { return hit.data as T }
+  if (hit && Date.now() - hit.at < (keepSeconds ?? Number(config.cacheSeconds)) * 1000) { noteCall(event, 'shop', path, -1); return hit.data as T }
+  const began = Date.now()
   try {
     const raw = await $fetch<string>(base + '/api/' + path, { query: full, responseType: 'text', retry: 0, timeout: 10000 })
+    noteCall(event, 'shop', path.replace(/\/\d+$/, '/<id>'), Date.now() - began)
     const start = raw.search(/[[{]/)   // a development server may print a notice before its JSON
     const data = start >= 0 ? JSON.parse(raw.slice(start)) : null
     if (cache.size > 2000) { cache.delete(cache.keys().next().value as string) }
@@ -142,10 +161,52 @@ async function withLook<T extends ShopProduct | null>(event: H3Event, product: T
   return ids.includes(product.Id) ? { ...product, LookUrl: prefix + '/shop-the-look/' + product.Slug + '-' + product.Id } : product
 }
 
+// The products a request reads at the same moment (a grid, a section, the results of a search) are asked to Digipart in ONE question (api/storefront/product-batch.php: each one exactly as
+// api/product answers it), instead of one question each. Each answer is then kept like a single api/product answer, so the product page opened next finds it. A product the batch could not
+// read (`Failed`), or a Digipart that does not know the batch yet, is asked to api/product on its own, as before.
+type Waiting = { ids: Set<number>, waiters: Map<number, Array<(raw: any) => void>> }
+function productQuery(event: H3Event, id: number, lang: string, currency: string) {
+  return { path: 'product/' + id, query: { LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: currency, Track: 0 } }
+}
+async function rawProduct(event: H3Event, id: number, lang: string, currency: string): Promise<any> {
+  const { path, query } = productQuery(event, id, lang, currency)
+  if (keptShop(event, path, query) !== undefined) { return shopApi(event, path, query) }   // already in memory
+  const box = (event.context.sfBatch = event.context.sfBatch || new Map<string, Waiting>()) as Map<string, Waiting>
+  const group = lang.toUpperCase() + '|' + currency
+  let waiting = box.get(group)
+  if (!waiting) {
+    waiting = { ids: new Set(), waiters: new Map() }
+    box.set(group, waiting)
+    const mine = waiting
+    // the questions asked in the same turn are gathered, then asked at once (at most 60 a question)
+    setTimeout(() => { box.delete(group); flushBatch(event, mine, lang, currency).catch(() => {}) }, 0)
+  }
+  waiting.ids.add(id)
+  return new Promise((resolve) => { const list = waiting!.waiters.get(id) || []; list.push(resolve); waiting!.waiters.set(id, list) })
+}
+async function flushBatch(event: H3Event, waiting: Waiting, lang: string, currency: string) {
+  const ids = [...waiting.ids]
+  const answer = (id: number, raw: any) => { for (const resolve of waiting.waiters.get(id) || []) { resolve(raw) } }
+  const single = (id: number) => { const { path, query } = productQuery(event, id, lang, currency); return shopApi(event, path, query).then(raw => answer(id, raw), () => answer(id, null)) }
+  if (ids.length === 1) { await single(ids[0]!); return }
+  for (let at = 0; at < ids.length; at += 60) {
+    const part = ids.slice(at, at + 60)
+    const batch: any = await digipart(event, 'product-batch.php', { Ids: part.join(','), LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: currency }).catch(() => null)
+    if (!batch || typeof batch.Products !== 'object') { await Promise.all(part.map(single)); continue }   // a Digipart without the batch: one by one, as before
+    const failed = new Set<number>((Array.isArray(batch.Failed) ? batch.Failed : []).map(Number))
+    await Promise.all(part.map(async (id) => {
+      if (failed.has(id)) { return single(id) }
+      const raw = batch.Products[String(id)] ?? null
+      if (raw) { const { path, query } = productQuery(event, id, lang, currency); keepShop(event, path, query, raw) }
+      answer(id, raw || { status: 'error' })
+    }))
+  }
+}
+
 export async function loadProduct(event: H3Event, id: number, lang: string, prefix: string, currency = 'EUR', priceBase = 'retail'): Promise<ShopProduct | null> {
   const policy = await pricing(event)
   if (policy.wholesale) { priceBase = 'wholesale' }
-  const raw = await shopApi(event, 'product/' + id, { LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: currency, Track: 0 })
+  const raw = await rawProduct(event, id, lang, currency)
   if (!raw || raw.status === 'error') { return null }
   return withLook(event, priced(shapeProduct(await complete(event, raw, currency, priceBase), lang, prefix), policy), prefix)
 }
