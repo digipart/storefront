@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   const site = await digipart(event, '').catch(() => null)
   const priceBase = site?.PriceBaseType || 'retail'
   const load = (ids: number[]) => Promise.all(ids.map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase))).then(list => list.filter(Boolean) as any[])
-  const idsOf = async (mode: string, category = 0, ids = '', count = limit, more: Record<string, string | number> = {}): Promise<number[]> => ((await digipart(event, 'products.php', { Mode: mode, IdCategory: category, ProductIds: ids, Limit: count, ...more }).catch(() => null))?.ProductIds as number[]) || []
+  const idsOf = async (mode: string, category = 0, ids = '', count = limit, more: Record<string, string | number> = {}): Promise<number[]> => ((await digipart(event, 'products.php', { Mode: mode, IdCategory: category > 0 ? category : '', ProductIds: ids, Limit: count, ...more }).catch(() => null))?.ProductIds as number[]) || []   // no category: no IdCategory (Digipart refused 0)
   const rankings = ['top_viewed', 'top_cart', 'top_sales']
   const days = Math.max(1, Math.min(365, Math.floor(Number(query.days) || 30)))
   // a list shorter than asked (a new shop has few views or sales yet) is completed with the newest products

@@ -419,7 +419,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
                 <span v-if="vimeo(item.Video)" class="sf-hero-video"><iframe :src="vimeo(item.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
                 <span v-if="item.Title" class="sf-edito-title">{{ item.Title }}</span>
               </component>
-              <SfProductCard v-else :product="item.Product" :count="item.Count" :images="item.Size === 'full' ? (item.Layout === 'cover' ? 'wide' : 'row') : item.Size === '2x2' ? 'carousel' : s.CardImages" :dots="item.Size === '2x2' ? true : s.CardDots" :eager="index < 4" :quick="s.QuickAdd !== false" :video="item.Video" :per-row="perRow" :class="'is-' + item.Size" />
+              <SfProductCard v-else :product="item.Product" :count="item.Count" :images="item.Size === 'full' ? (item.Layout === 'cover' ? 'wide' : 'row') : item.Size === '2x2' ? 'carousel' : s.CardImages" :dots="item.Size === '2x2' ? true : s.CardDots" :eager="index < 4" :quick="s.QuickAdd !== false" :video="item.Video" :per-row="perRow" :span="item.Size === 'full' ? 'full' : String(item.Size || '1x1').split('x')[0]" :class="'is-' + item.Size" />
             </template>
           </template>
           <SfProductCard v-for="(item, index) in shownProducts" v-else :key="item.Id" :product="item" :images="s.CardImages" :dots="s.CardDots" :eager="index < 4" :quick="s.QuickAdd !== false" :per-row="perRow" />
