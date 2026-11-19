@@ -84,7 +84,8 @@ const submit = () => { if (term.value.trim().length >= 2) { close(); navigateTo(
             <div class="sf-srch-chips"><button v-for="word in popular" :key="word" type="button" class="sf-srch-chip" @click="choose(word)">{{ word }}</button></div>
           </div>
           <section v-if="design && recoSource !== 'none'" class="sf-spanel-reco">
-            <h2 v-if="t.RecoTitle !== ''" class="sf-spanel-title">{{ t.RecoTitle || w('Cela pourrait vous intéresser') }}</h2>
+            <!-- an empty title (a page published before this text existed) takes the usual one -->
+            <h2 class="sf-spanel-title">{{ t.RecoTitle || w('Cela pourrait vous intéresser') }}</h2>
             <SfProducts :section="reco" />
           </section>
         </template>
