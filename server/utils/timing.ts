@@ -1,7 +1,8 @@
 import type { H3Event } from 'h3'
 
 // What a request cost: how many questions it asked Digipart (api/storefront: `digipart`) and the shop APIs (api/product, api/category: `shop`), how many of them were answered by the memory of
-// this server, and how long the others took. Sent back in the `Server-Timing` header (the Network tab of the browser shows it) and, with SF_TIMING=1 in the environment, written in the log.
+// this server, and how long the others took. Sent back in the `Server-Timing` header in a preview only (server/plugins/timing.ts: the Network tab of the browser shows it) and, with
+// SF_TIMING=1 in the environment, written in the log.
 interface Tally { n: number, kept: number, ms: number, slow: Array<{ path: string, ms: number }> }
 export interface Timing { start: number, digipart: Tally, shop: Tally }
 
