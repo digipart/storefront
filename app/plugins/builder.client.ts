@@ -5,6 +5,7 @@
 // - `refresh`: a draft was saved, the site and the page are read anew (no reload: the scroll stays where it is);
 // - a click on a section or a block tells the builder which one (`select`: the design it belongs to, header, footer or page, and its ids) instead of following the link; with `follow` on
 //   (the switch « Suivre les liens » of the builder) links work, and keep the preview and the builder in their address;
+//   a click beside the links and the controls still selects its section;
 // - `select` from the builder: the section (or the block) is brought into view and outlined;
 // - `design` / `theme`: what is being written in the builder, not saved yet, is drawn at once (the sections of the page, of the header or of the footer; the colours and sizes of the theme). The
 //   HTML and the CSS a shop writes are NOT taken from these messages: they stay what Digipart last cleaned and gave (they follow at the next `refresh`, after the save);
@@ -104,7 +105,8 @@ export default defineNuxtPlugin((nuxt) => {
           next.searchParams.set('builder', '1')
           window.location.assign(next.toString())
         }
-        return
+        // what is not a link nor a control of the site (a photo, a banner, an empty place) still selects its section: with « Suivre les liens » on, a click in the page is never lost
+        if (link || at?.closest?.('button, input, select, textarea, label, summary, video, [role="button"], [tabindex]')) { return }
       }
       if (editing && editing.node.contains(at)) { if (link) { event.preventDefault() } return }   // the cursor is placed in the text being written
       const band = at?.closest?.('[data-section]') as Element | null

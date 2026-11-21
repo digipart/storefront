@@ -1268,7 +1268,7 @@ header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { bac
 @media (max-width: 767px) { .sf-zoom-slide img { object-position: 50% 30%; } .sf-zoom-thumbs { background: var(--t-bg, #fff); } }
 /* The site inside the site builder of Digipart (app/plugins/builder.client.ts): what the pointer is on is outlined, what is selected in the builder too; a click selects instead of following a link */
 /* the marks of the site builder of Digipart take the blue of its back-office (`--sfb-accent`, given by the builder: app/plugins/builder.client.ts) */
-html.sf-builder:not(.sf-builder-follow) [data-section] { cursor: pointer; }
+html.sf-builder [data-section] { cursor: pointer; }   /* with « Suivre les liens » on too: a click beside the links still selects the section */
 html.sf-builder [class*="sf-b-"].is-sfb-on { outline: 1px solid var(--sfb-accent, #1b84ff) !important; outline-offset: 2px; }   /* a selected block; a section has no frame, its bar marks it */
 html.sf-builder:not(.sf-builder-follow) a, html.sf-builder:not(.sf-builder-follow) button { cursor: pointer; }
 html.sf-builder .is-sfb-edit { outline: 1px solid var(--sfb-accent, #1b84ff); outline-offset: 4px; cursor: text; }
