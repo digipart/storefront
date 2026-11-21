@@ -29,7 +29,9 @@ export default defineEventHandler(async (event) => {
   }
   // the header laid over the photo of a product page, without its logo (En-tête > « Transparent sur la fiche produit »): an address of a product ends with its id, under a category
   const parts = rest.split('/')
-  const overProduct = parts.length >= 2 && /-\d{1,10}$/.test(parts[parts.length - 1] || '') && parts[0] !== 'shop-the-look' && (site?.Header?.Sections || []).some((section: any) => section.Type === 'main_header' && section.Settings?.OverProduct === true)
+  // (the page « Shop the look » of a product has its own switch, « Transparent sur la page Shop the look »: `OverLook`)
+  const lookPage = parts[0] === 'shop-the-look'
+  const overProduct = parts.length >= 2 && /-\d{1,10}$/.test(parts[parts.length - 1] || '') && (site?.Header?.Sections || []).some((section: any) => section.Type === 'main_header' && section.Settings?.[lookPage ? 'OverLook' : 'OverProduct'] === true)
   // a font of the shop itself comes with its files (`Files`); the others are read by their name
   const own = ownFonts((site?.Theme?.Fonts || []).filter((font: any) => Array.isArray(font?.Files)))
   const listed = await themeFonts((site?.Theme?.Fonts || []).filter((font: any) => !Array.isArray(font?.Files)).map((font: any) => font?.Name)).catch(() => ({ css: '', files: [] }))

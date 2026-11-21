@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The menu of the site in a panel that slides in from the left: on a phone always, on a computer when the shop chose « Dans un volet ». The tabs of the Digipart menu open their links; under
-// them the account, the favourites and the languages. Two looks (site builder, En-tête > « Présentation du volet »): a list whose tabs unfold (`list`), or the tabs side by side at the top of the
+// them the way back to the home page (the header may show no logo: on a product page of a theme that lays it over the photo), the account, the favourites and the languages. Two looks (site builder, En-tête > « Présentation du volet »): a list whose tabs unfold (`list`), or the tabs side by side at the top of the
 // panel and, under them, the links of the chosen tab (`tabs`): each column of the Digipart menu is a block of links, a group that has a name is a line that opens its own links.
 const props = defineProps<{ id?: number, mode?: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -48,7 +48,8 @@ onBeforeUnmount(() => { document.documentElement.style.overflow = '' })
             </template>
           </div>
           <div class="sf-navdrawer-more">
-            <a :href="accountUrl">{{ customer && !customer.Guest ? customer.Firstname : w('Mon compte') }}</a>
+            <a :href="site?.Route?.Prefix || '/'">{{ w('Accueil') }}</a>
+          <a :href="accountUrl">{{ customer && !customer.Guest ? customer.Firstname : w('Mon compte') }}</a>
             <a :href="favoritesUrl">{{ w('Mes favoris') }}<template v-if="favorites.length"> ({{ favorites.length }})</template></a>
             <span v-if="(site?.Languages || []).length > 1" class="sf-langs"><a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="language.Default && site.UrlPrefix !== 'always' ? '/' : '/' + language.LanguageIsoCode" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.Name }}</a></span>
           </div>
@@ -74,6 +75,7 @@ onBeforeUnmount(() => { document.documentElement.style.overflow = '' })
           </div>
         </div>
         <div class="sf-navdrawer-more">
+          <a :href="site?.Route?.Prefix || '/'">{{ w('Accueil') }}</a>
           <a :href="accountUrl">{{ customer && !customer.Guest ? customer.Firstname : w('Mon compte') }}</a>
           <a :href="favoritesUrl">{{ w('Mes favoris') }}<template v-if="favorites.length"> ({{ favorites.length }})</template></a>
           <span v-if="(site?.Languages || []).length > 1" class="sf-langs"><a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="language.Default && site.UrlPrefix !== 'always' ? '/' : '/' + language.LanguageIsoCode" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.Name }}</a></span>
