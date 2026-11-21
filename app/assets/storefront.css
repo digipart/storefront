@@ -1261,12 +1261,23 @@ header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { bac
 }
 @media (max-width: 767px) { .sf-zoom-slide img { object-position: 50% 30%; } .sf-zoom-thumbs { background: var(--t-bg, #fff); } }
 /* The site inside the site builder of Digipart (app/plugins/builder.client.ts): what the pointer is on is outlined, what is selected in the builder too; a click selects instead of following a link */
+/* the marks of the site builder of Digipart take the blue of its back-office (`--sfb-accent`, given by the builder: app/plugins/builder.client.ts) */
 html.sf-builder:not(.sf-builder-follow) [data-section] { cursor: pointer; }
-html.sf-builder:not(.sf-builder-follow) [data-section]:hover { outline: 1px dashed #3b82f6; outline-offset: -1px; }
-html.sf-builder .is-sfb-on { outline: 2px solid #2563eb !important; outline-offset: -2px; }
+html.sf-builder [class*="sf-b-"].is-sfb-on { outline: 1px solid var(--sfb-accent, #1b84ff) !important; outline-offset: 2px; }   /* a selected block; a section has no frame, its bar marks it */
 html.sf-builder:not(.sf-builder-follow) a, html.sf-builder:not(.sf-builder-follow) button { cursor: pointer; }
-html.sf-builder .is-sfb-edit { outline: 2px solid #2563eb; outline-offset: 4px; cursor: text; }
-html.sf-builder .sfb-tools { position: fixed; right: 12px; z-index: 2000; display: flex; gap: 4px; padding: 4px; border-radius: 8px; background: #2563eb; box-shadow: 0 6px 20px rgba(0, 0, 0, .2); }
-html.sf-builder .sfb-tools button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: rgba(255, 255, 255, .16); color: #fff; font: 600 16px/1 system-ui, sans-serif; cursor: pointer; }
-html.sf-builder .sfb-tools button:disabled { opacity: .35; cursor: default; }
-html.sf-builder .sfb-tools[hidden] { display: none; }
+html.sf-builder .is-sfb-edit { outline: 1px solid var(--sfb-accent, #1b84ff); outline-offset: 4px; cursor: text; }
+html.sf-builder .sfb-tools { position: fixed; left: 0; z-index: 2000; display: flex; align-items: center; gap: 1px; padding: 2px; border-radius: 8px 8px 0 0; background: var(--sfb-accent, #1b84ff); }
+html.sf-builder .sfb-tools.is-inside { border-radius: 0 0 8px 0; }
+html.sf-builder .sfb-drop { position: fixed; z-index: 2001; height: 3px; border-radius: 2px; background: var(--sfb-accent, #1b84ff); pointer-events: none; }
+html.sf-builder .sfb-drop[hidden] { display: none; }
+html.sf-builder-drag, html.sf-builder-drag * { cursor: grabbing !important; user-select: none; }
+html.sf-builder .sfb-tools-name { cursor: grab; touch-action: none; padding: 4px 9px; color: #fff; font: 600 12px/1.4 system-ui, sans-serif; white-space: nowrap; }
+html.sf-builder .sfb-tools button { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: #fff; cursor: pointer; }
+html.sf-builder .sfb-tools button:hover { background: rgba(255, 255, 255, .22); }
+html.sf-builder .sfb-tools button[hidden], html.sf-builder .sfb-tools[hidden] { display: none; }
+
+/* a code section that could not be drawn, said in a preview only */
+.sf-code-error { margin: 0; padding: 12px 16px; border: 1px dashed #c2410c; color: #9a3412; font: 500 13px/1.4 system-ui, sans-serif; }
+
+/* the page of a closed site drawn in the site builder: alone in the window, its sections one under the other */
+.sf-closed-design { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; background: var(--t-bg, #fff); color: var(--t-text, #1e2129); }

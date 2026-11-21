@@ -14,7 +14,9 @@
     "local:stop": "kill $(lsof -tiTCP:3100 -sTCP:LISTEN) 2>/dev/null || true"
   },
   "dependencies": {
+    "liquidjs": "10.30.1",
     "nuxt": "4.2.1",
+    "sanitize-html": "2.18.1",
     "vue": "3.5.25"
   }
 }

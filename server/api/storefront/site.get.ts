@@ -31,5 +31,12 @@ export default defineEventHandler(async (event) => {
   const own = ownFonts((site?.Theme?.Fonts || []).filter((font: any) => Array.isArray(font?.Files)))
   const listed = await themeFonts((site?.Theme?.Fonts || []).filter((font: any) => !Array.isArray(font?.Files)).map((font: any) => font?.Name)).catch(() => ({ css: '', files: [] }))
   const fonts = { css: own.css + listed.css, files: [...own.files, ...listed.files].slice(0, 3) }
-  return { ...site, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, PreviewAdminUrl: admin, Route: { LanguageIsoCode: language, Rest: rest, OverHero: overHero, Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
+  // the page of a closed site, when the shop drew it in the site builder (`ClosedDesignKey`), and the one a preview of the builder asks to see (`closed=maintenance`), whatever the state of the site
+  const asked = Object.keys(preview).length && ['maintenance', 'coming_soon'].includes(String(getQuery(event).closed ?? '')) ? String(getQuery(event).closed) : ''
+  const closedKey = asked || (['maintenance', 'coming_soon'].includes(String(site?.ClosedDesignKey || '')) ? String(site.ClosedDesignKey) : '')
+  const closedDesign = closedKey ? await withCode(event, await digipart<any>(event, 'design.php', { ...preview, LanguageIsoCode: language, Key: closedKey }).catch(() => null)) : null
+  // the code sections of the header and of the footer (server/utils/liquid.ts)
+  if (site?.Header) { site = { ...site, Header: await withCode(event, site.Header) } }
+  if (site?.Footer) { site = { ...site, Footer: await withCode(event, site.Footer) } }
+  return { ...site, ClosedDesign: closedDesign, ClosedForced: !!asked, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, PreviewAdminUrl: admin, Route: { LanguageIsoCode: language, Rest: rest, OverHero: overHero, Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
 })

@@ -2,7 +2,7 @@
 // (its products, a page of them, sorted). Each comes with the design that draws it, written in the site builder of Digipart. 404 when the address is nothing of the site.
 const SORTS: Record<string, Record<string, string>> = { newest: { SortByNewest: 'DESC' }, price_asc: { SortByPrice: 'ASC' }, price_desc: { SortByPrice: 'DESC' } }
 
-export default defineEventHandler(async (event) => {
+const view = async (event: any): Promise<any> => {
   const query = getQuery(event)
   const rest = String(query.rest ?? '').replace(/^\/+|\/+$/g, '')
   const { lang, prefix } = langOf(event)
@@ -207,4 +207,11 @@ export default defineEventHandler(async (event) => {
     Category: { Alternates: Object.fromEntries((Array.isArray(category.SEO) ? category.SEO : []).map((s: any) => [String(s.LanguageIsoCode || '').toLowerCase(), String(s.URL || '').replace(/^\/+|\/+$/g, '')]).filter(([iso, url]: string[]) => /^[a-z]{2,3}$/.test(iso) && url)), Id: Number(category.IdCategory), Slug: rest, Links: categoryLinks, Cover: { Sizes: coverSizes, Video: /vimeo\.com/i.test(coverVideo) ? coverVideo : '' }, Name: String(category.Description?.Title || seo.MetaTitle || rest), Description: String(category.Description?.Description || ''), SeoTitle: String(seo.MetaTitle || ''), SeoDescription: String(seo.MetaDescription || '') },
     Listing: { Items: items, Display: display, Products: products, Total: total, Page: pageNumber, Pages: pages, PerPage: perPage, Sort: sort, Filters: filters },
   }
+}
+
+// the code sections of the page (sections the shop wrote in Liquid: server/utils/liquid.ts) are drawn here, with what the page is about
+export default defineEventHandler(async (event) => {
+  const page = await view(event)
+  if (!page?.Design) { return page }
+  return { ...page, Design: await withCode(event, page.Design, { ...(page.Product ? { Product: page.Product } : {}), ...(page.Category ? { Category: page.Category } : {}), ...(page.Page ? { Page: page.Page } : {}) }) }
 })

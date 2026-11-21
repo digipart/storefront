@@ -127,7 +127,7 @@ const columnPicture = (i: number) => {
     ...(align === 'center' || align === 'bottom' ? { display: 'flex', flexDirection: 'column', justifyContent: align === 'center' ? 'center' : 'flex-end' } : {}) }
 }
 const columnsReverse = computed(() => !!s.value.ReverseMobile && ratios(s.value.LayoutMobile, '1').length === 1)
-const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'announcement', 'custom_html', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart', 'main_search', 'main_404', 'main_look']
+const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'announcement', 'custom_html', 'code', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart', 'main_search', 'main_404', 'main_look']
 const { cart, show: showPanel } = useCart()
 const { customer, favorites, url: accountUrl, favoritesUrl } = useAccount()
 // the filters of a category (sizes, colours, price): chosen in a panel, kept in the address so a filtered list can be shared
@@ -325,6 +325,11 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
       <!-- sections whose own content is one block among the others -->
       <!-- the HTML the shop wrote (cleaned by Digipart: no script, frame, form or event) -->
       <div v-else-if="type === 'custom_html'" class="sf-custom" :style="align" v-html="customHtml" />
+      <!-- a section the shop wrote in code (Liquid): drawn and cleaned by the server (server/utils/liquid.ts); in a preview, what went wrong is said in its place -->
+      <div v-else-if="type === 'code'" class="sf-code">
+        <div v-if="section.Html" v-html="section.Html" />
+        <p v-else-if="section.Error" class="sf-code-error">{{ section.Error }}</p>
+      </div>
       <div v-else-if="['richtext', 'products', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'contact_form', 'store_locator'].includes(type)" :style="align">
         <SfBlocks :blocks="blocks">
           <div v-if="type === 'newsletter'" class="sf-news-wrap" :style="{ marginLeft: s.Align === 'left' ? 0 : 'auto', marginRight: s.Align === 'right' ? 0 : 'auto' }"><SfNewsletter :button="t.ButtonText" :look="buttonLook(s, 'Button')" /></div>

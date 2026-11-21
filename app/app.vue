@@ -8,7 +8,7 @@ const barHidden = ref(false)
 const here = computed(() => route.path)
 // the site builder of Digipart shows the site in a frame and asks it to read the drafts again after each save (app/plugins/builder.client.ts): `fresh` changes, the site and the page are read anew
 const fresh = useState<number>('sf-fresh', () => 0)
-const { data: site, error } = await useFetch<any>('/api/storefront/site', { query: { path: computed(() => route.path), preview, fresh: computed(() => fresh.value || undefined) }, key: 'sf-site' })
+const { data: site, error } = await useFetch<any>('/api/storefront/site', { query: { path: computed(() => route.path), preview, fresh: computed(() => fresh.value || undefined), closed: computed(() => route.query.closed || undefined) }, key: 'sf-site' })
 provide('sfSite', site)
 // the menus of Digipart the header and the footer name (0 = the main menu), read once here for the whole page: the header and the footer columns only draw them
 const menuIds = computed(() => {
@@ -52,6 +52,9 @@ const ordering = computed(() => ['commande', 'checkout', 'commande/merci', 'chec
 const orderLogo = computed(() => { const svg = site.value?.LogoFiles?.Svg?.Src; if (svg) { return String(svg) } const copies = [...(site.value?.Logo || [])].filter((c: any) => c.Src).sort((x: any, y: any) => (x.Height || 0) - (y.Height || 0)); return String((copies.find((c: any) => (c.Height || 0) >= 72) || copies[copies.length - 1])?.Src || '') })
 const closed = computed(() => !!site.value && !site.value.Preview && (status.value ? !status.value.IsLive && status.value.Bypass !== true : site.value.State !== 'online'))
 const closedPage = computed(() => (closed.value ? status.value?.Page || null : null))
+// the page of a closed site drawn in the site builder of Digipart (`ClosedDesign`: sections, as any page), in place of the page of the settings. A preview opened by the builder on that page
+// (`ClosedForced`) shows it whatever the state of the site.
+const closedDesign = computed(() => ((closed.value || site.value?.ClosedForced) && site.value?.ClosedDesign?.Sections?.length ? site.value.ClosedDesign : null))
 const cover = computed(() => closedPage.value?.Cover || null)
 const logo = computed(() => { const images = closedPage.value?.Logo?.Images || {}; const first = (Object.values(images)[0] as any[]) || []; return first[0] ? { src: first[0].Src, width: closedPage.value.Logo.Width } : null })
 const reopen = computed(() => (closedPage.value?.ShowReopenAt && closedPage.value.ReopenAt ? new Intl.DateTimeFormat(site.value.Route.LanguageIsoCode, { dateStyle: 'long', timeStyle: 'short', timeZone: 'Europe/Paris' }).format(new Date(closedPage.value.ReopenAt)) : ''))
@@ -88,6 +91,8 @@ if (import.meta.server && closed.value) {
     <h1>{{ error?.statusMessage === 'setup' ? 'Ce site n\'est pas encore relié à Digipart' : 'Le site est momentanément indisponible' }}</h1>
     <p>{{ error?.statusMessage === 'setup' ? 'Renseignez l\'adresse de Digipart, le canal de vente et la clé du site dans son environnement, puis redémarrez-le.' : 'Merci de revenir dans quelques instants.' }}</p>
   </main>
+  <!-- the page of a closed site drawn in the site builder: its sections, alone (no header, no footer) -->
+  <main v-else-if="closedDesign" class="sf-closed-design"><SfSection v-for="(section, index) in closedDesign.Sections" :key="section.Id" :section="section" :first="index === 0" /></main>
   <!-- the page of a closed site, as the shop set it in Digipart: cover, logo, title, message, date, button, newsletter box, social links -->
   <main v-else-if="closedPage" class="sf-closed" :style="{ background: cover?.BackgroundColor, color: closedPage.Style.TextColor }">
     <img v-if="cover?.Type === 'image'" class="sf-closed-cover" :src="cover.ImageURL" alt="" fetchpriority="high">
