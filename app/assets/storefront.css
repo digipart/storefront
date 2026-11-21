@@ -1249,6 +1249,12 @@ header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { bac
   .sf-gallery-wrap.is-thumbs-left .sf-gallery-thumbs button { flex: 0 0 auto; width: 44px; }
   .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider { min-height: 0; }
   .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider img { height: calc(100svh - var(--sf-head, 0px)); aspect-ratio: auto; }
+  /* « Défilement des photos » : vertical. The frame is one photo tall and stays under the header; the photos are stacked inside it and the wheel goes from one to the next (it stops on each);
+     after the last one the browser hands the scroll to the page, which goes on to what is under the photos. */
+  .sf-gallery-wrap.is-scroll-down { position: sticky; top: var(--sf-head, 0px); align-self: start; }
+  .sf-gallery-wrap.is-scroll-down .sf-gallery.is-slider { flex-direction: column; overflow: hidden auto; scroll-snap-type: y mandatory; overscroll-behavior-y: auto; min-height: 0; gap: 0; aspect-ratio: var(--t-card-ratio, 3 / 4); max-height: calc(100svh - var(--sf-head, 0px)); }
+  .sf-gallery-wrap.is-scroll-down .sf-gallery.is-slider img { flex: 0 0 100%; width: 100%; height: 100%; aspect-ratio: auto; scroll-snap-align: start; }
+  .sf-gallery-wrap.is-scroll-down.is-fit-screen .sf-gallery.is-slider { aspect-ratio: auto; height: calc(100svh - var(--sf-head, 0px)); }
 }
 /* The photo viewer fills the window: the photo covers it from edge to edge (on a computer it moves up and down with the pointer: --zy, SfZoom.vue), the small pictures and the cross lie over it */
 .sf-zoom { background: #111; }
