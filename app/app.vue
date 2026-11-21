@@ -41,6 +41,8 @@ onMounted(() => {
 })
 // the header over the banner of the home page: transparent, in white, until the visitor scrolls (then it is the usual header)
 const overHero = computed(() => !!site.value?.Route?.OverHero)
+// the header over the photo of a product page, without its logo, until the visitor scrolls or points at it
+const overProduct = computed(() => !!site.value?.Route?.OverProduct)
 const scrolled = ref(false)
 onMounted(() => {
   const look = () => { scrolled.value = window.scrollY > 24 }
@@ -115,7 +117,7 @@ if (import.meta.server && closed.value) {
   <template v-else>
     <!-- the order page keeps the visitor on the order: a slim bar instead of the menu, no footer -->
     <header v-if="ordering" class="sf-cohead"><a :href="site.Route.Prefix || '/'">‹ {{ words(site.Route.LanguageIsoCode, 'Continuer mes achats') }}</a><a :href="site.Route.Prefix || '/'" class="sf-logo"><img v-if="orderLogo" :src="orderLogo" :alt="site.Name"><template v-else>{{ site.Name }}</template></a><span /></header>
-    <header v-else-if="site.Header" ref="headerBox" :class="{ 'sf-sticky': stickyHeader, 'sf-over': overHero, 'is-solid': overHero && scrolled }"><SfSection v-for="section in site.Header.Sections" :key="section.Id" :section="section" /></header>
+    <header v-else-if="site.Header" ref="headerBox" :class="{ 'sf-sticky': stickyHeader, 'sf-over': overHero || overProduct, 'is-bare': overProduct, 'is-solid': (overHero || overProduct) && scrolled }"><SfSection v-for="section in site.Header.Sections" :key="section.Id" :section="section" /></header>
     <NuxtPage />
     <ClientOnly><LazySfCart /></ClientOnly>
     <!-- the search panel (opened by the search of the header) -->

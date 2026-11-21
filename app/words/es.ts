@@ -544,4 +544,6 @@ export default {
   '{a} fois': '{a} plazos',
   'Réf.': 'Ref.',
   'Look': 'Look',
+  'Produit ajouté à votre panier': 'Producto añadido a tu cesta',
+  'Vous aimerez aussi': 'También te puede gustar',
 }

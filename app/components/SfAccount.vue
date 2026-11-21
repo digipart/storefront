@@ -49,6 +49,11 @@ watch(() => [customer.value?.Email, props.section, props.id], open)
 <template>
   <div class="sf-acc-page">
     <p v-if="!loaded" class="sf-cart-wait">{{ w('Chargement de votre compte…') }}</p>
+    <!-- not logged in: the form alone, or (theme setting « Page de connexion ») a photo on one half and the form on the other -->
+    <div v-else-if="(!customer || customer.Guest) && site?.Theme?.Settings?.LoginLayout === 'split'" class="sf-login-split">
+      <div class="sf-login-pic"><img v-if="site.Theme.Settings.LoginImage" :src="site.Theme.Settings.LoginImage" alt="" fetchpriority="high" decoding="async"></div>
+      <div class="sf-login-side"><SfLogin /></div>
+    </div>
     <div v-else-if="!customer || customer.Guest" class="sf-acc-login"><SfLogin /></div>
     <div v-else-if="site?.Pro && customer.Business && !customer.Active" class="sf-acc-login sf-login"><h2>{{ w('Compte en cours de validation') }}</h2><p>{{ w('Votre demande de compte professionnel est enregistrée. Notre équipe l\'active dans les plus brefs délais ; vous verrez alors les prix.') }}</p><button type="button" class="sf-link" :disabled="busy" @click="logout">{{ w('Se déconnecter') }}</button></div>
     <div v-else class="sf-acc-grid">

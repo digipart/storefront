@@ -28,14 +28,17 @@ export function useCart() {
     } catch { error.value = 'Le panier ne répond pas, merci de réessayer.'; return false } finally { busy.value = false }
   }
   // `gift`: an e-gift card, with whom it is for (Personal, Email, MobilePhone, Firstname, Lastname, Message, DateSend)
-  const add = async (idProduct: number, idVariant: number, quantity = 1, gift?: Record<string, unknown>) => { const done = await send({ Action: 'add', IdProduct: idProduct, IdProductAttribute: idVariant, Quantity: quantity, ...(gift ? { Gift: gift } : {}) }); if (done) { show('cart') } return done }
-  const addMany = async (idProduct: number, items: { IdProductAttribute: number, Quantity: number }[]) => { const done = await send({ Action: 'add-many', IdProduct: idProduct, Items: items }); if (done) { show('cart') } return done }
+  // what was just added, for the panel « Produit ajouté à votre panier » (the theme setting « Après un ajout au panier »: `AddedPanel` = added); else the cart itself is shown
+  const added = useState<{ IdProduct: number, IdProductAttribute: number } | null>('sf-cart-added', () => null)
+  const after = (idProduct: number, idVariant: number) => { if (site.value?.Theme?.Settings?.AddedPanel === 'added') { added.value = { IdProduct: idProduct, IdProductAttribute: idVariant }; show('added') } else { show('cart') } }
+  const add = async (idProduct: number, idVariant: number, quantity = 1, gift?: Record<string, unknown>) => { const done = await send({ Action: 'add', IdProduct: idProduct, IdProductAttribute: idVariant, Quantity: quantity, ...(gift ? { Gift: gift } : {}) }); if (done) { after(idProduct, idVariant) } return done }
+  const addMany = async (idProduct: number, items: { IdProductAttribute: number, Quantity: number }[]) => { const done = await send({ Action: 'add-many', IdProduct: idProduct, Items: items }); if (done) { after(idProduct, items[0]?.IdProductAttribute || 0) } return done }
   const setQuantity = (line: any, quantity: number) => (quantity < 1 ? remove(line) : send({ Action: 'update', IdProduct: line.IdProduct, IdProductAttribute: line.IdProductAttribute, Quantity: quantity }))
   const setVariant = (line: any, idVariant: number) => send({ Action: 'update', IdProduct: line.IdProduct, IdProductAttribute: line.IdProductAttribute, Quantity: line.Quantity, NewIdProductAttribute: idVariant })
-  const tab = useState<'favorites' | 'cart' | 'account'>('sf-panel-tab', () => 'cart')
-  const show = (which: 'favorites' | 'cart' | 'account') => { tab.value = which; open.value = true }
+  const tab = useState<'favorites' | 'cart' | 'account' | 'added'>('sf-panel-tab', () => 'cart')
+  const show = (which: 'favorites' | 'cart' | 'account' | 'added') => { tab.value = which; open.value = true }
   const remove = (line: any) => send({ Action: 'remove', IdProduct: line.IdProduct, IdProductAttribute: line.IdProductAttribute, Quantity: line.Quantity })
   const addCode = (code: string) => send({ Action: 'code', Code: code })
   const removeCode = (id: number) => send({ Action: 'uncode', IdPromoCode: id })
-  return { cart, open, tab, show, busy, loaded, error, url, load, add, addMany, setQuantity, setVariant, remove, addCode, removeCode }
+  return { cart, open, tab, added, show, busy, loaded, error, url, load, add, addMany, setQuantity, setVariant, remove, addCode, removeCode }
 }

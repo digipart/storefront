@@ -27,6 +27,9 @@ export default defineEventHandler(async (event) => {
     const home = await digipart<any>(event, 'design.php', { ...preview, LanguageIsoCode: language, Key: 'home' }).catch(() => null)
     overHero = ['hero', 'slideshow'].includes(String(home?.Sections?.[0]?.Type || ''))
   }
+  // the header laid over the photo of a product page, without its logo (En-tête > « Transparent sur la fiche produit »): an address of a product ends with its id, under a category
+  const parts = rest.split('/')
+  const overProduct = parts.length >= 2 && /-\d{1,10}$/.test(parts[parts.length - 1] || '') && parts[0] !== 'shop-the-look' && (site?.Header?.Sections || []).some((section: any) => section.Type === 'main_header' && section.Settings?.OverProduct === true)
   // a font of the shop itself comes with its files (`Files`); the others are read by their name
   const own = ownFonts((site?.Theme?.Fonts || []).filter((font: any) => Array.isArray(font?.Files)))
   const listed = await themeFonts((site?.Theme?.Fonts || []).filter((font: any) => !Array.isArray(font?.Files)).map((font: any) => font?.Name)).catch(() => ({ css: '', files: [] }))
@@ -38,5 +41,5 @@ export default defineEventHandler(async (event) => {
   // the code sections of the header and of the footer (server/utils/liquid.ts)
   if (site?.Header) { site = { ...site, Header: await withCode(event, site.Header) } }
   if (site?.Footer) { site = { ...site, Footer: await withCode(event, site.Footer) } }
-  return { ...site, ClosedDesign: closedDesign, ClosedForced: !!asked, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, PreviewAdminUrl: admin, Route: { LanguageIsoCode: language, Rest: rest, OverHero: overHero, Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
+  return { ...site, ClosedDesign: closedDesign, ClosedForced: !!asked, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, PreviewAdminUrl: admin, Route: { LanguageIsoCode: language, Rest: rest, OverHero: overHero, OverProduct: overProduct, Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
 })

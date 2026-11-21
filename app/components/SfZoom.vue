@@ -4,6 +4,9 @@
 const props = defineProps<{ images: string[], start: number, name: string }>()
 const emit = defineEmits<{ close: [] }>()
 const w = useWords()
+// the bag of the visitor, a tap away from the photos: it closes them and opens the cart panel
+const { cart, show } = useCart()
+const toCart = () => { emit('close'); show('cart') }
 const index = ref(props.start)
 const track = ref<HTMLElement | null>(null)
 const root = ref<HTMLElement | null>(null)
@@ -61,6 +64,7 @@ onBeforeUnmount(() => { document.documentElement.style.overflow = '' })
   <!-- drawn at the level of the page (not inside the column that opened it): always above the sticky header -->
   <Teleport to="body">
     <div ref="root" class="sf-zoom" role="dialog" aria-modal="true" :aria-label="name" tabindex="-1" @keydown="key">
+      <button type="button" class="sf-zoom-bag" :aria-label="w('Panier')" @click="toCart"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2" /></svg><span v-if="cart.Count" class="sf-zoom-count">{{ cart.Count }}</span></button>
       <button type="button" class="sf-zoom-close" :aria-label="w('Fermer')" @click="emit('close')"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" /></svg></button>
       <div v-if="images.length > 1" class="sf-zoom-thumbs">
         <button v-for="(src, i) in images" :key="src" type="button" :class="{ 'is-on': i === index }" :aria-label="w('Photo {a} sur {b}', { a: i + 1, b: images.length })" :aria-current="i === index ? 'true' : undefined" @click="go(i)"><img :src="src" alt="" loading="lazy"></button>

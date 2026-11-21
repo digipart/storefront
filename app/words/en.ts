@@ -623,4 +623,6 @@ export default {
   'En promotion': 'On sale',
   'Réf.': 'Ref.',
   'Look': 'Look',
+  'Produit ajouté à votre panier': 'Added to your bag',
+  'Vous aimerez aussi': 'You may also like',
 }

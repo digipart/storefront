@@ -318,7 +318,7 @@ onMounted(async () => { await load(); await backFromAlma() })
 </script>
 
 <template>
-  <div class="sf-co">
+  <div class="sf-co" :class="{ 'is-tabs': options.Look === 'tabs' }">
     <p v-if="!state && !error" class="sf-cart-wait">{{ w('Chargement de votre commande…') }}</p>
     <div v-else-if="state && !state.Cart.Count" class="sf-cart-none"><p>{{ w('Votre panier est vide.') }}</p><a :href="site?.Route?.Prefix || '/'" class="sf-btn">{{ w('Continuer mes achats') }}</a></div>
     <div v-else-if="state" class="sf-co-grid">
@@ -414,7 +414,7 @@ onMounted(async () => { await load(); await backFromAlma() })
           </template>
           <template v-else>
           <p v-if="!state.Payments.length" class="sf-muted">{{ w('Aucun moyen de paiement pour ce pays pour le moment.') }}</p>
-          <div v-else class="sf-co-types">
+          <div v-else class="sf-co-types sf-co-pays">
             <button v-for="method in payRows" :key="method.IdPayment" type="button" class="sf-co-pay" :class="{ 'is-on': method.Ids.includes(payment) }" :aria-pressed="method.Ids.includes(payment)" :disabled="!method.Available || locked(3)" @click="choosePay(method)">
               <span class="sf-radio" :class="{ 'is-on': method.Ids.includes(payment) }" /><span class="sf-co-option-main"><strong>{{ method.Title }}</strong><small>{{ method.Available ? method.Description : w('Indisponible pour ce montant') }}</small></span>
             </button>

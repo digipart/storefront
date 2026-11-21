@@ -3,13 +3,15 @@
 // order: the cart tab shows the articles (size and quantity can be changed in place), the favourites under them, and the way to the order page.
 const site = inject<Ref<any>>('sfSite')!
 const w = useWords()
-const { cart, open, tab, error, url, load } = useCart()
+const { cart, open, tab, added, error, url, load } = useCart()
 const account = useAccount()
 const lang = computed(() => site.value?.Route?.LanguageIsoCode || 'fr')
 const french = computed(() => lang.value === 'fr')
 const orderUrl = computed(() => (site.value?.Route?.Prefix || '') + (french.value ? '/commande' : '/checkout'))
 const panel = ref<HTMLElement | null>(null)
-const titles = { favorites: 'Mes favoris', cart: 'Produits dans mon panier', account: 'Mon compte' }
+const titles = { favorites: 'Mes favoris', cart: 'Produits dans mon panier', account: 'Mon compte', added: 'Produit ajouté à votre panier' }
+// « Produit ajouté à votre panier »: the article just added (the line of the cart that holds it) and what goes with it
+const addedLine = computed(() => (added.value ? cart.value.Lines.find((line: any) => line.IdProduct === added.value!.IdProduct && (!added.value!.IdProductAttribute || line.IdProductAttribute === added.value!.IdProductAttribute)) || cart.value.Lines.find((line: any) => line.IdProduct === added.value!.IdProduct) || null : null))
 const sections = computed(() => (french.value ? { profile: 'profil', orders: 'commandes', loyalty: 'fidelite', addresses: 'adresses' } : { profile: 'profile', orders: 'orders', loyalty: 'loyalty', addresses: 'addresses' }))
 const logged = computed(() => !!account.customer.value && !account.customer.value.Guest)
 const favs = computed(() => account.favoriteProducts.value.filter((p: any) => account.favorites.value.includes(p.Id)))
@@ -30,14 +32,36 @@ watch(logged, (now, before) => { if (now !== before) { load() } })   // the cart
     <div class="sf-drawer-veil" @click="open = false" />
     <aside ref="panel" class="sf-drawer-panel" role="dialog" aria-modal="true" :aria-label="w(titles[tab])" tabindex="-1">
       <header class="sf-drawer-head"><h2>{{ w(titles[tab]) }}</h2><button type="button" :aria-label="w('Fermer le panneau')" @click="open = false">✕</button></header>
-      <div class="sf-panel-tabs" role="tablist">
+      <div v-if="tab !== 'added'" class="sf-panel-tabs" role="tablist">
         <button type="button" role="tab" :aria-selected="tab === 'favorites'" @click="tab = 'favorites'">{{ w('Favoris') }}<template v-if="account.favorites.value.length"> ({{ account.favorites.value.length }})</template></button>
         <button type="button" role="tab" :aria-selected="tab === 'cart'" @click="tab = 'cart'">{{ w('Panier') }}<template v-if="cart.Count"> ({{ cart.Count }})</template></button>
         <button type="button" role="tab" :aria-selected="tab === 'account'" @click="tab = 'account'">{{ w('Compte') }}</button>
       </div>
 
+      <!-- what was just added, with what goes with it: the visitor goes on, sees the cart or orders -->
+      <template v-if="tab === 'added'">
+        <div class="sf-drawer-body">
+          <div v-if="addedLine" class="sf-added">
+            <a :href="addedLine.Url" class="sf-line-pic" tabindex="-1" aria-hidden="true"><img v-if="addedLine.Image" :src="addedLine.Image" alt="" loading="lazy"></a>
+            <div class="sf-line-main">
+              <a :href="addedLine.Url" class="sf-line-name">{{ addedLine.Name }}</a>
+              <span v-if="addedLine.Variant" class="sf-line-variant">{{ addedLine.Variant }}</span>
+              <span class="sf-line-variant">{{ w('Quantité') }} : {{ addedLine.Quantity }}</span>
+              <span class="sf-added-price">{{ money(addedLine.Price, cart.Currency, lang) }}</span>
+            </div>
+          </div>
+          <SfFreeBar />
+          <SfCartMore :product="added?.IdProduct" :title="w('Vous aimerez aussi')" />
+        </div>
+        <footer class="sf-drawer-foot">
+          <a :href="orderUrl" class="sf-btn">{{ w('Finaliser ma commande') }}</a>
+          <button type="button" class="sf-btn is-outline" @click="tab = 'cart'">{{ w('Voir mon panier') }}<template v-if="cart.Count"> ({{ cart.Count }})</template></button>
+          <button type="button" class="sf-link sf-added-go" @click="open = false">{{ w('Continuer mon shopping') }}</button>
+        </footer>
+      </template>
+
       <!-- the cart, then the favourites under it -->
-      <template v-if="tab === 'cart'">
+      <template v-else-if="tab === 'cart'">
         <p v-if="error" class="sf-cart-error" role="alert">{{ w(error) }}</p>
         <SfFreeBar />
         <div class="sf-drawer-body">

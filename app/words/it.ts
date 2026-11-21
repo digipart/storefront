@@ -544,4 +544,6 @@ export default {
   '{a} fois': '{a} rate',
   'Réf.': 'Rif.',
   'Look': 'Look',
+  'Produit ajouté à votre panier': 'Prodotto aggiunto al carrello',
+  'Vous aimerez aussi': 'Potrebbe piacerti anche',
 }

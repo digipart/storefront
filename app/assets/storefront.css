@@ -1275,3 +1275,63 @@ html.sf-builder-drag, html.sf-builder-drag * { cursor: grabbing !important; user
 
 /* the page of a closed site drawn in the site builder: alone in the window, its sections one under the other */
 .sf-closed-design { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; background: var(--t-bg, #fff); color: var(--t-text, #1e2129); }
+
+/* ---- The Lefties-like screens, each one an option of the theme or of a section ---- */
+/* the bag in the photo viewer, beside its cross */
+.sf-zoom-bag { position: absolute; top: calc(16px + env(safe-area-inset-top, 0px)); right: 68px; z-index: 2; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; background: none; color: #fff; mix-blend-mode: difference; cursor: pointer; }
+.sf-zoom-count { position: absolute; top: 4px; right: 2px; min-width: 16px; padding: 0 4px; font: 600 11px/16px system-ui, sans-serif; text-align: center; }
+/* the header over the photo of a product page: no ground, no logo, until the page is scrolled or the header pointed at */
+header.sf-over.is-bare:not(.is-solid):not(:hover):not(:focus-within) .sf-logo { visibility: hidden; }
+header.sf-over.is-bare:not(.is-solid):not(:hover):not(:focus-within), header.sf-over.is-bare:not(.is-solid):not(:hover):not(:focus-within) .sf-s-main-header { color: var(--t-text, #1e2129); }
+header.sf-over.is-bare:not(.is-solid):not(:hover):not(:focus-within) .sf-s-announcement { display: none; }
+@media (hover: none) { header.sf-over.is-bare:not(.is-solid):hover:not(:focus-within) .sf-logo { visibility: hidden; } header.sf-over.is-bare:not(.is-solid):hover:not(:focus-within) { color: var(--t-text, #1e2129); } }
+/* « Produit ajouté à votre panier » */
+.sf-added { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; align-items: start; padding-bottom: 18px; margin-bottom: 4px; border-bottom: 1px solid var(--t-border, #e6e6e6); }
+.sf-added .sf-line-pic { aspect-ratio: 3 / 4; }
+.sf-added .sf-line-main { display: flex; flex-direction: column; gap: 4px; }
+.sf-added-price { margin-top: 6px; font-weight: 600; }
+.sf-added-go { align-self: center; margin-top: 4px; background: none; border: 0; font: inherit; font-size: 13px; color: inherit; text-decoration: underline; cursor: pointer; }
+/* the login page in two halves: a photo, the form */
+.sf-login-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: min(820px, calc(100svh - var(--sf-head, 0px))); margin: -32px calc(50% - 50vw) -48px; }
+.sf-login-pic { background: var(--t-soft, #f6f6f6); overflow: hidden; }
+.sf-login-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.sf-login-side { display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
+.sf-login-side .sf-login { width: min(420px, 100%); }
+@media (max-width: 860px) { .sf-login-split { grid-template-columns: minmax(0, 1fr); min-height: 0; } .sf-login-pic { aspect-ratio: 4 / 3; } .sf-login-side { padding: 32px 20px 48px; } }
+/* the cart as a grid of photos, with its tabs and its bar */
+.sf-cartpage.is-grid { padding-bottom: 96px; }
+.sf-carttabs { display: flex; justify-content: center; gap: 32px; margin: 0 0 24px; border-bottom: 1px solid var(--t-border, #e6e6e6); }
+.sf-carttabs button { padding: 14px 4px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; font: inherit; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: inherit; opacity: .55; cursor: pointer; }
+.sf-carttabs button[aria-selected="true"] { opacity: 1; border-bottom-color: currentColor; }
+.sf-carttiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 16px; margin: 0; padding: 0; list-style: none; }
+.sf-carttile { position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 13px; }
+.sf-carttile-pic { display: block; aspect-ratio: var(--t-card-ratio, 3 / 4); overflow: hidden; background: var(--t-soft, #f6f6f6); border-radius: var(--t-card-radius, 0); }
+.sf-carttile-pic img { width: 100%; height: 100%; object-fit: cover; }
+.sf-carttile-remove { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .9); color: #1e2129; font-size: 13px; cursor: pointer; }
+.sf-carttile-text { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.sf-carttile-text a { color: inherit; text-decoration: none; text-transform: uppercase; }
+.sf-carttile-price { white-space: nowrap; font-weight: 600; }
+.sf-carttile-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sf-carttile-row .sf-btn { width: 100%; padding: 9px 8px; font-size: 12px; text-align: center; }
+.sf-cartcode { max-width: 420px; margin: 32px auto 0; }
+.sf-cartcode-on { margin: 10px auto 0; max-width: 420px; font-size: 13px; }
+.sf-cartbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; align-items: center; justify-content: flex-end; gap: 24px; padding: 12px max(16px, calc(50vw - var(--t-page, 1440px) / 2 + 16px)); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--t-bg, #fff); border-top: 1px solid var(--t-border, #e6e6e6); }
+.sf-cartbar-total { display: flex; align-items: baseline; gap: 16px; font-size: 14px; }
+.sf-cartbar-total small { opacity: .6; font-size: 12px; }
+.sf-cartbar-total strong { font-size: 18px; }
+.sf-cartbar .sf-btn { min-width: 220px; text-align: center; }
+@media (max-width: 1000px) { .sf-carttiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .sf-carttiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 8px; } .sf-cartbar { flex-direction: column; align-items: stretch; gap: 8px; } .sf-cartbar-total { justify-content: space-between; } .sf-cartbar-total small { display: none; } .sf-cartbar .sf-btn { min-width: 0; } }
+/* the order page as tabs and tiles (the section « Commande », `Look` = tabs): its steps are centred tabs, its payment methods tiles side by side */
+.sf-co.is-tabs .sf-co-steps { justify-content: center; gap: 40px; margin-bottom: 8px; border-bottom: 1px solid var(--t-border, #e6e6e6); }
+.sf-co.is-tabs .sf-co-steps li { flex: 0 0 auto; }
+.sf-co.is-tabs .sf-co-steps button { padding: 14px 4px; margin-bottom: -1px; border-bottom-color: transparent; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+.sf-co.is-tabs .sf-co-steps .is-done button { border-bottom-color: transparent; }
+.sf-co.is-tabs .sf-co-steps .is-on button { border-bottom-color: currentColor; }
+.sf-co.is-tabs .sf-co-steps span { display: none; }
+.sf-co.is-tabs .sf-co-pays { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.sf-co.is-tabs .sf-co-pay { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 104px; padding: 16px 12px; border: 1px solid var(--t-border, #d9d9d9); background: transparent; text-align: center; }
+.sf-co.is-tabs .sf-co-pay .sf-radio { display: none; }
+.sf-co.is-tabs .sf-co-pay .sf-co-option-main { align-items: center; text-align: center; }
+.sf-co.is-tabs .sf-co-pay.is-on { border-color: var(--t-text, #1e2129); box-shadow: inset 0 0 0 1px var(--t-text, #1e2129); background: transparent; }
+@media (max-width: 700px) { .sf-co.is-tabs .sf-co-steps { gap: 20px; } .sf-co.is-tabs .sf-co-pays { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
