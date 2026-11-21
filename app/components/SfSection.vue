@@ -326,9 +326,9 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
       <!-- the HTML the shop wrote (cleaned by Digipart: no script, frame, form or event) -->
       <div v-else-if="type === 'custom_html'" class="sf-custom" :style="align" v-html="customHtml" />
       <!-- a section the shop wrote in code (Liquid): drawn and cleaned by the server (server/utils/liquid.ts); in a preview, what went wrong is said in its place -->
-      <div v-else-if="type === 'code'" class="sf-code">
+      <div v-else-if="type === 'code'" class="sf-liquid">
         <div v-if="section.Html" v-html="section.Html" />
-        <p v-else-if="section.Error" class="sf-code-error">{{ section.Error }}</p>
+        <p v-else-if="section.Error" class="sf-liquid-error">{{ section.Error }}</p>
       </div>
       <div v-else-if="['richtext', 'products', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'contact_form', 'store_locator'].includes(type)" :style="align">
         <SfBlocks :blocks="blocks">

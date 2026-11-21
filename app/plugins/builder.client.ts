@@ -10,8 +10,8 @@
 //   HTML and the CSS a shop writes are NOT taken from these messages: they stay what Digipart last cleaned and gave (they follow at the next `refresh`, after the save);
 // - a double click on a title, a text or a button writes it in place: each change is told to the builder (`text`), which keeps it; while a text is being written the page is not drawn anew
 //   under the cursor (a `refresh` waits for the end);
-// - the section selected in the builder carries the bar the plan of the builder draws (a tab at its top left: its name, up and down (`move`), duplicate, copy, save as a model, hide, delete
-//   (`act`; not for the main section of a page)): the builder does it (it asks before a deletion) and sends the new sections back. No frame is drawn around a section; a selected block has a thin one.
+// - the bar of the selected section is drawn by the builder itself, over this frame: the site tells where the section is (`box`) and, while it is dragged there, where it would be dropped
+//   (`drag`, `drop`, then `move` with `before` / `after`). No frame is drawn around a section; a selected block has a thin one.
 export default defineNuxtPlugin((nuxt) => {
   const route = useRoute()
   if (route.query.builder === undefined || window.parent === window) { return }
@@ -20,7 +20,6 @@ export default defineNuxtPlugin((nuxt) => {
   let follow = false
   let editing: { node: HTMLElement, part: string, section: string, block: string, first: boolean } | null = null   // the text being written in place
   let waiting = false                                                                                              // a refresh asked meanwhile
-  let tools: HTMLElement | null = null
   let missing = false                     // what the builder selected is not drawn yet (a section it has just added)
   let place: () => void = () => {}
   let last = { section: '', block: '' }   // what the builder has selected: outlined again once a refresh has drawn the page anew
@@ -61,7 +60,10 @@ export default defineNuxtPlugin((nuxt) => {
       site.value = { ...site.value, Theme: { ...site.value.Theme, Settings: { ...site.value.Theme.Settings, ...rest }, Schemes: drawn } }
     }
   }
-  let arrows: (can: { up: boolean, down: boolean, own: boolean, name: string } | null) => void = () => {}
+  let arrows: (can: boolean) => void = () => {}
+  let shown = false                       // a section is selected in the builder: its place is told
+  let dragTo: (y: number) => void = () => {}
+  let dropAt: (done: boolean) => void = () => {}
   const mark = (section: string, block: string, scroll = true) => {
     document.querySelectorAll('.is-sfb-on').forEach(node => node.classList.remove('is-sfb-on'))
     const target = (block && document.querySelector('.sf-b-' + CSS.escape(block))) || (section && document.querySelector('.sf-i-' + CSS.escape(section)))
@@ -84,8 +86,10 @@ export default defineNuxtPlugin((nuxt) => {
       if (message.type === 'follow' && typeof message.accent === 'string' && /^(#[0-9a-f]{3,8}|rgba?\([0-9., %]+\))$/i.test(message.accent.trim())) { document.documentElement.style.setProperty('--sfb-accent', message.accent.trim()) }
       if (message.type === 'follow') { follow = !!message.on; document.documentElement.classList.toggle('sf-builder-follow', follow) }
       if (message.type === 'design') { draw(String(message.part || 'page'), message.sections); if (last.section) { setTimeout(() => { mark(last.section, last.block, missing); missing = false; place(); setTimeout(place, 400) }, 60) } }   // a section just added: selected before it was drawn, it is brought into view now
+      if (message.type === 'drag') { dragTo(Number(message.y) || 0) }
+      if (message.type === 'drop') { dropAt(message.cancel !== true) }
       if (message.type === 'theme') { paint(message.variables, message.settings, message.schemes) }
-      if (message.type === 'select') { last = { section: String(message.section || ''), block: String(message.block || '') }; missing = !mark(last.section, last.block) && !!last.section; arrows(last.section ? { up: !!message.up, down: !!message.down, own: !!message.own, name: typeof message.name === 'string' ? message.name : '' } : null) }
+      if (message.type === 'select') { last = { section: String(message.section || ''), block: String(message.block || '') }; missing = !mark(last.section, last.block) && !!last.section; arrows(!!last.section) }
     })
     // a click: which section, which block, of which design
     document.addEventListener('click', (event) => {
@@ -103,7 +107,6 @@ export default defineNuxtPlugin((nuxt) => {
         return
       }
       if (editing && editing.node.contains(at)) { if (link) { event.preventDefault() } return }   // the cursor is placed in the text being written
-      if (tools && at && tools.contains(at)) { return }
       const band = at?.closest?.('[data-section]') as Element | null
       if (!band) { return }
       event.preventDefault()
@@ -149,92 +152,45 @@ export default defineNuxtPlugin((nuxt) => {
       if (event.key === 'Escape' || (event.key === 'Enter' && !editing.node.classList.contains('sf-text'))) { event.preventDefault(); editing.node.blur() }
     }, true)
     document.addEventListener('focusout', (event) => { if (editing && event.target === editing.node) { stop() } }, true)
-    // the bar of the selected section, as the plan of the builder draws it: a tab above its top left corner (inside it when there is no room above), with its name and what can be done to it
+    // The bar of the selected section (its name, move, duplicate, hide, delete…) is drawn BY THE BUILDER, over this frame, with the icons and the colours of the back-office: the site only says
+    // where the section is (`box`, at each scroll or change of size), and, while the section is dragged by its name there, shows where it would be dropped (`drag`, `drop` => `move`).
+    let asked = 0
     place = () => {
-      const band = last.section ? document.querySelector('.sf-i-' + CSS.escape(last.section)) : null
-      if (!tools || !band) { if (tools) { tools.hidden = true } return }
-      const box = band.getBoundingClientRect(), tall = tools.offsetHeight || 30
-      tools.hidden = box.bottom < 40 || box.top > window.innerHeight - 40
-      const above = box.top - tall >= 0
-      tools.classList.toggle('is-inside', !above)
-      tools.style.top = (above ? box.top - tall : Math.max(0, Math.min(window.innerHeight - tall, box.top))) + 'px'
-      tools.style.left = Math.max(0, box.left) + 'px'
+      if (asked) { return }
+      asked = requestAnimationFrame(() => {
+        asked = 0
+        const band = shown && last.section ? document.querySelector('.sf-i-' + CSS.escape(last.section)) : null
+        if (!band) { tell({ type: 'box', section: last.section, show: false }); return }
+        const box = band.getBoundingClientRect()
+        tell({ type: 'box', section: last.section, show: box.bottom > 40 && box.top < window.innerHeight - 40, top: Math.round(box.top), left: Math.round(box.left), width: Math.round(box.width) })
+      })
     }
     window.addEventListener('scroll', place, { passive: true })
     window.addEventListener('resize', place)
-    const svg = (path: string) => '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + '</svg>'
-    const ACTS: [string, string, string][] = [   // fixed drawings of this file, nothing of the shop
-      ['up', svg('<path d="M12 19V5M6 11l6-6 6 6"/>'), 'Monter'],
-      ['down', svg('<path d="M12 5v14M6 13l6 6 6-6"/>'), 'Descendre'],
-      ['duplicate', svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'), 'Dupliquer'],
-      ['copy', svg('<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h4"/>'), 'Copier (pour coller dans une autre page)'],
-      ['savemodel', svg('<path d="M6 3h12v18l-6-4-6 4z"/>'), 'Enregistrer comme modèle (Mes sections)'],
-      ['hide', svg('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'), 'Masquer'],
-      ['remove', svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'), 'Supprimer'],
-    ]
-    arrows = (can) => {
-      if (!can) { if (tools) { tools.remove(); tools = null } return }
-      if (!tools) {
-        tools = document.createElement('div')
-        tools.className = 'sfb-tools'
-        const name = document.createElement('span')
-        name.className = 'sfb-tools-name'
-        name.title = 'Glisser pour déplacer la section'
-        tools.appendChild(name)
-        // dragging the section by its name: a line shows where it would go among the sections around it; dropped, the builder is told before (or after) which one (`move`)
-        let drag: { line: HTMLElement, before: string, after: string, moved: boolean } | null = null
-        const around = (): HTMLElement[] => { const band = document.querySelector('.sf-i-' + CSS.escape(last.section)); return band?.parentElement ? Array.from(band.parentElement.children).filter(node => node.matches('[data-section]')) as HTMLElement[] : [] }
-        name.addEventListener('pointerdown', (event) => {
-          if (event.button !== 0 || around().length < 2) { return }
-          event.preventDefault()
-          const line = document.createElement('div')
-          line.className = 'sfb-drop'; line.hidden = true
-          document.body.appendChild(line)
-          drag = { line, before: '', after: '', moved: false }
-          name.setPointerCapture(event.pointerId)
-          document.documentElement.classList.add('sf-builder-drag')
-        })
-        name.addEventListener('pointermove', (event) => {
-          if (!drag) { return }
-          const list = around(), y = event.clientY
-          if (y < 70) { window.scrollBy(0, -18) } else if (y > window.innerHeight - 70) { window.scrollBy(0, 18) }
-          let at = 0
-          for (const band of list) { const box = band.getBoundingClientRect(); if (box.top + box.height / 2 < y) { at++ } }
-          const next = list[at], previous = list[at - 1]
-          drag.before = next ? idOf(next, 'sf-i-') : ''
-          drag.after = !next && previous ? idOf(previous, 'sf-i-') : ''
-          drag.moved = true
-          const edge = next ? next.getBoundingClientRect().top : (previous ? previous.getBoundingClientRect().bottom : 0), wide = (next || previous)!.getBoundingClientRect()
-          drag.line.hidden = false
-          drag.line.style.top = Math.max(0, Math.min(window.innerHeight - 3, edge - 1)) + 'px'
-          drag.line.style.left = wide.left + 'px'; drag.line.style.width = wide.width + 'px'
-        })
-        const drop = (event: PointerEvent, done: boolean) => {
-          if (!drag) { return }
-          const { before, after, moved, line } = drag
-          line.remove(); drag = null
-          try { name.releasePointerCapture(event.pointerId) } catch { /* already released */ }
-          document.documentElement.classList.remove('sf-builder-drag')
-          if (done && moved && before !== last.section && after !== last.section) { tell({ type: 'move', section: last.section, before, after }) }
-        }
-        name.addEventListener('pointerup', event => drop(event, true))
-        name.addEventListener('pointercancel', event => drop(event, false))
-        for (const [act, drawing, label] of ACTS) {
-          const button = document.createElement('button')
-          button.type = 'button'; button.innerHTML = drawing
-          button.title = label; button.setAttribute('aria-label', label); button.dataset.dir = act
-          button.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); tell(act === 'up' || act === 'down' ? { type: 'move', section: last.section, dir: act } : { type: 'act', section: last.section, act }) })
-          tools.appendChild(button)
-        }
-        document.body.appendChild(tools)
-      }
-      (tools.querySelector('.sfb-tools-name') as HTMLElement).textContent = String(can.name || '').slice(0, 60)
-      for (const button of Array.from(tools.querySelectorAll('button')) as HTMLButtonElement[]) {
-        const act = String(button.dataset.dir)
-        button.hidden = act === 'up' ? !can.up : act === 'down' ? !can.down : !can.own   // as in the plan: what cannot be done is not shown
-      }
-      place()
-      setTimeout(place, 200)
+    arrows = (can) => { shown = !!can; place(); setTimeout(place, 250); setTimeout(place, 700) }   // again once a smooth scroll has ended
+    // dragging: a line shows where the section would go among the sections around it
+    let line: HTMLElement | null = null
+    let target = { before: '', after: '' }
+    const around = (): HTMLElement[] => { const band = document.querySelector('.sf-i-' + CSS.escape(last.section)); return band?.parentElement ? Array.from(band.parentElement.children).filter(node => node.matches('[data-section]')) as HTMLElement[] : [] }
+    dragTo = (y: number) => {
+      const list = around()
+      if (list.length < 2) { return }
+      if (!line) { line = document.createElement('div'); line.className = 'sfb-drop'; document.body.appendChild(line); document.documentElement.classList.add('sf-builder-drag') }
+      if (y < 70) { window.scrollBy(0, -18) } else if (y > window.innerHeight - 70) { window.scrollBy(0, 18) }
+      let at = 0
+      for (const band of list) { const box = band.getBoundingClientRect(); if (box.top + box.height / 2 < y) { at++ } }
+      const next = list[at], previous = list[at - 1]
+      target = { before: next ? idOf(next, 'sf-i-') : '', after: !next && previous ? idOf(previous, 'sf-i-') : '' }
+      const edge = next ? next.getBoundingClientRect().top : previous!.getBoundingClientRect().bottom, wide = (next || previous)!.getBoundingClientRect()
+      line.style.top = Math.max(0, Math.min(window.innerHeight - 3, edge - 1)) + 'px'
+      line.style.left = wide.left + 'px'; line.style.width = wide.width + 'px'
+    }
+    dropAt = (done: boolean) => {
+      if (!line) { return }
+      line.remove(); line = null
+      document.documentElement.classList.remove('sf-builder-drag')
+      if (done && target.before !== last.section && target.after !== last.section && (target.before || target.after)) { tell({ type: 'move', section: last.section, before: target.before, after: target.after }) }
+      target = { before: '', after: '' }
     }
     tell({ type: 'ready', path: window.location.pathname })
   })
