@@ -621,4 +621,6 @@ export default {
   'Voir les {a} résultats': 'See all {a} results',
   // the « En promotion » filter
   'En promotion': 'On sale',
-} as Record<string, string>
+  'Réf.': 'Ref.',
+  'Look': 'Look',
+}

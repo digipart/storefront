@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The photos of a product, as the shop chose in the site builder: a grid of two columns, one under the other, a horizontal carousel (1, 2 or 3 photos seen at once, arrows), or one photo with
-// small ones under it. On a phone they are always swiped one by one. A photo opens the full-screen viewer.
-const props = defineProps<{ images: string[], sets?: string[], name: string, layout?: string, perView?: number, arrows?: any }>()
+// small ones under it (or, on a computer, in a column on its left: `thumbs` = left; the photo may then fill the height of the screen: `fit` = screen). On a phone they are always swiped one by
+// one. A photo opens the full-screen viewer.
+const props = defineProps<{ images: string[], sets?: string[], name: string, layout?: string, perView?: number, arrows?: any, thumbs?: string, fit?: string }>()
 // how wide a photo is drawn, for the browser to take the right size of it
 const sizes = computed(() => '(max-width: 767px) 100vw, ' + (layout.value === 'grid' || (layout.value === 'carousel' && per.value > 1) ? Math.round(64 / (layout.value === 'carousel' ? per.value : 2)) : 64) + 'vw')
 const emit = defineEmits<{ zoom: [index: number] }>()
@@ -27,7 +28,7 @@ const arrow = (next: boolean) => {
 </script>
 
 <template>
-  <div class="sf-gallery-wrap" :class="['is-' + layout, { 'has-hover-arrows': arrows?.ArrowHover }]">
+  <div class="sf-gallery-wrap" :class="['is-' + layout, { 'has-hover-arrows': arrows?.ArrowHover, 'is-thumbs-left': layout === 'slider' && thumbs === 'left', 'is-fit-screen': layout === 'slider' && fit === 'screen' }]">
     <div ref="track" class="sf-gallery" :class="'is-' + layout" :style="{ '--per': per }" @scroll.passive="watch">
       <template v-if="images.length"><img v-for="(src, index) in images" :key="src" :src="src" :srcset="sets?.[index] || undefined" :sizes="sizes" :alt="index === 0 ? name : ''" :loading="index === 0 ? 'eager' : 'lazy'" :fetchpriority="index === 0 ? 'high' : undefined" decoding="async" role="button" tabindex="0" :aria-label="w('Agrandir la photo {a}', { a: index + 1 })" @click="emit('zoom', index)" @keydown.enter="emit('zoom', index)"></template>
       <span v-else class="sf-card-empty" aria-hidden="true" />

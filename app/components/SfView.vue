@@ -2,8 +2,9 @@
 // What an address of the site shows (the two pages of the engine use it): the home page, or a content page of the shop drawn with the design of its page template.
 const route = useRoute()
 const site = inject<Ref<any>>('sfSite')!
+const fresh = useState<number>('sf-fresh', () => 0)   // changed by the site builder after each save of a draft: the page is read anew (app/plugins/builder.client.ts)
 const { data: loaded, error } = await useFetch<any>('/api/storefront/view', {
-  query: { rest: computed(() => site.value?.Route?.Rest || ''), lang: computed(() => site.value?.Route?.LanguageIsoCode || ''), prefix: computed(() => site.value?.Route?.Prefix || ''), preview: computed(() => (typeof route.query.preview === 'string' ? route.query.preview : '')),
+  query: { fresh: computed(() => fresh.value || undefined), rest: computed(() => site.value?.Route?.Rest || ''), lang: computed(() => site.value?.Route?.LanguageIsoCode || ''), prefix: computed(() => site.value?.Route?.Prefix || ''), preview: computed(() => (typeof route.query.preview === 'string' ? route.query.preview : '')),
     page: computed(() => (typeof route.query.page === 'string' ? route.query.page : '')), q: computed(() => (typeof route.query.q === 'string' ? route.query.q : '')), attr: computed(() => (typeof route.query.attr === 'string' ? route.query.attr : '')), min: computed(() => (typeof route.query.min === 'string' ? route.query.min : '')), max: computed(() => (typeof route.query.max === 'string' ? route.query.max : '')), sort: computed(() => (typeof route.query.sort === 'string' ? route.query.sort : '')), tab: computed(() => (typeof route.query.tab === 'string' ? route.query.tab : '')), promo: computed(() => (typeof route.query.promo === 'string' ? route.query.promo : '')) },
   key: computed(() => 'sf-view-' + route.fullPath),
 })

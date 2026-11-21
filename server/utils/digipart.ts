@@ -74,7 +74,9 @@ export async function digipart<T = any>(event: H3Event, path: string, query: Rec
   // a preview (it shows drafts) and an answer that depends on the visitor's address are kept two seconds: long enough for the page being drawn, never for the next change
   const life = full.PreviewToken || full.IP ? 2000 : Math.min(Number(config.cacheSeconds), local ? 30 : Infinity) * 1000
   const hit = cache.get(key)
-  if (hit && Date.now() - hit.at < life) { noteCall(event, 'digipart', path, -1); return hit.data as T }
+  // the site builder asks again right after a draft is saved (`fresh`, app/plugins/builder.client.ts): a preview is then read anew, never from the two seconds of memory
+  const fresh = !!full.PreviewToken && getQuery(event).fresh !== undefined
+  if (hit && !fresh && Date.now() - hit.at < life) { noteCall(event, 'digipart', path, -1); return hit.data as T }
   const running = asking.get(key)
   if (running) { noteCall(event, 'digipart', path, -1); return running as Promise<T | null> }
   const ask = (async (): Promise<T | null> => {

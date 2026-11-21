@@ -24,7 +24,8 @@ $preview = $theme !== null;
 $api = new StorefrontApi(new StorefrontAdmin($pdo));
 $answer = match ($argv[2]) {
     '' => $api->site($idMarketPlace, $language, $preview, (int) $theme, filter_var($text('IP'), FILTER_VALIDATE_IP) !== false ? $text('IP') : null),
-    'design.php' => $api->design($idMarketPlace, $text('Key'), $language, $preview, (int) $theme),
+    // as api/storefront/design.php: the alternate design of ONE category (Key=catalog, IdCategory) or product (Key=product, IdProduct)
+    'design.php' => $api->design($idMarketPlace, $text('Key'), $language, $preview, (int) $theme, $text('Key') === 'catalog' && (int) ($query['IdCategory'] ?? 0) > 0 ? 'category' : ($text('Key') === 'product' && (int) ($query['IdProduct'] ?? 0) > 0 ? 'product' : null), (int) ($query[$text('Key') === 'catalog' ? 'IdCategory' : 'IdProduct'] ?? 0)),
     'page.php' => $text('Slug') !== '' ? $api->page($idMarketPlace, $text('Slug'), $language, $preview) : (($pages = $api->pages($idMarketPlace, $language, $preview)) === null ? null : ['Pages' => $pages]),
     'lookbook.php' => $text('Slug') !== '' ? $api->lookbook($idMarketPlace, $text('Slug'), $language, $preview) : (($books = $api->lookbooks($idMarketPlace, $language, $preview)) === null ? null : ['Lookbooks' => $books]),
     'story.php' => ($stories = $api->stories($idMarketPlace, $text('Placement'), (int) $text('IdProduct'), $language, $preview)) === null ? null : ['Stories' => $stories],

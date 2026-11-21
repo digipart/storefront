@@ -10,7 +10,12 @@ export default defineEventHandler(async (event) => {
   const preview = previewQuery(event)
   // the address of the product in every language of the site (for the search engines): asked once per product page
   const withPaths = async (product: any) => { const found = await digipart(event, 'products.php', { Mode: 'paths', IdProduct: product.Id }).catch(() => null); const paths = found?.Paths && typeof found.Paths === 'object' ? found.Paths : {}; return { ...product, Alternates: { ...product.Alternates, ...paths }, Canonical: paths[lang] || product.Canonical } }
-  const design = (key: string) => digipart(event, 'design.php', { ...preview, ...language, Key: key })
+  // `more`: the category (`IdCategory`) or the product (`IdProduct`) the page is about: Digipart answers its own alternate design when it was given one in the site builder, else the one asked for.
+  // In a preview opened by the site builder on an alternate (`template=catalog.<name>`), that alternate draws the page whatever uses it: it is the one being written.
+  const forced = Object.keys(preview).length && /^(catalog|product|page)\.[a-z0-9-]{1,30}$/.test(String(query.template ?? '')) ? String(query.template) : ''
+  const design = (key: string, more: Record<string, number> = {}) => forced && forced.split('.')[0] === key.split('.')[0].replace(/_.*$/, '')
+    ? digipart(event, 'design.php', { ...preview, ...language, Key: forced }).then((found: any) => found || digipart(event, 'design.php', { ...preview, ...language, Key: key, ...more }))
+    : digipart(event, 'design.php', { ...preview, ...language, Key: key, ...more })
   // the page an address that is nothing of the site shows (the page asks for it after a 404, with `notfound=1`): the design « Page introuvable » of the site builder, or none
   if (String(query.notfound) === '1') { return { Kind: 'notfound', Design: await design('not_found').catch(() => null), Page: null } }
   if (rest === '') { return { Kind: 'home', Design: await design('home'), Page: null } }
@@ -82,13 +87,13 @@ export default defineEventHandler(async (event) => {
   if (segments.length >= 2 && idProduct > 0) {
     const product = await loadProduct(event, idProduct, lang, prefix, 'EUR', priceBase)
     if (!product) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
-    return { Kind: 'product', Design: await design('product'), Page: null, Product: await withPaths(product) }
+    return { Kind: 'product', Design: await design('product', { IdProduct: Number(product.Id) || 0 }), Page: null, Product: await withPaths(product) }
   }
   // the addresses Digipart itself writes to a product, without its id: <category>/<name> and products/<name>
   if (segments.length === 2) {
     const found = await digipart(event, 'products.php', { Mode: 'slug', Slug: segments[1] }).catch(() => null)
     const product = found?.ProductIds?.[0] ? await loadProduct(event, Number(found.ProductIds[0]), lang, prefix, 'EUR', priceBase) : null
-    if (product) { return { Kind: 'product', Design: await design('product'), Page: null, Product: await withPaths(product) } }
+    if (product) { return { Kind: 'product', Design: await design('product', { IdProduct: Number(product.Id) || 0 }), Page: null, Product: await withPaths(product) } }
   }
   if (segments.length !== 1) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
 
@@ -108,7 +113,7 @@ export default defineEventHandler(async (event) => {
   // a category of the catalogue
   const category = await shopApi(event, 'category/', { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase() })
   if (!category || !category.IdCategory || category.Active === 0) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
-  const catalog = await design('catalog')
+  const catalog = await design('catalog', { IdCategory: Number(category.IdCategory) || 0 })
   const settings = (catalog?.Sections || []).find((section: any) => section.Type === 'main_catalog')?.Settings || {}
   const perPage = Math.max(4, Math.min(60, Number(settings.PerPage) || 24))
   const pageNumber = Math.max(1, Math.min(500, Number(query.page) || 1))

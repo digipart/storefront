@@ -57,8 +57,10 @@ const wrap = computed(() => ['sf-wrap', 'is-' + (s.value.Width || 'page'), { 'is
 // the CSS the shop wrote for this section (cleaned by Digipart): written inside the rule of the section (CSS nesting), so it only reaches this section
 // every section carries its own class (`sf-i-<id>`), every block `sf-b-<id>` and every column `sf-col-<n>`: the site builder shows them next to the CSS field, to be aimed at from the custom CSS
 const instance = computed(() => (props.section.Id ? 'sf-i-' + String(props.section.Id).replace(/[^A-Za-z0-9_-]/g, '') : ''))
-useHead(() => ({ style: instance.value && s.value.CustomCss ? [{ key: instance.value, innerHTML: '.' + instance.value + '{' + String(s.value.CustomCss) + '}' }] : [] }))
-const band = computed(() => ['sf-band', { 'has-bg': !!s.value.BgImage, 'is-fixed-bg': !!s.value.BgFixed }, 'is-' + (s.value.Background || 'none'), 'sf-s-' + type.value.replace(/_/g, '-'), instance.value, s.value.CssClass])   // `sf-s-`: never the class of what is inside (`sf-hero`)
+useHead(() => ({ style: instance.value && s.value.CustomCss ? [{ key: instance.value, innerHTML: '.' + instance.value + '{' + String(s.value.CustomCss) + '}', tagPosition: 'bodyClose' as const }] : [] }))   // at the end of the page, after the style sheet of the site: it wins whatever the loading order
+// a colour scheme of the theme (site.Theme.Schemes, drawn by app.vue as `.sf-scheme-<id>`): the nine colours of the section change at once
+const scheme = computed(() => /^sch_[a-z0-9]{4,12}$/.test(String(s.value.Scheme || '')) ? 'sf-scheme-' + s.value.Scheme : '')
+const band = computed(() => ['sf-band', { 'has-bg': !!s.value.BgImage, 'is-fixed-bg': !!s.value.BgFixed }, 'is-' + (s.value.Background || 'none'), 'sf-s-' + type.value.replace(/_/g, '-'), instance.value, scheme.value, s.value.CssClass])   // `sf-s-`: never the class of what is inside (`sf-hero`)
 const align = computed(() => ({ textAlign: s.value.Align || 'left' }))
 const justify = computed(() => ({ center: 'center', right: 'flex-end' } as Record<string, string>)[s.value.Align] || 'flex-start')
 
@@ -349,7 +351,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
       </div>
 
       <LazySfFilters v-if="type === 'main_catalog' && catalog && filtersOpen" :filters="catalog.Listing.Filters" :currency="catalog.Listing.Products[0]?.Currency || 'EUR'" :settings="s" :texts="t" @close="filtersOpen = false" @apply="applyFilters" />
-      <ClientOnly v-if="type === 'main_header'"><LazySfNavDrawer v-if="navOpen" :id="s.IdMenu" @close="navOpen = false" /></ClientOnly>
+      <ClientOnly v-if="type === 'main_header'"><LazySfNavDrawer v-if="navOpen" :id="s.IdMenu" :mode="s.DrawerStyle" @close="navOpen = false" /></ClientOnly>
 
       <!-- the footer of the site: columns, then the bottom line -->
       <div v-else-if="type === 'main_footer'" class="sf-footer" :style="{ textAlign: s.Align || 'left', fontSize: (s.TextSize || 13) + 'px' }">
@@ -446,7 +448,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
 
       <!-- a product: its photos beside its blocks (name, price, sizes, buy button, description...) in the order the shop gave them -->
       <div v-else-if="type === 'main_product' && product" class="sf-pdp" :class="{ 'is-reverse': s.GalleryPosition === 'right' }" :style="pdp">
-        <SfGallery :images="product.Images" :sets="product.ImageSets" :name="product.Name" :layout="s.GalleryLayout" :per-view="Number(s.GalleryPerView) || 2" :arrows="s" @zoom="zoomAt = $event" />
+        <SfGallery :images="product.Images" :sets="product.ImageSets" :name="product.Name" :layout="s.GalleryLayout" :per-view="Number(s.GalleryPerView) || 2" :arrows="s" :thumbs="s.GalleryThumbs" :fit="s.GalleryFit" @zoom="zoomAt = $event" />
         <!-- the column is as tall as the photos; inside it the blocks follow the scroll (when the shop asked) and stop where the section ends, before the next one -->
         <div class="sf-info-col" :class="{ 'is-sticky': s.InfoSticky !== false, 'is-center': s.InfoY === 'center' }"><div ref="infoBox" class="sf-info" :style="info"><SfBlocks :blocks="blocks" /></div></div>
         <LazySfZoom v-if="zoomAt >= 0" :images="product.Images" :start="zoomAt" :name="product.Name" @close="zoomAt = -1" />

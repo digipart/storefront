@@ -542,4 +542,6 @@ export default {
   'En {a} fois par carte bancaire': 'In {a} rate con carta',
   'Nombre de fois': 'Numero di rate',
   '{a} fois': '{a} rate',
-} as Record<string, string>
+  'Réf.': 'Rif.',
+  'Look': 'Look',
+}

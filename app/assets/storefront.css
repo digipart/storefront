@@ -5,6 +5,8 @@ body { margin: 0; background: var(--t-bg, #fff); color: var(--t-text, #1e2129); 
 img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; }
 h1, h2, p { margin: 0; }
+/* a section with a colour scheme of the theme (`.sf-scheme-<id>` redefines the colours: app.vue): its fond and its text are the ones of the scheme; « Clair » and « Foncé » then are its own */
+.sf-band[class*="sf-scheme-"] { background-color: var(--t-bg, #fff); color: var(--t-text, #1e2129); }
 .sf-band.is-light { background: var(--t-soft, #f6f6f9); }
 .sf-band.is-dark { background: var(--t-dark, #1e2129); color: var(--t-dark-text, #fff); }
 .sf-wrap { --gutter: 32px; max-width: var(--t-page, 1440px); margin: 0 auto; padding: var(--pt, 0) calc(var(--gutter) + var(--pr, 0px)) var(--pb, 0) calc(var(--gutter) + var(--pl, 0px)); }
@@ -1208,3 +1210,63 @@ body .sf-spanel-field input, body .sf-news input { border-radius: 0; }
 
 /* « En promotion », the last of the filters */
 .sf-fpromo { padding: 14px 0; } .sf-fpromo .sf-check { font-weight: 600; } .sf-fpromo small { font-weight: 400; opacity: .65; }
+/* The header over the banner of the home page (En-tête > « Transparent sur la bannière de l'accueil »; app.vue sets sf-over on the home page when its first section is a banner or a carousel):
+   it lies on the picture, transparent and in white, and becomes the usual header once the visitor scrolls or points at it (its menus then open on their usual ground). A header that does not
+   stay at the top (not sticky) simply scrolls away with the banner. */
+header.sf-over { position: absolute; top: 0; left: 0; right: 0; z-index: 40; transition: background-color .25s ease, color .25s ease; }
+header.sf-over.sf-sticky { position: fixed; }
+header.sf-over:not(.is-solid):not(:hover):not(:focus-within) { background: transparent; color: #fff; }
+header.sf-over:not(.is-solid):not(:hover):not(:focus-within) .sf-s-main-header { background: transparent; color: #fff; }
+header.sf-over:not(.is-solid):not(:hover):not(:focus-within) .sf-header.has-border { border-bottom-color: transparent; }
+header.sf-over:not(.is-solid):not(:hover):not(:focus-within) .sf-logo img { filter: brightness(0) invert(1); }
+header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { background: var(--t-bg, #fff); color: var(--t-text, #1e2129); }
+@media (hover: none) { header.sf-over:not(.is-solid):hover:not(:focus-within) { background: transparent; color: #fff; } header.sf-over:not(.is-solid):hover:not(:focus-within) .sf-logo img { filter: brightness(0) invert(1); } }
+/* The menu panel with its tabs at the top (En-tête > « Présentation du volet » : onglets en haut): the tabs of the Digipart menu side by side beside the cross, under them the links of the chosen
+   tab; each column of the menu is a block, a named group a line that opens its links. */
+.sf-drawer.is-left .sf-navdrawer.is-tabs { width: min(560px, 100vw); }
+.sf-navtabs { display: flex; align-items: center; gap: 6px; padding: 12px 20px 4px; }
+.sf-navtabs-close { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: -10px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+.sf-navtabs-list { display: flex; gap: 24px; min-width: 0; overflow-x: auto; scrollbar-width: none; } .sf-navtabs-list::-webkit-scrollbar { display: none; }
+.sf-navtabs-tab { flex: 0 0 auto; padding: 8px 0; border: 0; border-bottom: 1.5px solid transparent; background: none; font: inherit; font-size: 15px; color: inherit; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.sf-navtabs-tab[aria-selected="true"] { border-bottom-color: currentColor; }
+.sf-navdrawer.is-tabs .sf-drawer-body { padding: 14px 26px 24px; }
+.sf-navtabs-block { display: flex; flex-direction: column; padding: 8px 0 20px; }
+.sf-navtabs-block > a, .sf-navtabs-block > span, .sf-navtabs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 9px 0; border: 0; background: none; font: inherit; font-size: 14px; color: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.sf-navtabs-row.is-back { justify-content: flex-start; font-weight: 600; }
+.sf-navdrawer.is-tabs .sf-navdrawer-more { padding-top: 12px; font-size: 12px; }
+/* The product page: « Retour », the reference, the « Look » button beside the buy button, the links that open a side panel */
+.sf-back { display: inline-block; margin: 0 0 28px; padding: 0; border: 0; background: none; font: inherit; font-size: 12px; letter-spacing: .04em; color: inherit; cursor: pointer; }
+.sf-back:hover, .sf-plink:hover { text-decoration: underline; }
+.sf-ref { margin: 10px 0 0; font-size: 12px; font-weight: 400; opacity: .8; }
+.sf-buy .sf-look-btn { flex: 0 0 37%; display: inline-flex; align-items: center; justify-content: center; margin-right: 8px; text-align: center; text-decoration: none; }
+.sf-plink { display: block; margin: 0; padding: 7px 0; border: 0; background: none; font: inherit; font-size: 13px; color: inherit; text-align: left; cursor: pointer; }
+.sf-pdesc { font-size: 14px; }
+/* The photos of a product as one photo and its small ones in a column on the left (Produit > « Miniatures » : à gauche), the photo as tall as the screen (« Hauteur de la photo ») : on a computer */
+@media (min-width: 768px) {
+  .sf-gallery-wrap.is-thumbs-left { display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 16px; }
+  .sf-gallery-wrap.is-thumbs-left .sf-gallery { flex: 1 1 auto; min-width: 0; }
+  .sf-gallery-wrap.is-thumbs-left .sf-gallery-thumbs { flex: 0 0 44px; flex-direction: column; margin: 0; padding-top: 24px; max-height: calc(100svh - var(--sf-head, 0px)); overflow: hidden auto; scrollbar-width: none; }
+  .sf-gallery-wrap.is-thumbs-left .sf-gallery-thumbs button { flex: 0 0 auto; width: 44px; }
+  .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider { min-height: 0; }
+  .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider img { height: calc(100svh - var(--sf-head, 0px)); aspect-ratio: auto; }
+}
+/* The photo viewer fills the window: the photo covers it from edge to edge (on a computer it moves up and down with the pointer: --zy, SfZoom.vue), the small pictures and the cross lie over it */
+.sf-zoom { background: #111; }
+.sf-zoom-slide img { width: 100%; height: 100%; max-width: none; max-height: none; object-fit: cover; object-position: 50% var(--zy, 25%); }
+.sf-zoom-close { display: inline-flex; align-items: center; justify-content: center; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; border-radius: 0; background: none; color: #fff; mix-blend-mode: difference; }
+.sf-zoom-nav { background: none; color: #fff; mix-blend-mode: difference; font-size: 34px; }
+@media (min-width: 768px) {
+  .sf-zoom-thumbs { position: absolute; left: 0; top: 0; bottom: 0; z-index: 2; padding: 16px 20px; scrollbar-width: none; }
+  .sf-zoom-thumbs button { width: 40px; opacity: .75; } .sf-zoom-thumbs button.is-on { opacity: 1; outline: 1px solid #fff; outline-offset: 2px; }
+}
+@media (max-width: 767px) { .sf-zoom-slide img { object-position: 50% 30%; } .sf-zoom-thumbs { background: var(--t-bg, #fff); } }
+/* The site inside the site builder of Digipart (app/plugins/builder.client.ts): what the pointer is on is outlined, what is selected in the builder too; a click selects instead of following a link */
+html.sf-builder:not(.sf-builder-follow) [data-section] { cursor: pointer; }
+html.sf-builder:not(.sf-builder-follow) [data-section]:hover { outline: 1px dashed #3b82f6; outline-offset: -1px; }
+html.sf-builder .is-sfb-on { outline: 2px solid #2563eb !important; outline-offset: -2px; }
+html.sf-builder:not(.sf-builder-follow) a, html.sf-builder:not(.sf-builder-follow) button { cursor: pointer; }
+html.sf-builder .is-sfb-edit { outline: 2px solid #2563eb; outline-offset: 4px; cursor: text; }
+html.sf-builder .sfb-tools { position: fixed; right: 12px; z-index: 2000; display: flex; gap: 4px; padding: 4px; border-radius: 8px; background: #2563eb; box-shadow: 0 6px 20px rgba(0, 0, 0, .2); }
+html.sf-builder .sfb-tools button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: rgba(255, 255, 255, .16); color: #fff; font: 600 16px/1 system-ui, sans-serif; cursor: pointer; }
+html.sf-builder .sfb-tools button:disabled { opacity: .35; cursor: default; }
+html.sf-builder .sfb-tools[hidden] { display: none; }

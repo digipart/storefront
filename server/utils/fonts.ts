@@ -39,3 +39,30 @@ export async function themeFonts(names: unknown[]): Promise<{ css: string, files
   const all = await Promise.all(families.map(family))
   return { css: all.map(one => one.css).join(''), files: all.flatMap(one => one.files).slice(0, 3) }
 }
+
+/**
+ * The fonts of the shop itself (Digipart: Theme.Fonts with `Files`, WOFF2 files in the storage of the shop): one rule per file. The files are served by this site (/font-own, which reads them
+ * from the storage once), so that the browser needs no permission of another address to use them.
+ */
+export function ownFonts(fonts: unknown[]): { css: string, files: string[], urls: string[] } {
+  let css = ''
+  const files: string[] = [], urls: string[] = []
+  for (const font of (Array.isArray(fonts) ? fonts : []).slice(0, 4) as any[]) {
+    const name = typeof font?.Name === 'string' && /^[A-Za-z0-9 ]{2,40}$/.test(font.Name) ? font.Name : ''
+    if (!name || !Array.isArray(font.Files)) { continue }
+    for (const file of font.Files.slice(0, 8)) {
+      const url = String(file?.Url || '')
+      if (!OWN_FONT.test(url) || url.includes('..')) { continue }
+      const weight = Math.max(100, Math.min(900, Math.round((Number(file.Weight) || 400) / 100) * 100)), style = file.Style === 'italic' ? 'italic' : 'normal'
+      const served = '/font-own?u=' + encodeURIComponent(url)
+      css += '@font-face{font-family:\'' + name + '\';font-style:' + style + ';font-weight:' + weight + ';font-display:swap;src:url(' + served + ') format(\'woff2\');}'
+      urls.push(url)
+      if (knownOwnFonts.size < 200) { knownOwnFonts.add(url) }
+      if (weight === 400 && style === 'normal' && files.length < 2) { files.push(served) }
+    }
+  }
+  return { css, files, urls }
+}
+/** The font files Digipart named in a theme of this site since the server started (the theme online, or a draft in a preview): the ones /font-own may read. */
+export const knownOwnFonts = new Set<string>()
+export const OWN_FONT = /^https:\/\/[A-Za-z0-9.-]+(?::\d{2,5})?\/[A-Za-z0-9/_.-]{1,300}\.woff2$/

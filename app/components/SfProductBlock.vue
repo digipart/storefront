@@ -66,7 +66,9 @@ const loyaltyOpen = ref(false)
 const steps = computed(() => String(t.value.Steps || '').split('\n').map(x => x.trim()).filter(Boolean))
 // the reassurance lines: up to four, each an icon, a title, a text and maybe a link
 const reassurance = computed(() => [1, 2, 3, 4].map(n => ({ n, icon: s.value['Icon' + n], title: t.value['Title' + n], text: t.value['Text' + n], url: s.value['Url' + n] })).filter(x => x.title))
-const guideOpen = ref(false), storesOpen = ref(false), reviewOpen = ref(false), alertOpen = ref(false)
+const guideOpen = ref(false), storesOpen = ref(false), reviewOpen = ref(false), alertOpen = ref(false), pageOpen = ref(false), descOpen = ref(false)
+// « Retour »: the page the visitor came from (the list they were looking at), else the home page
+const goBack = () => { if (window.history.length > 1) { window.history.back() } else { window.location.href = site.value?.Route?.Prefix || '/' } }
 // « M'avertir du retour en stock » when nothing is left (the sold-out sizes it can be asked for)
 const alertSizes = computed(() => (product.value?.Variants || []).filter((v: any) => v.Label && !v.Available))
 const w = useWords()
@@ -89,12 +91,14 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
 <template>
   <template v-if="product">
     <template v-if="block.Type === 'p_title'">
+      <button v-if="s.Back" type="button" class="sf-back" @click="goBack">{{ t.BackText || '‹' }}</button>
       <nav v-if="s.Breadcrumb" class="sf-crumb" :aria-label="w('Fil d\'Ariane')"><a :href="site?.Route?.Prefix || '/'">{{ w('Accueil') }}</a></nav>
       <a v-if="s.ShowBrand !== false && extra?.Brand" class="sf-brand-link" :href="(site?.Route?.Prefix || '') + '/marque/' + extra.Brand.Slug">{{ extra.Brand.Name }}</a>
       <h1 class="sf-h" :style="{ '--size': (s.Size || 26) + 'px', fontWeight: s.Weight || 600, textTransform: s.Case === 'uppercase' ? 'uppercase' : undefined }">{{ product.Name }}</h1>
     </template>
     <div v-else-if="block.Type === 'p_price'" class="sf-pprice" :style="{ fontSize: (s.Size || 18) + 'px' }">
       <SfPrice :product="product" :compare="!!s.ShowCompare" badge />
+      <p v-if="s.ShowReference && product.Reference" class="sf-ref">{{ w('Réf.') }} {{ product.Reference }}</p>
     </div>
     <!-- an e-gift card: its amounts are the cards tied to it, each its own page -->
     <div v-else-if="block.Type === 'p_variants' && product.GiftAmounts?.length" class="sf-gift-amounts" role="group" :aria-label="w('Montant')">
@@ -148,6 +152,7 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
         </template>
         <p v-if="giftError" class="sf-form-error" role="alert">{{ giftError }}</p>
       </div>
+      <a v-if="s.LookButton && product.LookUrl" :href="product.LookUrl" class="sf-btn is-outline sf-look-btn" :style="{ fontSize: buyLook.style?.fontSize, letterSpacing: buyLook.style?.letterSpacing, textTransform: buyLook.style?.textTransform }">{{ w('Look') }}</a>
       <button v-if="locked" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="product.PriceState === 'pending'" @click="showPanel('account')">{{ w(product.PriceState === 'pending' ? 'Compte en cours de validation' : product.PriceState === 'business' ? 'Prix réservés aux professionnels' : 'Se connecter pour commander') }}</button>
       <button v-else-if="!product.Available && alertSizes.length && site?.Theme?.Settings?.StockAlert !== false" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" @click="alertOpen = true">{{ w('M\'avertir du retour en stock') }}</button>
       <button v-else type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="!product.Available || cartBusy" @click="buy">{{ w(product.Available ? (cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) : 'Épuisé') }}</button>
@@ -156,10 +161,31 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
       <button v-if="product.TaxExcl && locked" type="button" class="sf-prohelp" aria-haspopup="dialog" @click="proOpen = true"><strong>{{ w('Nouveau client professionnel ?') }}</strong><span>{{ w('Découvrez les étapes pour commander') }}</span></button>
       <LazySfLot v-if="lotOpen" :product="product" @close="lotOpen = false" />
       <LazySfProSteps v-if="proOpen" @close="proOpen = false" />
-      <a v-if="product.LookUrl" :href="product.LookUrl" class="sf-link sf-look-link">{{ w('Shop the look : voir la tenue complète') }}</a>
+      <a v-if="product.LookUrl && !s.LookButton" :href="product.LookUrl" class="sf-link sf-look-link">{{ w('Shop the look : voir la tenue complète') }}</a>
       <p v-if="ask" class="sf-buy-ask" role="alert">{{ w('Choisissez une taille.') }}</p>
       <p v-else-if="cartError" class="sf-buy-ask" role="alert">{{ w(cartError) }}</p>
     </div>
+    <!-- the description as plain text (no heading), or as a link that opens it in a side panel -->
+    <!-- eslint-disable-next-line vue/no-v-html : the description of a product is written by the shop in Digipart and comes from its product API -->
+    <div v-else-if="block.Type === 'p_description' && product.Description && s.Display === 'plain'" class="sf-rte sf-pdesc" v-html="product.Description" />
+    <template v-else-if="block.Type === 'p_description' && product.Description && s.Display === 'panel'">
+      <button type="button" class="sf-plink" aria-haspopup="dialog" @click="descOpen = true">{{ w('Description') }}</button>
+      <Teleport to="body">
+        <div v-if="descOpen" class="sf-drawer" @keydown.esc="descOpen = false">
+          <div class="sf-drawer-veil" @click="descOpen = false" />
+          <aside class="sf-drawer-panel sf-pagepanel" role="dialog" aria-modal="true" :aria-label="w('Description')">
+            <header class="sf-drawer-head"><h2>{{ w('Description') }}</h2><button type="button" :aria-label="w('Fermer')" @click="descOpen = false">✕</button></header>
+            <!-- eslint-disable-next-line vue/no-v-html : the description of a product is written by the shop in Digipart and comes from its product API -->
+            <div class="sf-drawer-body"><div class="sf-rte" v-html="product.Description" /></div>
+          </aside>
+        </div>
+      </Teleport>
+    </template>
+    <!-- a link to a page of the shop (delivery, returns, care…), opened in a side panel without leaving the product -->
+    <template v-else-if="block.Type === 'p_page' && t.Text && Number(s.IdPage) > 0">
+      <button type="button" class="sf-plink" aria-haspopup="dialog" @click="pageOpen = true">{{ t.Text }}</button>
+      <LazySfPagePanel v-if="pageOpen" :id="Number(s.IdPage)" :title="t.Text" @close="pageOpen = false" />
+    </template>
     <details v-else-if="block.Type === 'p_description' && product.Description" class="sf-acc" :open="s.Display === 'open'">
       <summary>{{ w('Description') }}</summary>
       <!-- eslint-disable-next-line vue/no-v-html : the description of a product is written by the shop in Digipart and comes from its product API -->
@@ -168,7 +194,7 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
     <!-- the shops: where the size is in stock, and (when the shop allows it) a reservation, in a side panel step by step (SfStoreStock.vue) -->
     <div v-else-if="block.Type === 'p_stock'" class="sf-stock-wrap">
       <p v-if="s.ShowOnline !== false" class="sf-stock"><i :class="product.Available ? 'is-in' : 'is-out'" aria-hidden="true" />{{ w(product.Available ? 'En stock en ligne' : 'Épuisé en ligne') }}</p>
-      <button v-if="extra?.Reservation?.Stores?.length" type="button" class="sf-btn is-outline sf-stock-btn" aria-haspopup="dialog" @click="storesOpen = true">{{ t.Text || w(s.Reserve !== false ? 'Disponibilité et réservation en boutique' : 'Vérifier la disponibilité en boutique') }}</button>
+      <button v-if="extra?.Reservation?.Stores?.length" type="button" :class="s.Look === 'link' ? 'sf-plink' : 'sf-btn is-outline sf-stock-btn'" aria-haspopup="dialog" @click="storesOpen = true">{{ t.Text || w(s.Reserve !== false ? 'Disponibilité et réservation en boutique' : 'Vérifier la disponibilité en boutique') }}</button>
       <LazySfStoreStock v-if="storesOpen" :product="product" :variant="picked" :reserve="s.Reserve !== false" @close="storesOpen = false" />
     </div>
     <LazySfStories v-else-if="block.Type === 'p_stories'" place="product" :product="product.Id" :size="s.Size || 64" :gap="14" />

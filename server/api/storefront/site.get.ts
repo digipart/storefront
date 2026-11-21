@@ -20,6 +20,16 @@ export default defineEventHandler(async (event) => {
   const admin = site?.Preview ? String(useRuntimeConfig(event).digipartUrl || useRuntimeConfig(event).localUrl).replace(/\/+$/, '') + '/index.php' : ''
   const edit = site?.Preview ? String(useRuntimeConfig(event).digipartUrl || useRuntimeConfig(event).localUrl).replace(/\/+$/, '') + '/index.php?module=storefront/builder&idMarketPlace=' + site.IdMarketPlace + '&theme=' + site.Theme.IdTheme : ''
   // the fonts of the theme, ready for the head of the page: their CSS and the files to load at once (server/utils/fonts.ts)
-  const fonts = await themeFonts((site?.Theme?.Fonts || []).map((font: any) => font?.Name)).catch(() => ({ css: '', files: [] }))
-  return { ...site, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, PreviewAdminUrl: admin, Route: { LanguageIsoCode: language, Rest: (prefixed ? segments.slice(1) : segments).join('/'), Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
+  // the header drawn over the banner of the home page (En-tête > « Transparent sur la bannière de l'accueil »): only on the home page, and only when its first section is a banner or a carousel
+  const rest = (prefixed ? segments.slice(1) : segments).join('/')
+  let overHero = false
+  if (rest === '' && (site?.Header?.Sections || []).some((section: any) => section.Type === 'main_header' && section.Settings?.OverHero === true)) {
+    const home = await digipart<any>(event, 'design.php', { ...preview, LanguageIsoCode: language, Key: 'home' }).catch(() => null)
+    overHero = ['hero', 'slideshow'].includes(String(home?.Sections?.[0]?.Type || ''))
+  }
+  // a font of the shop itself comes with its files (`Files`); the others are read by their name
+  const own = ownFonts((site?.Theme?.Fonts || []).filter((font: any) => Array.isArray(font?.Files)))
+  const listed = await themeFonts((site?.Theme?.Fonts || []).filter((font: any) => !Array.isArray(font?.Files)).map((font: any) => font?.Name)).catch(() => ({ css: '', files: [] }))
+  const fonts = { css: own.css + listed.css, files: [...own.files, ...listed.files].slice(0, 3) }
+  return { ...site, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, PreviewAdminUrl: admin, Route: { LanguageIsoCode: language, Rest: rest, OverHero: overHero, Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
 })
