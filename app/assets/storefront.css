@@ -36,6 +36,13 @@ h1, h2, p { margin: 0; }
 .sf-slides { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .sf-slides::-webkit-scrollbar { display: none; }
 .sf-slide { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
+/* A link that covers a whole banner or a whole column (« Lien de la bannière », « Lien de la colonne »): it lies UNDER the blocks; a text lets the click through to it, a button, a link or a
+   field of the blocks stays above with its own action. */
+.sf-area-link { position: absolute; inset: 0; z-index: 1; }
+.sf-hero > .sf-area-link ~ .sf-hero-copy { z-index: 2; pointer-events: none; }
+.sf-col.has-link { position: relative; } .sf-col.has-link > :not(.sf-area-link) { position: relative; z-index: 2; pointer-events: none; }
+.sf-hero > .sf-area-link ~ .sf-hero-copy :is(a, button, input, select, textarea, label, summary, iframe, video), .sf-col.has-link > :not(.sf-area-link) :is(a, button, input, select, textarea, label, summary, iframe, video) { pointer-events: auto; }
+a.sf-split-img { display: block; }
 .sf-slide-link { position: absolute; inset: 0; z-index: 1; } .sf-slide .sf-hero-copy { z-index: 2; pointer-events: none; } .sf-slide .sf-hero-copy a, .sf-slide .sf-hero-copy button { pointer-events: auto; }
 .sf-tile { position: relative; display: block; aspect-ratio: 3 / 4; overflow: hidden; background: #e9eaf0; border-radius: var(--t-card-radius, 0); text-decoration: none; }
 .sf-tile.is-square { aspect-ratio: 1; } .sf-tile.is-landscape { aspect-ratio: 4 / 3; }
@@ -187,7 +194,7 @@ h1, h2, p { margin: 0; }
 .sf-pdp { display: grid; grid-template-columns: var(--cols, 60fr 40fr); gap: var(--gap, 48px); align-items: start; }
 .sf-pdp.is-reverse .sf-gallery-wrap { order: 2; }
 .sf-gallery { position: relative; display: grid; gap: 8px; min-height: 320px; } .sf-gallery.is-grid { grid-template-columns: 1fr 1fr; }
-.sf-gallery img { width: 100%; aspect-ratio: var(--t-card-ratio, 3 / 4); object-fit: cover; border-radius: var(--t-card-radius, 0); background: #f1f1f4; }
+.sf-gallery img { width: 100%; aspect-ratio: var(--t-card-ratio, 3 / 4); object-fit: var(--gfit, cover); object-position: 50% var(--gy, 0%); border-radius: var(--t-card-radius, 0); background: #f1f1f4; }
 .sf-gallery-wrap { position: relative; min-width: 0; }
 .sf-gallery.is-slider, .sf-gallery.is-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; } .sf-gallery.is-slider::-webkit-scrollbar, .sf-gallery.is-carousel::-webkit-scrollbar { display: none; }
 .sf-gallery.is-slider img { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
@@ -195,6 +202,8 @@ h1, h2, p { margin: 0; }
 .sf-gallery-nav { position: absolute; top: 50%; z-index: 1; width: 44px; height: 44px; margin-top: -22px; border: 1px solid currentColor; border-radius: 50%; background: rgba(255, 255, 255, .85); color: #1e2129; font-size: 24px; line-height: 1; cursor: pointer; }
 .sf-gallery-nav.is-prev { left: 16px; } .sf-gallery-nav.is-next { right: 16px; }
 .sf-gallery-thumbs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
+/* « Centrage des miniatures », under the photo: left, centre, right */
+.sf-gallery-wrap.is-ta-center > .sf-gallery-thumbs { justify-content: safe center; } .sf-gallery-wrap.is-ta-end > .sf-gallery-thumbs { justify-content: flex-end; }
 .sf-gallery-thumbs button { flex: 0 0 64px; padding: 0; border: 0; background: none; opacity: .55; cursor: pointer; } .sf-gallery-thumbs button.is-on { opacity: 1; outline: 1.5px solid currentColor; outline-offset: 1px; }
 .sf-gallery-thumbs img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
 .sf-info-col { align-self: stretch; min-width: 0; } .sf-info { width: 100%; min-width: 0; }
@@ -322,6 +331,7 @@ iframe.sf-closed-cover { top: 50%; left: 50%; width: max(100%, 177.78vh); height
 .sf-co-form input, .sf-co-form select { width: 100%; padding: 12px; border: 1px solid var(--t-line, #cfcfcf); background: #fff; color: #1e2129; font: inherit; font-size: 15px; border-radius: 0; }
 .sf-co-form input:focus-visible, .sf-co-form select:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
 .sf-co-actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 6px; }
+.sf-co-forgot { justify-self: start; margin-top: -4px; font-size: 13px; }
 .sf-co-card { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding: 16px; border: 1px solid var(--t-line, #e0e0e0); }
 .sf-co-card div { display: flex; flex-direction: column; gap: 3px; font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
 .sf-co-types { border: 1px solid var(--t-line, #d9d9d9); }
@@ -991,6 +1001,16 @@ button.sf-link:hover { opacity: .7; }
 .sf-shoplook-photos.is-grid { grid-template-columns: 1fr 1fr; }
 .sf-shoplook-photos.is-slider { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; } .sf-shoplook-photos.is-slider img { flex: 0 0 100%; scroll-snap-align: start; }
 .sf-shoplook-side.is-static { position: static; }
+/* Several photos gone through in ONE frame (SfReel.vue): sideways or downwards by a swipe or the wheel, each photo stopping in the frame, or with two arrows. The frame takes the size of its parent. */
+.sf-reel { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.sf-reel-track { display: flex; width: 100%; height: 100%; overflow: auto hidden; scroll-snap-type: x mandatory; scrollbar-width: none; color: inherit; } .sf-reel-track::-webkit-scrollbar { display: none; }
+.sf-reel.is-down .sf-reel-track { flex-direction: column; overflow: hidden auto; scroll-snap-type: y mandatory; }
+.sf-reel-track img { flex: 0 0 100%; width: 100%; height: 100%; min-width: 0; object-fit: cover; scroll-snap-align: start; }
+.sf-reel-nav { position: absolute; top: 50%; z-index: 1; width: 28px; height: 28px; margin-top: -14px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .85); color: #1e2129; font-size: 18px; line-height: 1; cursor: pointer; }
+.sf-reel-nav.is-prev { left: 6px; } .sf-reel-nav.is-next { right: 6px; } .sf-reel-nav:focus:not(:focus-visible) { outline: none; }
+.sf-reel-count { position: absolute; right: 6px; bottom: 6px; padding: 2px 6px; border-radius: 999px; background: rgba(255, 255, 255, .85); color: #1e2129; font-size: 10px; line-height: 1.4; pointer-events: none; }
+.sf-shoplook-photos.is-reel { display: block; aspect-ratio: var(--t-card-ratio, 3 / 4); overflow: hidden; } .sf-shoplook-photos.is-reel .sf-reel-nav { width: 40px; height: 40px; margin-top: -20px; font-size: 24px; } .sf-shoplook-photos.is-reel .sf-reel-nav.is-prev { left: 16px; } .sf-shoplook-photos.is-reel .sf-reel-nav.is-next { right: 16px; } .sf-shoplook-photos.is-reel .sf-reel-count { right: 12px; bottom: 12px; font-size: 12px; padding: 3px 9px; }
+
 .sf-shoplook-list li { grid-template-columns: var(--thumb, 96px) minmax(0, 1fr); }
 .sf-shoplook-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; width: 100%; }
 .sf-shoplook-heart { flex: 0 0 auto; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; } .sf-shoplook-heart:focus:not(:focus-visible) { outline: none; }
@@ -1241,20 +1261,29 @@ header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { bac
 .sf-buy .sf-look-btn { flex: 0 0 37%; display: inline-flex; align-items: center; justify-content: center; margin-right: 8px; text-align: center; text-decoration: none; }
 .sf-plink { display: block; margin: 0; padding: 7px 0; border: 0; background: none; font: inherit; font-size: 13px; color: inherit; text-align: left; cursor: pointer; }
 .sf-pdesc { font-size: 14px; }
+/* « Hauteur de la photo sur mobile »: a part of the height of the screen of the phone instead of the format of the theme */
+@media (max-width: 767px) { .sf-gallery-wrap.has-mh .sf-gallery img { height: var(--ghm); aspect-ratio: auto; } }
 /* The photos of a product as one photo and its small ones in a column on the left (Produit > « Miniatures » : à gauche), the photo as tall as the screen (« Hauteur de la photo ») : on a computer */
 @media (min-width: 768px) {
-  .sf-gallery-wrap.is-thumbs-left { display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 16px; }
-  .sf-gallery-wrap.is-thumbs-left .sf-gallery { flex: 1 1 auto; min-width: 0; }
-  .sf-gallery-wrap.is-thumbs-left .sf-gallery-thumbs { flex: 0 0 44px; flex-direction: column; margin: 0; padding-top: 24px; max-height: calc(100svh - var(--sf-head, 0px)); overflow: hidden auto; scrollbar-width: none; }
-  .sf-gallery-wrap.is-thumbs-left .sf-gallery-thumbs button { flex: 0 0 auto; width: 44px; }
+  .sf-gallery-wrap.is-thumbs-left, .sf-gallery-wrap.is-thumbs-right { display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 16px; }
+  .sf-gallery-wrap.is-thumbs-right { flex-direction: row; }
+  .sf-gallery-wrap.is-thumbs-left .sf-gallery, .sf-gallery-wrap.is-thumbs-right .sf-gallery { flex: 1 1 auto; min-width: 0; }
+  .sf-gallery-wrap:is(.is-thumbs-left, .is-thumbs-right, .is-thumbs-inside) > .sf-gallery-thumbs { flex: 0 0 44px; flex-direction: column; justify-content: flex-start; margin: 0; padding: 24px 0; max-height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); overflow: hidden auto; scrollbar-width: none; }
+  .sf-gallery-wrap:is(.is-thumbs-left, .is-thumbs-right, .is-thumbs-inside) > .sf-gallery-thumbs button { flex: 0 0 auto; width: 44px; }
+  /* « Centrage des miniatures » along the photo: top, middle, bottom */
+  .sf-gallery-wrap:is(.is-thumbs-left, .is-thumbs-right).is-ta-center > .sf-gallery-thumbs { align-self: center; } .sf-gallery-wrap:is(.is-thumbs-left, .is-thumbs-right).is-ta-end > .sf-gallery-thumbs { align-self: flex-end; }
+  /* the small photos ON the photo, along its left or its right edge */
+  .sf-gallery-wrap.is-thumbs-inside > .sf-gallery-thumbs { position: absolute; top: 0; left: 16px; z-index: 2; max-height: 100%; } .sf-gallery-wrap.is-thumbs-inside.is-thumbs-end > .sf-gallery-thumbs { left: auto; right: 16px; }
+  .sf-gallery-wrap.is-thumbs-inside.is-ta-center > .sf-gallery-thumbs { top: 50%; transform: translateY(-50%); } .sf-gallery-wrap.is-thumbs-inside.is-ta-end > .sf-gallery-thumbs { top: auto; bottom: 0; }
+  .sf-gallery-wrap.is-thumbs-inside > .sf-gallery-thumbs button { opacity: .8; box-shadow: 0 0 0 1px rgba(255, 255, 255, .7); }
   .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider { min-height: 0; }
-  .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider img { height: calc(100svh - var(--sf-head, 0px)); aspect-ratio: auto; }
+  .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider img { height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); aspect-ratio: auto; }
   /* « Défilement des photos » : vertical. The frame is one photo tall and stays under the header; the photos are stacked inside it and the wheel goes from one to the next (it stops on each);
      after the last one the browser hands the scroll to the page, which goes on to what is under the photos. */
   .sf-gallery-wrap.is-scroll-down { position: sticky; top: var(--sf-head, 0px); align-self: start; }
-  .sf-gallery-wrap.is-scroll-down .sf-gallery.is-slider { flex-direction: column; overflow: hidden auto; scroll-snap-type: y mandatory; overscroll-behavior-y: auto; min-height: 0; gap: 0; aspect-ratio: var(--t-card-ratio, 3 / 4); max-height: calc(100svh - var(--sf-head, 0px)); }
+  .sf-gallery-wrap.is-scroll-down .sf-gallery.is-slider { flex-direction: column; overflow: hidden auto; scroll-snap-type: y mandatory; overscroll-behavior-y: auto; min-height: 0; gap: 0; aspect-ratio: var(--t-card-ratio, 3 / 4); max-height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); }
   .sf-gallery-wrap.is-scroll-down .sf-gallery.is-slider img { flex: 0 0 100%; width: 100%; height: 100%; aspect-ratio: auto; scroll-snap-align: start; }
-  .sf-gallery-wrap.is-scroll-down.is-fit-screen .sf-gallery.is-slider { aspect-ratio: auto; height: calc(100svh - var(--sf-head, 0px)); }
+  .sf-gallery-wrap.is-scroll-down.is-fit-screen .sf-gallery.is-slider { aspect-ratio: auto; height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); }
 }
 /* The photo viewer fills the window: the photo covers it from edge to edge (on a computer it moves up and down with the pointer: --zy, SfZoom.vue), the small pictures and the cross lie over it */
 .sf-zoom { background: #111; }

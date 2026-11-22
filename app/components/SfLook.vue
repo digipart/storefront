@@ -26,6 +26,10 @@ const working = ref(false), note = ref('')
 const alertOn = computed(() => site.value?.Theme?.Settings?.StockAlert !== false && soldOutMode.value === 'alert')
 const alertFor = ref<any>(null)
 const editorial = computed(() => s.value.Arrangement === 'editorial')
+// « Autres photos… » of the site builder: the photos of the product of the look (éditoriale) and of each piece are gone through in their frame (SfReel) instead of one photo alone
+const reelOf = (value: any) => (['side', 'down', 'arrows'].includes(String(value)) ? String(value) : '')
+const mainReel = computed(() => (editorial.value ? reelOf(s.value.PhotoScroll) : ''))
+const pieceReel = computed(() => reelOf(s.value.PiecePhotos))
 const photos = computed(() => (props.look.Product.Images || []).slice(0, editorial.value ? 2 : Math.max(1, Math.min(8, Number(s.value.PhotoCount) || 4))))
 const titleCss = computed(() => ({ fontSize: Math.max(18, Math.min(72, Number(s.value.TitleSize) || 28)) + 'px', textTransform: s.value.TitleCase === 'uppercase' ? 'uppercase' as const : undefined }))
 const layout = computed(() => ({
@@ -49,7 +53,10 @@ async function addAll() {
       <h1 class="sf-h sf-shoplook-title" :style="titleCss">{{ look.Product.Name }}</h1>
       <img v-if="photos[1]" :src="photos[1]" :srcset="look.Product.ImageSets?.[1] || undefined" sizes="(max-width: 900px) 100vw, 25vw" alt="" loading="lazy" decoding="async">
     </div>
-    <div class="sf-shoplook-photos" :class="'is-' + (editorial ? 'single' : (s.PhotoLayout || 'stack'))">
+    <div v-if="mainReel && (look.Product.Images || []).length > 1" class="sf-shoplook-photos is-reel">
+      <SfReel :images="(look.Product.Images || []).slice(0, 8)" :sets="look.Product.ImageSets" sizes="(max-width: 900px) 100vw, 40vw" :mode="mainReel" :alt="look.Product.Name" eager />
+    </div>
+    <div v-else class="sf-shoplook-photos" :class="'is-' + (editorial ? 'single' : (s.PhotoLayout || 'stack'))">
       <img v-for="(src, i) in (editorial ? photos.slice(0, 1) : photos)" :key="src" :src="src" :srcset="look.Product.ImageSets?.[i] || undefined" :sizes="s.PhotoLayout === 'grid' && !editorial ? '(max-width: 900px) 50vw, 25vw' : '(max-width: 900px) 100vw, 50vw'" :alt="i === 0 ? look.Product.Name : ''" :loading="i === 0 ? 'eager' : 'lazy'" decoding="async">
       <span v-if="!photos.length" class="sf-card-empty" aria-hidden="true" />
     </div>
@@ -60,7 +67,8 @@ async function addAll() {
       </template>
       <ul class="sf-shoplook-list">
         <li v-for="p in pieces" :key="p.Id" :class="{ 'is-done': done[p.Id], 'is-out': !buyable(p) }">
-          <a :href="p.Url" class="sf-shoplook-pic"><img v-if="p.Images[0]" :src="p.Images[0]" alt="" loading="lazy" decoding="async"><span v-else class="sf-card-empty" aria-hidden="true" /></a>
+          <div v-if="pieceReel && (p.Images || []).length > 1" class="sf-shoplook-pic"><SfReel :images="p.Images.slice(0, 6)" :mode="pieceReel" :href="p.Url" /></div>
+          <a v-else :href="p.Url" class="sf-shoplook-pic"><img v-if="p.Images[0]" :src="p.Images[0]" alt="" loading="lazy" decoding="async"><span v-else class="sf-card-empty" aria-hidden="true" /></a>
           <div class="sf-shoplook-info">
             <div class="sf-shoplook-head">
               <a :href="p.Url" class="sf-shoplook-name">{{ p.Name }}</a>

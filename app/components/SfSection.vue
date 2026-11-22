@@ -154,6 +154,10 @@ const openSearch = (event: MouseEvent) => { if (s.value.SearchPanel === false ||
 const searchUrl = computed(() => (site.value?.Route?.Prefix || '') + (lang.value === 'fr' ? '/recherche' : '/search'))
 const zoomAt = ref(-1)   // the photo of the product shown full screen (-1 = none)
 const w = useWords()
+// the name of a link that covers a whole banner, a picture or a column (« Lien de la bannière », « Lien de la colonne »): the first title among its blocks, else « Voir »
+const titleOf = (list: any[]) => String((list || []).find((b: any) => /heading$/.test(String(b.Type)) && b.Texts?.Text)?.Texts?.Text || '').trim()
+const areaLabel = computed(() => titleOf(blocks.value) || w('Voir'))
+const columnLabel = (column: any[]) => titleOf(column) || w('Voir')
 // the catalogue grows as the visitor scrolls: the next page of the category is read and its cards go under the others. Every page keeps its own address (?page=n, a real link the search engines
 // follow, written in the address bar as the pages come) and the page drawn by the server holds only its own cards. Two pages come by themselves, then a button asks: the footer stays reachable.
 // the links to other categories under the title: the sub-categories; without any, the categories next to it (when the shop chose « auto »), led by « Tout voir » (the parent) when asked
@@ -289,6 +293,8 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
           <img :src="s.Image" alt="" :loading="first ? 'eager' : 'lazy'" :fetchpriority="first ? 'high' : undefined" decoding="async">
         </picture>
         <span v-if="vimeo(s.Video)" class="sf-hero-video"><iframe :src="vimeo(s.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
+        <!-- « Lien de la bannière »: a link under the blocks covers the whole banner; a button or a link of the blocks stays above it, with its own address -->
+        <a v-if="s.Url" :href="s.Url" class="sf-area-link" :aria-label="areaLabel" />
         <div class="sf-hero-copy"><SfBlocks :blocks="blocks" :light="!!s.Image || !!vimeo(s.Video)" /></div>
       </div>
 
@@ -313,13 +319,17 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
         <div :style="align"><SfBlocks :blocks="blocks"><LazySfWhatsapp :button="t.ButtonText" :success="t.Success" /></SfBlocks></div>
       </div>
       <div v-else-if="type === 'image_text'" class="sf-split" :class="{ 'is-reverse': s.Side === 'right' }" :style="split">
-        <div class="sf-split-img" :class="'is-' + (s.Ratio || 'portrait')"><img v-if="s.Image" :src="s.Image" alt="" loading="lazy" decoding="async"></div>
+        <component :is="s.ImageUrl ? 'a' : 'div'" :href="s.ImageUrl || undefined" class="sf-split-img" :class="'is-' + (s.Ratio || 'portrait')" :aria-label="s.ImageUrl ? areaLabel : undefined"><img v-if="s.Image" :src="s.Image" alt="" loading="lazy" decoding="async"></component>
         <div :style="align"><SfBlocks :blocks="blocks" /></div>
       </div>
 
       <!-- columns: blocks side by side on a computer, laid out as the shop chose on a phone -->
       <div v-else-if="type === 'columns'" class="sf-cols" :class="{ 'is-reverse': columnsReverse, 'has-div': Number(s.ColDivider) > 0, 'is-stack': ratios(s.LayoutMobile, '1').length === 1 }" :style="columnsStyle">
-        <div v-for="(column, i) in columnList" :key="i" class="sf-col" :class="['sf-col-' + (i + 1), { 'has-bg': !!s['C' + (i + 1) + 'Image'] }]" :style="columnPicture(i)"><SfBlocks :blocks="column" /></div>
+        <div v-for="(column, i) in columnList" :key="i" class="sf-col" :class="['sf-col-' + (i + 1), { 'has-bg': !!s['C' + (i + 1) + 'Image'], 'has-link': !!s['C' + (i + 1) + 'Url'] }]" :style="columnPicture(i)">
+          <!-- « Lien de la colonne »: the whole column is a link, under its blocks -->
+          <a v-if="s['C' + (i + 1) + 'Url']" :href="s['C' + (i + 1) + 'Url']" class="sf-area-link" :aria-label="columnLabel(column)" />
+          <SfBlocks :blocks="column" />
+        </div>
       </div>
 
       <!-- sections whose own content is one block among the others -->

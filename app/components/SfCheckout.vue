@@ -67,6 +67,16 @@ async function applyPromo() { if (promo.value.trim() && await addCode(promo.valu
 async function dropPromo(id: number) { await removeCode(id); await load(form.CountryIsoCode) }
 async function doLogin() { const answer = await send({ Action: 'login', ...login }); if (answer && !answer.Error) { wantLogin.value = false; login.Password = '' } }
 const logout = () => send({ Action: 'logout' })
+// « Mot de passe oublié ? » under the log-in form: the e-mail with the link to choose a new password is asked for the address typed above (the account answers, as on the log-in page); the
+// visitor stays on the order page and can still order without an account
+const { send: accountSend } = useAccount()
+const forgotNote = ref('')
+async function forgot() {
+  forgotNote.value = ''
+  if (!/^\S+@\S+\.\S+$/.test(login.Email.trim())) { error.value = 'Indiquez votre adresse e-mail : nous vous envoyons un lien pour choisir un nouveau mot de passe.'; return }
+  const answer = await accountSend({ Action: 'forgot', Email: login.Email.trim() })
+  error.value = answer.Error; forgotNote.value = answer.Error ? '' : (answer.Note || 'Si un compte existe avec cette adresse, un e-mail vient de vous être envoyé pour choisir un nouveau mot de passe.')
+}
 // a relay carrier needs its relay point: the panel lists the points near the address (or near a postcode the visitor types)
 const relayFor = ref<any>(null)
 const relays = ref<any[]>([])
@@ -341,6 +351,8 @@ onMounted(async () => { await load(); await backFromAlma() })
           <form v-if="wantLogin && !state.Customer" class="sf-co-form" @submit.prevent="doLogin">
             <label class="is-wide">{{ w('Adresse e-mail') }}<input v-model="login.Email" type="email" autocomplete="username" required></label>
             <label class="is-wide">{{ w('Mot de passe') }}<input v-model="login.Password" type="password" autocomplete="current-password" required></label>
+            <button type="button" class="sf-link sf-co-forgot is-wide" :disabled="busy" @click="forgot">{{ w('Mot de passe oublié ?') }}</button>
+            <p v-if="forgotNote" class="sf-note-ok is-wide" role="status">{{ w(forgotNote) }}</p>
             <div class="sf-co-actions is-wide"><button type="submit" class="sf-btn" :disabled="busy">{{ w('Se connecter') }}</button><button type="button" class="sf-link" @click="wantLogin = false">{{ w('Commander sans compte') }}</button></div>
           </form>
           <div v-else-if="!editing && state.Address" class="sf-co-card">

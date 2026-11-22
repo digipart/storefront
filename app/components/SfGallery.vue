@@ -13,6 +13,15 @@ const per = computed(() => Math.max(1, Math.min(3, Number(props.perView) || 2)))
 const track = ref<HTMLElement | null>(null)
 const at = ref(0), atEnd = ref(false)
 const scrolls = computed(() => layout.value === 'carousel' || layout.value === 'slider')
+// how the shop set the photo and its small ones (site builder, section Produit; `arrows` carries every setting of the section): where the small photos are and how they are centred, how a
+// photo fills its frame (what is kept when it is cropped, or the whole photo), how tall the photo is on a phone and on a computer
+const look = computed(() => props.arrows || {})
+const thumbsAt = computed(() => (['left', 'right', 'inside', 'inside_right', 'none'].includes(String(props.thumbs)) ? String(props.thumbs) : 'below'))
+const thumbsAlign = computed(() => (['center', 'end'].includes(String(look.value.GalleryThumbsAlign)) ? String(look.value.GalleryThumbsAlign) : 'start'))
+const frame = computed(() => {
+  const mobile = Math.max(0, Math.min(100, Number(look.value.GalleryHeightMobile) || 0)), part = Math.max(50, Math.min(100, Number(look.value.GalleryScreenPart) || 100))
+  return { '--per': per.value, '--gy': ({ center: '50%', bottom: '100%' } as Record<string, string>)[String(look.value.GalleryFocus)] || '0%', '--gfit': look.value.GalleryCrop === 'contain' ? 'contain' : 'cover', '--gpart': String(part / 100), ...(mobile > 0 ? { '--ghm': mobile + 'svh' } : {}) }
+})
 const down = (box: HTMLElement) => box.scrollHeight > box.clientHeight + 4 && box.scrollWidth <= box.clientWidth + 4   // the photos are stacked in the frame (scroll = down, on a computer)
 function watch() { const box = track.value; if (!box) { return } if (down(box)) { at.value = Math.round(box.scrollTop / Math.max(1, box.clientHeight)); atEnd.value = box.scrollTop + box.clientHeight >= box.scrollHeight - 4; return } const step = box.firstElementChild ? (box.firstElementChild as HTMLElement).offsetWidth : box.clientWidth; at.value = Math.round(box.scrollLeft / Math.max(1, step)); atEnd.value = box.scrollLeft + box.clientWidth >= box.scrollWidth - 4 }
 function go(to: number) { const box = track.value; const item = box?.children[Math.max(0, Math.min(props.images.length - 1, to))] as HTMLElement | undefined; if (box && item) { box.scrollTo(down(box) ? { top: item.offsetTop - box.offsetTop, behavior: 'smooth' } : { left: item.offsetLeft - box.offsetLeft, behavior: 'smooth' }) } }
@@ -30,8 +39,8 @@ const arrow = (next: boolean) => {
 </script>
 
 <template>
-  <div class="sf-gallery-wrap" :class="['is-' + layout, { 'has-hover-arrows': arrows?.ArrowHover, 'is-thumbs-left': layout === 'slider' && thumbs === 'left', 'is-fit-screen': layout === 'slider' && fit === 'screen', 'is-scroll-down': layout === 'slider' && scroll === 'down' }]">
-    <div ref="track" class="sf-gallery" :class="'is-' + layout" :style="{ '--per': per }" @scroll.passive="watch">
+  <div class="sf-gallery-wrap" :class="['is-' + layout, 'is-ta-' + thumbsAlign, { 'has-hover-arrows': arrows?.ArrowHover, 'is-thumbs-left': layout === 'slider' && thumbsAt === 'left', 'is-thumbs-right': layout === 'slider' && thumbsAt === 'right', 'is-thumbs-inside': layout === 'slider' && (thumbsAt === 'inside' || thumbsAt === 'inside_right'), 'is-thumbs-end': thumbsAt === 'inside_right', 'is-fit-screen': layout === 'slider' && fit === 'screen', 'is-scroll-down': layout === 'slider' && scroll === 'down', 'has-mh': Number(look.GalleryHeightMobile) > 0 }]" :style="frame">
+    <div ref="track" class="sf-gallery" :class="'is-' + layout" @scroll.passive="watch">
       <template v-if="images.length"><img v-for="(src, index) in images" :key="src" :src="src" :srcset="sets?.[index] || undefined" :sizes="sizes" :alt="index === 0 ? name : ''" :loading="index === 0 ? 'eager' : 'lazy'" :fetchpriority="index === 0 ? 'high' : undefined" decoding="async" role="button" tabindex="0" :aria-label="w('Agrandir la photo {a}', { a: index + 1 })" @click="emit('zoom', index)" @keydown.enter="emit('zoom', index)"></template>
       <span v-else class="sf-card-empty" aria-hidden="true" />
     </div>
@@ -39,7 +48,7 @@ const arrow = (next: boolean) => {
       <button v-if="at > 0" type="button" class="sf-gallery-nav is-prev" :style="arrow(false)" :aria-label="w('Photo précédente')" @click="go(at - 1)">‹</button>
       <button v-if="!atEnd" type="button" class="sf-gallery-nav is-next" :style="arrow(true)" :aria-label="w('Photo suivante')" @click="go(at + 1)">›</button>
     </template>
-    <div v-if="layout === 'slider' && images.length > 1" class="sf-gallery-thumbs">
+    <div v-if="layout === 'slider' && images.length > 1 && thumbsAt !== 'none'" class="sf-gallery-thumbs">
       <button v-for="(src, index) in images" :key="src" type="button" :class="{ 'is-on': index === at }" :aria-label="w('Photo {a} sur {b}', { a: index + 1, b: images.length })" :aria-current="index === at ? 'true' : undefined" @click="go(index)"><img :src="src" alt="" loading="lazy"></button>
     </div>
   </div>
