@@ -4,7 +4,7 @@ import type { H3Event } from 'h3'
 // The pages every visitor sees the same (home, categories, products, content pages) are kept in memory once drawn: the next visitor gets the page at once, without Digipart being asked.
 // A page is served as it is for a short while (FRESH); after that it is still served at once while a new copy is drawn behind (up to STALE). A publication in Digipart drops every page; a product change
 // only marks them old: they are served once more and redrawn behind (server/utils/digipart.ts). Never kept: what belongs to one visitor (cart, order, account), a logged-in customer (a professional sees his own prices), a
-// theme preview, an address with parameters, and anything while the site is not open to everyone.
+// theme preview, an address with other parameters than a listing's or a campaign's, and anything while the site is not open to everyone.
 // kept compressed only: a page weighs about 10 KB in memory
 interface Page { at: number, br: Buffer, gzip?: Buffer, old?: boolean, refreshing?: boolean }
 const pages = new Map<string, Page>()
@@ -25,12 +25,28 @@ export const personalPath = (path: string) => /\/(panier|cart|commande|checkout|
 export function pageKey(event: H3Event): string {
   if (event.method !== 'GET') { return '' }
   const [path, query] = event.path.split('?')
-  if (query || !path || path.startsWith('/api/') || path.startsWith('/_nuxt/') || path.startsWith('/s/') || /\.[a-z0-9]{2,5}$/i.test(path)) { return '' }
+  const kept = listingQuery(query || '')
+  if (kept === null || !path || path.startsWith('/api/') || path.startsWith('/_nuxt/') || path.startsWith('/s/') || /\.[a-z0-9]{2,5}$/i.test(path)) { return '' }
   if (getCookie(event, 'sf_session') || getCookie(event, 'sf_preview')) { return '' }
   if (personalPath(path)) { return '' }
   const host = String(getRequestHeader(event, 'x-forwarded-host') || getRequestHeader(event, 'host') || '').toLowerCase()
   // a page carries prices: one copy per currency
-  return host ? host + path + priceMark(event) : ''
+  return host ? host + path + kept + priceMark(event) : ''
+}
+
+// an address with parameters is kept too when they are only those of a listing (page, sort, filters) or of a campaign (utm_…, gclid…: the page is the same); any other: not kept
+const LISTING = ['page', 'sort', 'attr', 'min', 'max', 'tab', 'promo']
+const CAMPAIGN = /^(utm_[a-z]+|gclid|gbraid|wbraid|fbclid|msclkid|ttclid|twclid|li_fat_id|mc_cid|mc_eid|_ga|_gl|igshid|srsltid)$/i
+function listingQuery(query: string): string | null {
+  if (!query) { return '' }
+  if (query.length > 300) { return null }
+  const params = new URLSearchParams(query), out: string[] = []
+  for (const [name, value] of params) {
+    if (CAMPAIGN.test(name)) { continue }
+    if (!LISTING.includes(name) || value.length > 120) { return null }
+    out.push(name + '=' + value)
+  }
+  return out.length ? '?' + out.sort().join('&') : ''
 }
 
 export function getPage(key: string): Page | null {

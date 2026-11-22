@@ -88,13 +88,13 @@ const view = async (event: any): Promise<any> => {
   if (segments.length >= 2 && idProduct > 0) {
     const product = await loadProduct(event, idProduct, lang, prefix, visitorCurrency(event), priceBase)
     if (!product) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
-    return { Kind: 'product', Design: await design('product', { IdProduct: Number(product.Id) || 0 }), Page: null, Product: await withPaths(product) }
+    const [productDesign, withAll] = await Promise.all([design('product', { IdProduct: Number(product.Id) || 0 }), withPaths(product)]); return { Kind: 'product', Design: productDesign, Page: null, Product: withAll }
   }
   // the addresses Digipart itself writes to a product, without its id: <category>/<name> and products/<name>
   if (segments.length === 2) {
     const found = await digipart(event, 'products.php', { Mode: 'slug', Slug: segments[1] }).catch(() => null)
     const product = found?.ProductIds?.[0] ? await loadProduct(event, Number(found.ProductIds[0]), lang, prefix, visitorCurrency(event), priceBase) : null
-    if (product) { return { Kind: 'product', Design: await design('product', { IdProduct: Number(product.Id) || 0 }), Page: null, Product: await withPaths(product) } }
+    if (product) { const [productDesign, withAll] = await Promise.all([design('product', { IdProduct: Number(product.Id) || 0 }), withPaths(product)]); return { Kind: 'product', Design: productDesign, Page: null, Product: withAll } }
   }
   if (segments.length !== 1) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
 
@@ -104,7 +104,8 @@ const view = async (event: any): Promise<any> => {
   // the order page (what it shows is read by the browser, for this visitor only)
   if (rest === 'commande' || rest === 'checkout') { return { Kind: 'checkout', Design: await design('checkout'), Page: null } }
 
-  // a content page of the shop
+  // a content page of the shop (the category of that address is asked at the same time: most addresses of one word are categories)
+  const categoryAsk = segments.length === 1 ? shopApi(event, 'category/', { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase() }).catch(() => null) : Promise.resolve(null)
   const page = await digipart(event, 'page.php', { ...preview, ...language, Slug: rest })
   if (page) { return { Kind: 'page', Design: await design(page.DesignKey), Page: page } }
 
@@ -112,11 +113,19 @@ const view = async (event: any): Promise<any> => {
   if (rest === 'whatsapp') { return { Kind: 'whatsapp', Design: null, Page: null } }
 
   // a category of the catalogue
-  const category = await shopApi(event, 'category/', { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase() })
+  const category = await categoryAsk
   if (!category || !category.IdCategory || category.Active === 0) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
+  // what needs the category only is asked at once, together
+  const same = { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: visitorCurrency(event) }
+  const filtersAsk = Promise.all([shopApi(event, 'category/filterAttribute', same), shopApi(event, 'category/filterPrice', same)])
+  const coverAsk = digipart(event, 'category-cover.php', { IdCategory: Number(category.IdCategory) }).catch(() => null)
+  const stageAsk = digipart(event, 'category-stage.php', { IdCategory: Number(category.IdCategory) }).catch(() => null)
+  filtersAsk.catch(() => null)
   // the name and address of the category in each language; read on their own when the category answer comes without them
-  const seoList: any[] = Array.isArray(category.SEO) && category.SEO.length ? category.SEO : await shopApi(event, 'category/seo', { CategoryDescriptionFriendlyURL: rest }).then((list: any) => (Array.isArray(list) ? list : [])).catch(() => [])
-  const catalog = await design('catalog', { IdCategory: Number(category.IdCategory) || 0 })
+  const [seoList, catalog]: [any[], any] = await Promise.all([
+    Array.isArray(category.SEO) && category.SEO.length ? category.SEO : shopApi(event, 'category/seo', { CategoryDescriptionFriendlyURL: rest }).then((list: any) => (Array.isArray(list) ? list : [])).catch(() => []),
+    design('catalog', { IdCategory: Number(category.IdCategory) || 0 }),
+  ])
   const settings = (catalog?.Sections || []).find((section: any) => section.Type === 'main_catalog')?.Settings || {}
   const perPage = Math.max(4, Math.min(60, Number(settings.PerPage) || 24))
   const pageNumber = Math.max(1, Math.min(500, Number(query.page) || 1))
@@ -130,11 +139,9 @@ const view = async (event: any): Promise<any> => {
   const filtered = { ...(attributes ? { FilterAttribute: attributes } : {}), ...priceRange, ...(promo ? { InPromotion: 1, ...(priceMax > priceMin ? {} : { FilterPrice: '0,1000000' }) } : {}) }
   // how many products the box would give with the other choices kept
   const promoAsk = { ...(attributes ? { FilterAttribute: attributes } : {}), ...(priceMax > priceMin ? priceRange : { FilterPrice: '0,1000000' }), InPromotion: 1 }
-  const same = { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: visitorCurrency(event) }
-  const [listing, filterAttributes, filterPrice, media, links, promoListing] = await Promise.all([
+  const [listing, [filterAttributes, filterPrice], media, links, promoListing] = await Promise.all([
     shopApi(event, 'category/product', { ...same, Offset: (pageNumber - 1) * perPage, Limit: perPage, ...(SORTS[sort] || {}), ...filtered }),
-    shopApi(event, 'category/filterAttribute', same), shopApi(event, 'category/filterPrice', same),
-    digipart(event, 'category-cover.php', { IdCategory: Number(category.IdCategory) }).catch(() => null),
+    filtersAsk, coverAsk,
     // the sub-categories and the categories next to it (api/storefront/category-links.php), when the section links to them
     settings.SubNav === 'none' ? null : digipart(event, 'category-links.php', { ...language, IdCategory: Number(category.IdCategory) }).catch(() => null),
     settings.FilterPromo === false || settings.Filters === 'none' ? null : shopApi(event, 'category/product', { ...same, Offset: 0, Limit: 1, ...promoAsk }),
@@ -145,6 +152,8 @@ const view = async (event: any): Promise<any> => {
   const groups = (Array.isArray(filterAttributes?.AttributeGroup) ? filterAttributes.AttributeGroup : []).map((group: any) => ({ Name: String(group.AttributeGroupName || ''), Values: (Array.isArray(group.Attribute) ? group.Attribute : []).map((a: any) => ({ Id: Number(a.IdAttribute), Name: String(a.AttributeName || '') })).filter((a: any) => a.Id > 0 && a.Name) })).filter((group: any) => group.Name && group.Values.length)
   // how the values look (api/storefront/attribute-looks.php): a colour group shows swatches, the picture of each one (Catalogue > Attributs) or its colour code
   const valueIds = groups.flatMap((g: any) => g.Values.map((v: any) => v.Id)).slice(0, 300)
+  const listed = shapeListed(event, (listing?.Products || []).filter(Boolean), lang, prefix, visitorCurrency(event), priceBase)
+  listed.catch(() => null)   // awaited below: a failure is not left unheard meanwhile
   const looks = valueIds.length ? ((await digipart(event, 'attribute-looks.php', { Ids: valueIds.join(',') }).catch(() => null))?.Attributes || {}) : {}
   for (const group of groups as any[]) {
     for (const value of group.Values) { const look = looks[String(value.Id)]; value.Code = /^#[0-9a-f]{6}$/i.test(String(look?.Code)) ? String(look.Code) : ''; value.Image = /^https:\/\//.test(String(look?.Image)) ? String(look.Image) : '' }
@@ -153,7 +162,7 @@ const view = async (event: any): Promise<any> => {
   const filters = { Groups: groups, PriceMin: Math.floor(Number(filterPrice?.RegularPrice?.MinPriceTaxIncl || 0)), PriceMax: Math.ceil(Number(filterPrice?.RegularPrice?.MaxPriceTaxIncl || 0)), Attributes: attributes ? attributes.split(',').map(Number) : [], Min: priceMax > priceMin ? priceMin : 0, Max: priceMax > priceMin ? priceMax : 0, Promo: promo, PromoCount: Number(promoListing?.TotalProduct || 0) }
   const seo = seoList.find((s: any) => String(s.LanguageIsoCode || '').toLowerCase() === lang) || seoList[0] || {}
   const total = Number(listing?.TotalProduct || 0)
-  let products = await shapeListed(event, (listing?.Products || []).filter(Boolean), lang, prefix, visitorCurrency(event), priceBase)
+  let products = await listed
   if (!products.length && total > 0 && !attributes && !filters.Max && !promo) {   // the listing named products it could not describe (a development server, another language): each is read on its own
     const ids: number[] = ((await digipart(event, 'products.php', { Mode: 'category', IdCategory: Number(category.IdCategory), Limit: perPage }).catch(() => null))?.ProductIds as number[]) || []
     products = (await Promise.all(ids.map(id => loadProduct(event, id, lang, prefix, visitorCurrency(event), priceBase)))).filter(Boolean) as any[]
@@ -162,7 +171,7 @@ const view = async (event: any): Promise<any> => {
   // a visitor who sorts or filters sees the products alone, in the order asked for
   let items: any[] | null = null
   // the staging of the category: read for every view of the page, because it also holds the cards per line chosen for this category (it applies when the visitor sorts or filters too)
-  const stage = await digipart(event, 'category-stage.php', { IdCategory: Number(category.IdCategory) }).catch(() => null)
+  const stage = await stageAsk
   const display = { Columns: Math.max(0, Math.min(6, Number(stage?.Display?.Columns) || 0)), ColumnsMobile: Math.max(0, Math.min(2, Number(stage?.Display?.ColumnsMobile) || 0)) }
   let pages = Math.max(1, Math.ceil(total / perPage))
   if (!sort && !attributes && !filters.Max && !promo) {

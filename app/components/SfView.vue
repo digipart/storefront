@@ -6,7 +6,7 @@ const fresh = useState<number>('sf-fresh', () => 0)   // changed by the site bui
 const { data: loaded, error } = await useFetch<any>('/api/storefront/view', {
   query: { fresh: computed(() => fresh.value || undefined), rest: computed(() => site.value?.Route?.Rest || ''), lang: computed(() => site.value?.Route?.LanguageIsoCode || ''), prefix: computed(() => site.value?.Route?.Prefix || ''), preview: computed(() => (typeof route.query.preview === 'string' ? route.query.preview : '')),
     page: computed(() => (typeof route.query.page === 'string' ? route.query.page : '')), q: computed(() => (typeof route.query.q === 'string' ? route.query.q : '')), attr: computed(() => (typeof route.query.attr === 'string' ? route.query.attr : '')), min: computed(() => (typeof route.query.min === 'string' ? route.query.min : '')), max: computed(() => (typeof route.query.max === 'string' ? route.query.max : '')), sort: computed(() => (typeof route.query.sort === 'string' ? route.query.sort : '')), tab: computed(() => (typeof route.query.tab === 'string' ? route.query.tab : '')), promo: computed(() => (typeof route.query.promo === 'string' ? route.query.promo : '')) },
-  key: computed(() => 'sf-view-' + route.fullPath),
+  key: computed(() => viewKey(route)),
 })
 // an address that is nothing of the site: the page « Page introuvable » of the site builder is drawn (the answer stays a 404 for the search engines); only when even that cannot be read is the error page shown
 const missing = ref<any>(null)

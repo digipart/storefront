@@ -48,7 +48,7 @@ onBeforeUnmount(() => { if (timer) { clearInterval(timer) } })
             <source v-if="slide.Settings.ImageMobile" media="(max-width: 767px)" :srcset="slide.Settings.ImageMobile">
             <img :src="slide.Settings.Image" alt="" :loading="first && slide === slides[0] ? 'eager' : 'lazy'" decoding="async">
           </picture>
-          <span v-if="vimeo(slide.Settings.Video)" class="sf-hero-video"><iframe :src="vimeo(slide.Settings.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
+          <SfVimeo v-if="vimeo(slide.Settings.Video)" :src="vimeo(slide.Settings.Video)" />
           <a v-if="linked(slide)" :href="slide.Settings.Url" class="sf-slide-link" :aria-label="w('Voir')" />
           <div class="sf-hero-copy"><SfBlocks :blocks="blocksOf(slide)" :light="true" /></div>
         </div>

@@ -309,7 +309,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
           <source v-if="s.ImageMobile" media="(max-width: 767px)" :srcset="s.ImageMobile">
           <img :src="s.Image" alt="" :loading="first ? 'eager' : 'lazy'" :fetchpriority="first ? 'high' : undefined" decoding="async">
         </picture>
-        <span v-if="vimeo(s.Video)" class="sf-hero-video"><iframe :src="vimeo(s.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
+        <SfVimeo v-if="vimeo(s.Video)" :src="vimeo(s.Video)" />
         <!-- « Lien de la bannière »: a link under the blocks covers the whole banner; a button or a link of the blocks stays above it, with its own address -->
         <a v-if="s.Url" :href="s.Url" class="sf-area-link" :aria-label="areaLabel" />
         <div class="sf-hero-copy"><SfBlocks :blocks="blocks" :light="!!s.Image || !!vimeo(s.Video)" /></div>
@@ -412,7 +412,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
       <div v-else-if="type === 'main_catalog' && catalog">
         <div v-if="hasCover" class="sf-hero sf-catcover" :class="{ 'is-full': s.CoverFull }" :style="{ '--h': (s.CoverHeight || 280) + 'px', '--hm': (s.CoverHeightMobile || 180) + 'px', '--shade': (s.CoverVeil ?? 20) / 100, '--pad': '24px', '--jc': ({ top: 'flex-start', bottom: 'flex-end' } as Record<string, string>)[s.CoverPosition] || 'center', color: '#fff', textAlign: s.CoverAlign || 'center' }">
           <picture v-if="catalogCover"><img :src="catalogCover.Src" :srcset="catalog.Category.Cover.Sizes.map((c: any) => c.Src + ' ' + c.Width + 'w').join(', ')" sizes="100vw" alt="" fetchpriority="high" decoding="async"></picture>
-          <span v-if="vimeo(catalog.Category.Cover?.Video)" class="sf-hero-video"><iframe :src="vimeo(catalog.Category.Cover.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
+          <SfVimeo v-if="vimeo(catalog.Category.Cover?.Video)" :src="vimeo(catalog.Category.Cover.Video)" />
           <div v-if="s.CoverTitle === 'over' || coverText" class="sf-hero-copy">
             <component :is="titleTag" v-if="s.CoverTitle === 'over'" class="sf-h" :style="titleStyle">{{ catalog.Category.Name }}</component>
             <!-- eslint-disable-next-line vue/no-v-html : the description of a category is written by the shop in Digipart and comes from its category API -->
@@ -455,7 +455,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
             <template v-for="(item, index) in shownItems" :key="cardKey(item)">
               <component :is="item.Url ? 'a' : 'div'" v-if="item.Kind === 'edito'" :href="item.Url || undefined" class="sf-edito" :class="['is-' + item.Size, { 'has-height': item.Height > 0 || item.HeightMobile > 0 }]" :style="item.Height > 0 || item.HeightMobile > 0 ? { '--eh': (item.Height || item.HeightMobile) + 'px', '--ehm': (item.HeightMobile || item.Height) + 'px' } : undefined">
                 <img v-if="item.Image" :src="item.Image" alt="" :loading="index < 4 ? 'eager' : 'lazy'" decoding="async">
-                <span v-if="vimeo(item.Video)" class="sf-hero-video"><iframe :src="vimeo(item.Video)" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
+                <SfVimeo v-if="vimeo(item.Video)" :src="vimeo(item.Video)" />
                 <span v-if="item.Title" class="sf-edito-title">{{ item.Title }}</span>
               </component>
               <SfProductCard v-else :product="item.Product" :count="item.Count" :images="item.Size === 'full' ? (item.Layout === 'cover' ? 'wide' : 'row') : item.Size === '2x2' ? 'carousel' : s.CardImages" :dots="item.Size === '2x2' ? true : s.CardDots" :eager="index < 4" :quick="s.QuickAdd !== false" :video="item.Video" :per-row="perRow" :span="item.Size === 'full' ? 'full' : String(item.Size || '1x1').split('x')[0]" :class="'is-' + item.Size" />

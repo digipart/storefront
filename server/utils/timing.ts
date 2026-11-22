@@ -8,6 +8,22 @@ export interface Timing { start: number, digipart: Tally, shop: Tally }
 
 const tally = (): Tally => ({ n: 0, kept: 0, ms: 0, slow: [] })
 
+// a page drawn on the server asks the engine's own API (view, site…): those requests carry the page's mark and add their questions to the page's count
+const renders = new Map<string, Timing>()
+export function timingStart(event: H3Event) {
+  const mark = String(event.node.req.headers['x-sf-render'] || '')
+  const page = mark ? renders.get(mark) : undefined
+  if (page) { event.context.sfTiming = page; event.context.sfTimingChild = true; return }
+  const t = timingOf(event)
+  if (event.path.startsWith('/api/') || /^\/(_nuxt|font)\//.test(event.path)) { return }
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2)
+  renders.set(id, t)
+  if (renders.size > 300) { renders.delete(renders.keys().next().value as string) }
+  event.context.sfRender = id
+  event.node.req.headers['x-sf-render'] = id
+}
+export function timingEnd(event: H3Event) { if (event.context.sfRender) { renders.delete(event.context.sfRender) } }
+
 export function timingOf(event: H3Event): Timing {
   event.context.sfTiming = event.context.sfTiming || { start: Date.now(), digipart: tally(), shop: tally() }
   return event.context.sfTiming as Timing
@@ -28,7 +44,8 @@ export function noteCall(event: H3Event | undefined, kind: 'digipart' | 'shop', 
 export function timingHeader(event: H3Event): string {
   const t = timingOf(event)
   const part = (name: string, x: Tally) => `${name};desc="${x.n} appels, ${x.kept} en cache";dur=${x.ms}`
-  return [part('digipart', t.digipart), part('shop', t.shop), `total;dur=${Date.now() - t.start}`].join(', ')
+  const slow = [...t.digipart.slow, ...t.shop.slow].sort((a, b) => b.ms - a.ms).slice(0, 3).map((x, i) => `slow${i + 1};desc="${x.path.replace(/["\\]/g, '')}";dur=${x.ms}`)
+  return [part('digipart', t.digipart), part('shop', t.shop), ...slow, `total;dur=${Date.now() - t.start}`].join(', ')
 }
 
 export function timingLine(event: H3Event): string {

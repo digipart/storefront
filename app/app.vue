@@ -4,7 +4,6 @@ const adminLinks = useState<{ Label: string, Path: string }[]>('sf-admin-links',
 // The frame of every page of the site: the theme (its settings as CSS variables on <html>), the header and the footer written in Digipart, and between them the page of the address.
 const route = useRoute()
 const preview = computed(() => (typeof route.query.preview === 'string' ? route.query.preview : ''))
-const barHidden = ref(false)
 const here = computed(() => route.path)
 // the site builder of Digipart shows the site in a frame and asks it to read the drafts again after each save (app/plugins/builder.client.ts): `fresh` changes, the site and the page are read anew
 const fresh = useState<number>('sf-fresh', () => 0)
@@ -127,19 +126,6 @@ if (import.meta.server && closed.value) {
     <ClientOnly><LazySfSearchPanel v-if="searchOpen" /></ClientOnly>
     <footer v-if="site.Footer && !ordering && !choosing"><SfSection v-for="section in site.Footer.Sections" :key="section.Id" :section="section" /></footer>
     <!-- the bar of a preview: which theme is shown, in which language, and the way out. Only whoever holds a preview link sees it. -->
-    <aside v-if="site.Preview && !barHidden && route.query.builder === undefined" class="sf-pbar" aria-label="Aperçu du thème">
-      <div class="sf-pbar-name"><strong>{{ site.Theme.Name }}</strong><span class="sf-pbar-badge" :class="{ 'is-live': site.Theme.Live }">{{ site.Theme.Live ? 'En ligne · modifications non publiées' : 'Brouillon' }}</span><small>Aperçu : les visiteurs ne voient pas cette version</small></div>
-      <nav v-if="site.Languages.length > 1" class="sf-pbar-langs" aria-label="Langue de l'aperçu">
-        <a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="langHref(language)" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.Name }}</a>
-      </nav>
-      <div class="sf-pbar-actions">
-        <button type="button" @click="barHidden = true">Masquer la barre</button>
-        <a :href="here + '?preview=off'">Quitter l'aperçu</a>
-        <!-- what this page shows, opened in Digipart (a new tab: the preview stays) -->
-        <!-- drawn in the browser only: the page tells its links once it is drawn, after this bar on the server (drawn there, the bar would be patched wrongly when the page wakes up) -->
-        <ClientOnly><span class="sf-pbar-admin"><a v-for="link in (site.PreviewAdminUrl ? adminLinks : [])" :key="link.Path" :href="site.PreviewAdminUrl + '?module=' + link.Path" target="_blank" rel="noopener">{{ link.Label }}</a></span></ClientOnly>
-        <a v-if="site.PreviewEditUrl" :href="site.PreviewEditUrl" class="is-main">Modifier le thème</a>
-      </div>
-    </aside>
+    <SfPreviewBar v-if="site.Preview && route.query.builder === undefined" :site="site" :here="here" :lang-href="langHref" />
   </template>
 </template>

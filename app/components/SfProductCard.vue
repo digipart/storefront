@@ -64,7 +64,7 @@ const sizesOf = computed(() => {
         <img v-for="(src, index) in shown" :key="src" :src="src" :srcset="product.ImageSets?.[index] || undefined" :sizes="sizesOf" :alt="index === 0 ? product.Name : ''" :loading="eager && index === 0 ? 'eager' : 'lazy'" decoding="async">
       </template>
       <span v-else class="sf-card-empty" aria-hidden="true" />
-      <span v-if="film" class="sf-hero-video"><iframe :src="film" title="" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" tabindex="-1" aria-hidden="true" /></span>
+      <SfVimeo v-if="film" :src="film" />
       <span v-if="product.LookUrl" class="sf-card-look" aria-hidden="true">LOOK</span>
       <span v-if="product.Discount" class="sf-card-badge">-{{ product.Discount }} %</span>
       <span v-if="mode === 'carousel' && withDots && shown.length > 1" class="sf-card-dots" :class="'is-' + dotsStyle" aria-hidden="true"><template v-if="dotsStyle === 'counter'">{{ at + 1 }} / {{ shown.length }}</template><i v-for="(src, index) in shown" v-else :key="index" :class="{ 'is-on': index === at }" /></span>

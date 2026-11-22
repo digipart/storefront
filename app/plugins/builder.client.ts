@@ -47,7 +47,7 @@ export default defineNuxtPlugin((nuxt) => {
     }
     // the page of a closed site being written (a preview on `closed=…`): it is part of the site, not a page of it
     if (site.value?.ClosedForced && site.value?.ClosedDesign) { site.value = { ...site.value, ClosedDesign: { ...site.value.ClosedDesign, Sections: guarded(sections, site.value.ClosedDesign.Sections) } }; return }
-    const page = useNuxtData<any>('sf-view-' + route.fullPath).data
+    const page = useNuxtData<any>(viewKey(route)).data
     if (page.value?.Design) { page.value = { ...page.value, Design: { ...page.value.Design, Sections: guarded(sections, page.value.Design.Sections) } } }
   }
   const paint = (variables: Record<string, unknown>, settings: Record<string, unknown>, schemes?: unknown) => {
