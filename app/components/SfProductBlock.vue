@@ -57,10 +57,11 @@ const isGift = computed(() => product.value?.Type === 'e-giftcard')
 const gift = reactive({ Personal: props.block.Settings?.GiftPersonal !== false, Email: '', MobilePhone: '', Firstname: '', Lastname: '', Message: '', DateSend: '' })
 const today = new Date().toISOString().slice(0, 10)
 const giftError = ref('')
-async function buy() {
+async function buy(fromBar = false) {
   if (product.value.TaxExcl && sizes.value.length > 0) { lotOpen.value = true; return }
-  if (needsChoice.value && sheetMode.value && onPhone()) { sheetOpen.value = true; return }
-  if (needsChoice.value) { ask.value = true; if (barOn.value) { buyBox.value?.scrollIntoView({ block: 'center', behavior: 'smooth' }) } return }
+  // the bar has no sizes beside it: it always opens the sheet
+  if (needsChoice.value && (sheetMode.value || fromBar === true) && onPhone()) { sheetOpen.value = true; return }
+  if (needsChoice.value) { ask.value = true; return }
   if (isGift.value) {
     giftError.value = gift.Personal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gift.Email.trim()) ? w('Indiquez l\'adresse e-mail du destinataire.') : ''
     if (giftError.value) { return }
@@ -195,7 +196,7 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
       <a v-if="s.LookButton && product.LookUrl" :href="product.LookUrl" class="sf-btn is-outline sf-look-btn" :style="{ fontSize: buyLook.style?.fontSize, letterSpacing: buyLook.style?.letterSpacing, textTransform: buyLook.style?.textTransform }">{{ w('Look') }}</a>
       <button v-if="locked" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="product.PriceState === 'pending'" @click="showPanel('account')">{{ w(product.PriceState === 'pending' ? 'Compte en cours de validation' : product.PriceState === 'business' ? 'Prix réservés aux professionnels' : 'Se connecter pour commander') }}</button>
       <button v-else-if="soldOutChosen || (!product.Available && alertSizes.length && site?.Theme?.Settings?.StockAlert !== false)" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" @click="alertOpen = true">{{ w('M\'avertir du retour en stock') }}</button>
-      <button v-else type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="!product.Available || cartBusy" @click="buy">{{ w(product.Available ? (cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) : 'Épuisé') }}</button>
+      <button v-else type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="!product.Available || cartBusy" @click="buy()">{{ w(product.Available ? (cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) : 'Épuisé') }}</button>
       <LazySfStockAlert v-if="alertOpen" :product="product" :variant="soldOutChosen ? picked : undefined" @close="alertOpen = false" />
       <Teleport to="body">
         <div v-if="sheetOpen" class="sf-sheet" @keydown.esc="sheetOpen = false">
@@ -207,7 +208,7 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
             <button v-if="guideShared.text && pdp?.SheetGuide !== false" type="button" class="is-guide" @click="sheetOpen = false; guideShared.open = true">{{ guideShared.text }}</button>
           </div>
         </div>
-        <div v-if="barOn && !locked && !isGift && product.Available" class="sf-buybar"><span class="sf-buybar-price"><SfPrice :product="product" /></span><button type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="cartBusy" @click="buy">{{ w(cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) }}</button></div>
+        <div v-if="barOn && !locked && !isGift && product.Available" class="sf-buybar"><span class="sf-buybar-price"><SfPrice :product="product" /></span><button type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="cartBusy" @click="buy(true)">{{ w(cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) }}</button></div>
       </Teleport>
       <button type="button" class="sf-heart" :class="{ 'is-on': isFavorite(product.Id) }" :aria-pressed="isFavorite(product.Id)" :aria-label="w(isFavorite(product.Id) ? 'Retirer de mes favoris' : 'Ajouter à mes favoris')" @click="toggleFavorite(product.Id)"><svg viewBox="0 0 24 24" width="20" height="20" :fill="isFavorite(product.Id) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3 4.6 13a4.7 4.7 0 0 1 0-6.7 4.8 4.8 0 0 1 6.8 0l.6.6.6-.6a4.8 4.8 0 0 1 6.8 0 4.7 4.7 0 0 1 0 6.7z"/></svg></button>
       <button v-if="product.TaxExcl && locked" type="button" class="sf-prohelp" aria-haspopup="dialog" @click="proOpen = true"><strong>{{ w('Nouveau client professionnel ?') }}</strong><span>{{ w('Découvrez les étapes pour commander') }}</span></button>
