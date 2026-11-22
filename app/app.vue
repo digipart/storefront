@@ -10,6 +10,7 @@ const here = computed(() => route.path)
 const fresh = useState<number>('sf-fresh', () => 0)
 const { data: site, error } = await useFetch<any>('/api/storefront/site', { query: { path: computed(() => route.path), preview, fresh: computed(() => fresh.value || undefined), closed: computed(() => route.query.closed || undefined) }, key: 'sf-site' })
 provide('sfSite', site)
+const langHref = useLanguageHref(site)
 // the menus of Digipart the header and the footer name (0 = the main menu), read once here for the whole page: the header and the footer columns only draw them
 const menuIds = computed(() => {
   const ids = new Set<number>()
@@ -129,7 +130,7 @@ if (import.meta.server && closed.value) {
     <aside v-if="site.Preview && !barHidden && route.query.builder === undefined" class="sf-pbar" aria-label="Aperçu du thème">
       <div class="sf-pbar-name"><strong>{{ site.Theme.Name }}</strong><span class="sf-pbar-badge" :class="{ 'is-live': site.Theme.Live }">{{ site.Theme.Live ? 'En ligne · modifications non publiées' : 'Brouillon' }}</span><small>Aperçu : les visiteurs ne voient pas cette version</small></div>
       <nav v-if="site.Languages.length > 1" class="sf-pbar-langs" aria-label="Langue de l'aperçu">
-        <a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="language.Default && site.UrlPrefix !== 'always' ? '/' : '/' + language.LanguageIsoCode" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.Name }}</a>
+        <a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="langHref(language)" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.Name }}</a>
       </nav>
       <div class="sf-pbar-actions">
         <button type="button" @click="barHidden = true">Masquer la barre</button>

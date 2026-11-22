@@ -1463,3 +1463,6 @@ header.sf-over.is-bare:not(.is-solid):not(:hover):not(:focus-within) .sf-s-annou
   .sf-pick-panel { width: 100%; }
   .sf-pick-list button { min-height: 44px; }
 }
+
+@media (min-width: 768px) { .sf-gallery-thumbs.is-no-desk { display: none; } }
+@media (max-width: 767px) { .sf-gallery-thumbs.is-no-phone { display: none; } }   /* small photos chosen per screen */

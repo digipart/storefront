@@ -114,6 +114,8 @@ const view = async (event: any): Promise<any> => {
   // a category of the catalogue
   const category = await shopApi(event, 'category/', { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase() })
   if (!category || !category.IdCategory || category.Active === 0) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
+  // the name and address of the category in each language; read on their own when the category answer comes without them
+  const seoList: any[] = Array.isArray(category.SEO) && category.SEO.length ? category.SEO : await shopApi(event, 'category/seo', { CategoryDescriptionFriendlyURL: rest }).then((list: any) => (Array.isArray(list) ? list : [])).catch(() => [])
   const catalog = await design('catalog', { IdCategory: Number(category.IdCategory) || 0 })
   const settings = (catalog?.Sections || []).find((section: any) => section.Type === 'main_catalog')?.Settings || {}
   const perPage = Math.max(4, Math.min(60, Number(settings.PerPage) || 24))
@@ -149,7 +151,7 @@ const view = async (event: any): Promise<any> => {
     group.IsColor = group.Values.some((v: any) => looks[String(v.Id)]?.IsColor)
   }
   const filters = { Groups: groups, PriceMin: Math.floor(Number(filterPrice?.RegularPrice?.MinPriceTaxIncl || 0)), PriceMax: Math.ceil(Number(filterPrice?.RegularPrice?.MaxPriceTaxIncl || 0)), Attributes: attributes ? attributes.split(',').map(Number) : [], Min: priceMax > priceMin ? priceMin : 0, Max: priceMax > priceMin ? priceMax : 0, Promo: promo, PromoCount: Number(promoListing?.TotalProduct || 0) }
-  const seo = (Array.isArray(category.SEO) ? category.SEO : []).find((s: any) => String(s.LanguageIsoCode || '').toLowerCase() === lang) || category.SEO?.[0] || {}
+  const seo = seoList.find((s: any) => String(s.LanguageIsoCode || '').toLowerCase() === lang) || seoList[0] || {}
   const total = Number(listing?.TotalProduct || 0)
   let products = await shapeListed(event, (listing?.Products || []).filter(Boolean), lang, prefix, visitorCurrency(event), priceBase)
   if (!products.length && total > 0 && !attributes && !filters.Max && !promo) {   // the listing named products it could not describe (a development server, another language): each is read on its own
@@ -205,7 +207,7 @@ const view = async (event: any): Promise<any> => {
   const categoryLinks = links ? { Parent: links.Parent?.Slug ? linkOf(links.Parent) : null, Children: linkList(links.Children), Siblings: linkList(links.Siblings) } : null
   return {
     Kind: 'catalog', Design: catalog, Page: null,
-    Category: { Alternates: Object.fromEntries((Array.isArray(category.SEO) ? category.SEO : []).map((s: any) => [String(s.LanguageIsoCode || '').toLowerCase(), String(s.URL || '').replace(/^\/+|\/+$/g, '')]).filter(([iso, url]: string[]) => /^[a-z]{2,3}$/.test(iso) && url)), Id: Number(category.IdCategory), Slug: rest, Links: categoryLinks, Cover: { Sizes: coverSizes, Video: /vimeo\.com/i.test(coverVideo) ? coverVideo : '' }, Name: String(category.Description?.Title || seo.MetaTitle || rest), Description: String(category.Description?.Description || ''), SeoTitle: String(seo.MetaTitle || ''), SeoDescription: String(seo.MetaDescription || '') },
+    Category: { Alternates: Object.fromEntries(seoList.map((s: any) => [String(s.LanguageIsoCode || '').toLowerCase(), String(s.URL || '').replace(/^\/+|\/+$/g, '')]).filter(([iso, url]: string[]) => /^[a-z]{2,3}$/.test(iso) && url)), Id: Number(category.IdCategory), Slug: rest, Links: categoryLinks, Cover: { Sizes: coverSizes, Video: /vimeo\.com/i.test(coverVideo) ? coverVideo : '' }, Name: String(category.Description?.Title || seo.MetaTitle || rest), Description: String(category.Description?.Description || ''), SeoTitle: String(seo.MetaTitle || ''), SeoDescription: String(seo.MetaDescription || '') },
     Listing: { Items: items, Display: display, Products: products, Total: total, Page: pageNumber, Pages: pages, PerPage: perPage, Sort: sort, Filters: filters },
   }
 }

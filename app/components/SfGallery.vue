@@ -17,6 +17,8 @@ const scrolls = computed(() => layout.value === 'carousel' || layout.value === '
 // photo fills its frame (what is kept when it is cropped, or the whole photo), how tall the photo is on a phone and on a computer
 const look = computed(() => props.arrows || {})
 const thumbsAt = computed(() => (['left', 'right', 'inside', 'inside_right', 'none'].includes(String(props.thumbs)) ? String(props.thumbs) : 'below'))
+// on a phone the small photos are under the photo, or none (« Comme sur ordinateur » follows the computer's choice)
+const thumbsPhone = computed(() => (look.value.GalleryThumbsMobile === 'below' || look.value.GalleryThumbsMobile === 'none' ? String(look.value.GalleryThumbsMobile) : (thumbsAt.value === 'none' ? 'none' : 'below')))
 const thumbsAlign = computed(() => (['center', 'end'].includes(String(look.value.GalleryThumbsAlign)) ? String(look.value.GalleryThumbsAlign) : 'start'))
 // « Cadre à la forme de la photo »: the frame is as wide as a photo of the theme's format at that height, and stands left, centre or right in its column; the thumbnails stay beside it
 const hugging = computed(() => props.layout === 'slider' && props.fit === 'screen' && look.value.GalleryFrame === 'photo')
@@ -63,7 +65,7 @@ const arrow = (next: boolean) => {
       <button v-if="at > 0" type="button" class="sf-gallery-nav is-prev" :style="arrow(false)" :aria-label="w('Photo précédente')" @click="go(at - 1)">‹</button>
       <button v-if="!atEnd" type="button" class="sf-gallery-nav is-next" :style="arrow(true)" :aria-label="w('Photo suivante')" @click="go(at + 1)">›</button>
     </template>
-    <div v-if="layout === 'slider' && images.length > 1 && thumbsAt !== 'none'" class="sf-gallery-thumbs">
+    <div v-if="layout === 'slider' && images.length > 1 && (thumbsAt !== 'none' || thumbsPhone !== 'none')" class="sf-gallery-thumbs" :class="{ 'is-no-desk': thumbsAt === 'none', 'is-no-phone': thumbsPhone === 'none' }">
       <button v-for="(src, index) in images" :key="src" type="button" :class="{ 'is-on': index === at }" :aria-label="w('Photo {a} sur {b}', { a: index + 1, b: images.length })" :aria-current="index === at ? 'true' : undefined" @click="go(index)"><img :src="src" alt="" loading="lazy"></button>
     </div>
   </div>

@@ -5,6 +5,7 @@
 const props = defineProps<{ id?: number, mode?: string }>()
 const emit = defineEmits<{ close: [] }>()
 const site = inject<Ref<any>>('sfSite')!
+const langHref = useLanguageHref()
 const menus = inject<Ref<Record<number, any>>>('sfMenus')!
 const w = useWords()
 const { customer, favorites, url: accountUrl, favoritesUrl } = useAccount()
@@ -61,7 +62,7 @@ onBeforeUnmount(() => { document.documentElement.style.overflow = '' })
             <a :href="site?.Route?.Prefix || '/'">{{ w('Accueil') }}</a>
           <a :href="accountUrl">{{ customer && !customer.Guest ? customer.Firstname : w('Mon compte') }}</a>
             <a :href="favoritesUrl">{{ w('Mes favoris') }}<template v-if="favorites.length"> ({{ favorites.length }})</template></a>
-            <span v-if="(site?.Languages || []).length > 1" class="sf-langs"><a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="language.Default && site.UrlPrefix !== 'always' ? '/' : '/' + language.LanguageIsoCode" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.Name }}</a></span>
+            <span v-if="(site?.Languages || []).length > 1" class="sf-langs"><a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="langHref(language)" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.Name }}</a></span>
           </div>
         </template>
       </nav>
@@ -88,7 +89,7 @@ onBeforeUnmount(() => { document.documentElement.style.overflow = '' })
           <a :href="site?.Route?.Prefix || '/'">{{ w('Accueil') }}</a>
           <a :href="accountUrl">{{ customer && !customer.Guest ? customer.Firstname : w('Mon compte') }}</a>
           <a :href="favoritesUrl">{{ w('Mes favoris') }}<template v-if="favorites.length"> ({{ favorites.length }})</template></a>
-          <span v-if="(site?.Languages || []).length > 1" class="sf-langs"><a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="language.Default && site.UrlPrefix !== 'always' ? '/' : '/' + language.LanguageIsoCode" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.Name }}</a></span>
+          <span v-if="(site?.Languages || []).length > 1" class="sf-langs"><a v-for="language in site.Languages" :key="language.LanguageIsoCode" :href="langHref(language)" :aria-current="language.LanguageIsoCode === site.Route.LanguageIsoCode ? 'true' : undefined">{{ language.Name }}</a></span>
         </div>
       </nav>
     </aside>

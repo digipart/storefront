@@ -51,6 +51,17 @@ const paths = computed<Record<string, string> | null>(() => {
   if (kind === 'look') { return known(undefined, rest.value) }
   return null
 })
+// the same page in each language, for the language switch: the indexed pages above, and the pages of the engine whose address is a French or an English word
+const FIXED: [string, string][] = [['panier', 'cart'], ['commande/merci', 'checkout/thanks'], ['commande', 'checkout'], ['favoris', 'wishlist'], ['recherche', 'search'], ['pays-et-langue', 'country-and-language'], ['marques', 'brands'], ['parrainage', 'referral'], ['compte', 'account']]
+const switchPaths = computed<Record<string, string> | null>(() => {
+  const isos: string[] = (site.value?.Languages || []).map((l: any) => l.LanguageIsoCode)
+  const pair = FIXED.find(([fr, en]) => [fr, en].some(word => rest.value === word || rest.value.startsWith(word + '/')))
+  if (!pair) { return paths.value }
+  const tail = rest.value.slice((rest.value.startsWith(pair[0]) ? pair[0] : pair[1]).length)
+  return Object.fromEntries(isos.map(iso => [iso, (iso === 'fr' ? pair[0] : pair[1]) + tail]))
+})
+const langPaths = useState<{ paths: Record<string, string> | null, query: string }>('sf-lang-paths', () => ({ paths: null, query: '' }))
+watch([switchPaths, () => route.fullPath], () => { const q = route.fullPath.indexOf('?'); langPaths.value = { paths: switchPaths.value, query: q >= 0 && view.value?.Kind !== 'product' ? route.fullPath.slice(q) : '' } }, { immediate: true })
 const address = (iso: string, path: string) => origin.value + prefixOf(iso) + (path ? '/' + path : (prefixOf(iso) ? '' : '/'))
 const canonical = computed(() => { const here = site.value?.Route?.LanguageIsoCode || 'fr'; const page = Number(route.query.page) > 1 && view.value?.Kind === 'catalog' ? '?page=' + Number(route.query.page) : ''; return paths.value ? address(here, paths.value[here] ?? rest.value) + page : '' })
 const shareImage = computed(() => view.value?.Product?.Images?.[0] || site.value?.Preferences?.SocialImage || '')
