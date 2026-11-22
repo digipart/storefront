@@ -17,11 +17,16 @@ const closed = { parse () { throw new Error('this tag is not available in a code
 const noFiles = { exists: async () => false, existsSync: () => false, readFile: async () => { throw new Error('no file') }, readFileSync: () => { throw new Error('no file') }, resolve: () => '', contains: async () => false, containsSync: () => false, sep: '/', dirname: () => '' }
 const engine = new Liquid({ outputEscape: 'escape', ownPropertyOnly: true, strictFilters: true, strictVariables: false, parseLimit: 120000, renderLimit: 400, memoryLimit: 4e6, fs: noFiles as any, relativeReference: false, cache: false })
 for (const tag of ['include', 'render', 'layout', 'block', 'schema']) { engine.registerTag(tag, closed as any) }
-// {{ 49.9 | money }} => 49,90 € in the language of the page; {{ 49.9 | money: 'USD' }}
+// {{ 49.9 | money }} => 49,90 € in the language and the currency of the page, with the sign the shop wrote (Digipart > Devises); {{ 49.9 | money: 'USD' }}
 engine.registerFilter('money', function (this: any, value: unknown, currency?: unknown) {
-  const amount = Number(value), iso = String(this?.context?.get(['Site', 'LanguageIsoCode']) || 'fr'), code = /^[A-Z]{3}$/.test(String(currency || '')) ? String(currency) : 'EUR'
+  const amount = Number(value), iso = String(this?.context?.get(['Site', 'LanguageIsoCode']) || 'fr'), own = String(this?.context?.get(['Site', 'Currency']) || 'EUR')
+  const code = /^[A-Z]{3}$/.test(String(currency || '')) ? String(currency) : (/^[A-Z]{3}$/.test(own) ? own : 'EUR')
   if (!Number.isFinite(amount)) { return '' }
-  try { return new Intl.NumberFormat(iso, { style: 'currency', currency: code }).format(amount) } catch { return amount.toFixed(2) + ' ' + code }
+  const signs = this?.context?.get(['Site', 'CurrencySigns']), sign = signs && typeof signs === 'object' ? String((signs as Record<string, unknown>)[code] || '') : ''
+  try {
+    const format = new Intl.NumberFormat(iso, { style: 'currency', currencyDisplay: 'narrowSymbol', currency: code })
+    return sign ? format.formatToParts(amount).map(part => (part.type === 'currency' ? sign : part.value)).join('') : format.format(amount)
+  } catch { return amount.toFixed(2) + ' ' + code }
 })
 
 const TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'strong', 'b', 'em', 'i', 'u', 's', 'small', 'mark', 'sub', 'sup', 'ul', 'ol', 'li', 'blockquote', 'span', 'div', 'section', 'article', 'aside', 'header', 'footer', 'nav', 'main',
@@ -82,7 +87,7 @@ export async function withCode<T extends { Sections?: any[] } | null | undefined
   if (!sections.some((section: any) => section?.Type === 'code')) { return design }
   const preview = previewQuery(event), lang = langOf(event)
   const site = await digipart<any>(event, '', { ...preview, LanguageIsoCode: lang.lang }).catch(() => null)
-  const Site = { Name: String(site?.Name || ''), Url: siteOrigin(event) + (lang.prefix || '') + '/', LanguageIsoCode: lang.lang, Currency: visitorCurrency(event) }
+  const Site = { Name: String(site?.Name || ''), Url: siteOrigin(event) + (lang.prefix || '') + '/', LanguageIsoCode: lang.lang, Currency: visitorCurrency(event), CurrencySigns: await currencySigns(event) }
   const drawn = await Promise.all(sections.map(async (section: any) => {
     if (section?.Type !== 'code') { return section }
     const file = String(section.Settings?.File || '')

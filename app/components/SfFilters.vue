@@ -17,7 +17,7 @@ const priceMode = computed(() => (['slider', 'inputs', 'both'].includes(String(s
 const colorMode = computed(() => (['swatches', 'dots', 'text'].includes(String(s.value.FilterColors)) ? String(s.value.FilterColors) : 'swatches'))
 const valueMode = computed(() => (s.value.FilterSizes === 'checkboxes' ? 'checkboxes' : 'buttons'))
 const panel = ref<HTMLElement | null>(null)
-const money = (value: number) => { try { return new Intl.NumberFormat(site?.value?.Route?.LanguageIsoCode || 'fr', { style: 'currency', currency: props.currency || 'EUR', maximumFractionDigits: 0 }).format(value) } catch { return value + ' ' + props.currency } }
+const price = (value: number) => money(value, props.currency || 'EUR', site?.value?.Route?.LanguageIsoCode || 'fr', true)
 const pct = (value: number) => ((value - floor.value) * 100) / Math.max(1, ceil.value - floor.value)
 
 // a heading folds its values: open at first as the shop chose (all, the first, none), and always open when something is chosen in it
@@ -72,10 +72,10 @@ onBeforeUnmount(() => { if (!props.inline) { document.documentElement.style.over
             <button type="button" class="sf-fhead" :aria-expanded="opened.has('price') ? 'true' : 'false'" @click="toggle('price')">{{ w('Prix') }}<span class="sf-fchev" aria-hidden="true" /></button>
             <div v-show="opened.has('price')" class="sf-fprice">
               <template v-if="priceMode !== 'inputs'">
-                <div class="sf-range-values"><span>{{ money(lo) }}</span><span>{{ money(hi) }}</span></div>
+                <div class="sf-range-values"><span>{{ price(lo) }}</span><span>{{ price(hi) }}</span></div>
                 <div class="sf-range" :style="{ '--a': pct(lo) + '%', '--b': pct(hi) + '%' }">
-                  <input v-model.number="lo" type="range" :min="floor" :max="ceil" step="1" :aria-label="w('Prix minimum')" :aria-valuetext="money(lo)" @input="slideLo" @change="changed">
-                  <input v-model.number="hi" type="range" :min="floor" :max="ceil" step="1" :aria-label="w('Prix maximum')" :aria-valuetext="money(hi)" @input="slideHi" @change="changed">
+                  <input v-model.number="lo" type="range" :min="floor" :max="ceil" step="1" :aria-label="w('Prix minimum')" :aria-valuetext="price(lo)" @input="slideLo" @change="changed">
+                  <input v-model.number="hi" type="range" :min="floor" :max="ceil" step="1" :aria-label="w('Prix maximum')" :aria-valuetext="price(hi)" @input="slideHi" @change="changed">
                 </div>
               </template>
               <div v-if="priceMode !== 'slider'" class="sf-filters-price">

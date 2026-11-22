@@ -25,6 +25,15 @@ async function places(event: H3Event): Promise<{ main: number | null, list: Plac
   return event.context.sfPlaces
 }
 
+/** The sign of each currency as the shop wrote it (Digipart > Devises), for the prices of the pages: { GBP: '£' }. */
+export async function currencySigns(event: H3Event): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  for (const place of (await places(event).catch(() => ({ list: [] as Place[] }))).list) {
+    for (const m of place.Currencies) { const sign = m.Sign.trim(); if (sign && sign.length <= 5 && !out[m.IsoCode]) { out[m.IsoCode] = sign } }
+  }
+  return out
+}
+
 /** The tax prices are shown with, when it is not the one they are stored with (the main tax). */
 function setTax(event: H3Event, main: number | null, place?: Place) {
   event.context.sfTax = place && main !== null && Math.abs(place.TaxRate - main) > 0.00001 ? place.TaxRate : undefined

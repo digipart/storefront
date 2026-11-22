@@ -19,6 +19,8 @@ const look = computed(() => props.arrows || {})
 const thumbsAt = computed(() => (['left', 'right', 'inside', 'inside_right', 'none'].includes(String(props.thumbs)) ? String(props.thumbs) : 'below'))
 // on a phone the small photos are under the photo, or none (« Comme sur ordinateur » follows the computer's choice)
 const thumbsPhone = computed(() => (look.value.GalleryThumbsMobile === 'below' || look.value.GalleryThumbsMobile === 'none' ? String(look.value.GalleryThumbsMobile) : (thumbsAt.value === 'none' ? 'none' : 'below')))
+// how the photo fills its frame on a phone: its own choice, else the computer's (« Photo entière »: the photo keeps its own shape, the phone height is then a most)
+const phoneFit = computed(() => (['cover', 'contain'].includes(String(look.value.GalleryCropMobile)) ? String(look.value.GalleryCropMobile) : (look.value.GalleryCrop === 'contain' ? 'contain' : 'cover')))
 const thumbsAlign = computed(() => (['center', 'end'].includes(String(look.value.GalleryThumbsAlign)) ? String(look.value.GalleryThumbsAlign) : 'start'))
 // « Cadre à la forme de la photo »: the frame is as wide as a photo of the theme's format at that height, and stands left, centre or right in its column; the thumbnails stay beside it
 const hugging = computed(() => props.layout === 'slider' && props.fit === 'screen' && look.value.GalleryFrame === 'photo')
@@ -56,7 +58,7 @@ const arrow = (next: boolean) => {
 </script>
 
 <template>
-  <div class="sf-gallery-wrap" :class="['is-' + layout, 'is-ta-' + thumbsAlign, { 'has-hover-arrows': arrows?.ArrowHover, 'is-thumbs-left': layout === 'slider' && thumbsAt === 'left', 'is-thumbs-right': layout === 'slider' && thumbsAt === 'right', 'is-thumbs-inside': layout === 'slider' && (thumbsAt === 'inside' || thumbsAt === 'inside_right'), 'is-thumbs-end': thumbsAt === 'inside_right', 'is-fit-screen': layout === 'slider' && fit === 'screen', 'is-hug': hugging, 'is-scroll-down': layout === 'slider' && scroll === 'down', 'has-mh': Number(look.GalleryHeightMobile) > 0 }]" :style="frame">
+  <div class="sf-gallery-wrap" :class="['is-' + layout, 'is-ta-' + thumbsAlign, 'is-mfit-' + phoneFit, { 'has-hover-arrows': arrows?.ArrowHover, 'is-thumbs-left': layout === 'slider' && thumbsAt === 'left', 'is-thumbs-right': layout === 'slider' && thumbsAt === 'right', 'is-thumbs-inside': layout === 'slider' && (thumbsAt === 'inside' || thumbsAt === 'inside_right'), 'is-thumbs-end': thumbsAt === 'inside_right', 'is-fit-screen': layout === 'slider' && fit === 'screen', 'is-hug': hugging, 'is-scroll-down': layout === 'slider' && scroll === 'down', 'has-mh': Number(look.GalleryHeightMobile) > 0 }]" :style="frame">
     <div ref="track" class="sf-gallery" :class="'is-' + layout" @scroll.passive="watch">
       <template v-if="images.length"><img v-for="(src, index) in images" :key="src" :src="src" :srcset="sets?.[index] || undefined" :sizes="sizes" :alt="index === 0 ? name : ''" :loading="index === 0 ? 'eager' : 'lazy'" :fetchpriority="index === 0 ? 'high' : undefined" decoding="async" role="button" tabindex="0" :aria-label="w('Agrandir la photo {a}', { a: index + 1 })" @click="emit('zoom', index)" @keydown.enter="emit('zoom', index)"></template>
       <span v-else class="sf-card-empty" aria-hidden="true" />

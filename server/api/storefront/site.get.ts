@@ -43,5 +43,6 @@ export default defineEventHandler(async (event) => {
   // the code sections of the header and of the footer (server/utils/liquid.ts)
   if (site?.Header) { site = { ...site, Header: await withCode(event, site.Header) } }
   if (site?.Footer) { site = { ...site, Footer: await withCode(event, site.Footer) } }
-  return { ...site, ClosedDesign: closedDesign, ClosedForced: !!asked, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, PreviewAdminUrl: admin, Route: { LanguageIsoCode: language, Rest: rest, OverHero: overHero, OverProduct: overProduct, Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
+  const currencySignsOfShop = await currencySigns(event)
+  return { ...site, CurrencySigns: currencySignsOfShop, ClosedDesign: closedDesign, ClosedForced: !!asked, FontCss: fonts.css, FontFiles: fonts.files, Origin: siteOrigin(event), Pro: !!useRuntimeConfig(event).forcePro || site?.PriceBaseType === 'wholesale', PreviewEditUrl: edit, PreviewAdminUrl: admin, Route: { LanguageIsoCode: language, Rest: rest, OverHero: overHero, OverProduct: overProduct, Prefix: prefixed || base.UrlPrefix === 'always' ? '/' + language : '' } }
 })

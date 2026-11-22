@@ -1526,3 +1526,15 @@ html.sf-has-pbar .sf-buybar { bottom: var(--sf-pbar-h, 0px); }
   .sf-pperf-bars li { grid-template-columns: 96px minmax(0, 1fr) 58px; }
 }
 @media (prefers-reduced-motion: reduce) { .sf-pperf, .sf-pbar-pop { transition: none; animation: none; } }
+@media (max-width: 767px) {   /* the fill of the photo on a phone: « Remplir » fills the phone height, « Photo entière » keeps the photo's shape (no empty band) */
+  .sf-gallery-wrap.is-mfit-cover .sf-gallery img { object-fit: cover; }
+  .sf-gallery-wrap.is-mfit-contain .sf-gallery { align-items: flex-start; }
+  .sf-gallery-wrap.is-mfit-contain .sf-gallery img { object-fit: contain; aspect-ratio: auto var(--t-card-ratio, 3 / 4); height: auto; max-height: var(--ghm, none); }   /* the theme's shape until the photo is read: nothing jumps */
+}
+/* the language of the header on a phone: a globe and the language of the page, the others in a small menu */
+.sf-lang-m { display: none; position: relative; }
+.sf-lang-m > summary { display: inline-flex; align-items: center; gap: 4px; list-style: none; cursor: pointer; font-weight: 600; } .sf-lang-m > summary::-webkit-details-marker { display: none; }
+.sf-lang-pop { position: absolute; right: -8px; top: calc(100% + 10px); z-index: 60; display: flex; flex-direction: column; min-width: 160px; padding: 6px; border-radius: 10px; background: var(--t-bg, #fff); color: var(--t-text, #1e2129); box-shadow: 0 10px 30px rgba(0, 0, 0, .16), 0 0 0 1px rgba(0, 0, 0, .05); }
+.sf-langs .sf-lang-pop a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 6px; opacity: 1; font-weight: 400; } .sf-lang-pop a b { min-width: 22px; font-size: 12px; }
+.sf-langs .sf-lang-pop a[aria-current] { background: var(--t-soft, #f6f6f6); font-weight: 600; }
+@media (max-width: 767px) { .sf-langs a.sf-lang-d, .sf-hicons .sf-langs a.sf-lang-d { display: none; } .sf-lang-m { display: inline-block; } }

@@ -9,6 +9,8 @@ const here = computed(() => route.path)
 const fresh = useState<number>('sf-fresh', () => 0)
 const { data: site, error } = await useFetch<any>('/api/storefront/site', { query: { path: computed(() => route.path), preview, fresh: computed(() => fresh.value || undefined), closed: computed(() => route.query.closed || undefined) }, key: 'sf-site' })
 provide('sfSite', site)
+setCurrencySigns(site.value?.CurrencySigns)
+watch(() => site.value?.CurrencySigns, setCurrencySigns)
 const langHref = useLanguageHref(site)
 // the menus of Digipart the header and the footer name (0 = the main menu), read once here for the whole page: the header and the footer columns only draw them
 const menuIds = computed(() => {
