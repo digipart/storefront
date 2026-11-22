@@ -1,8 +1,16 @@
 <script setup lang="ts">
 // The customer account: the menu on the left, the chosen part on the right (overview, profile, orders and one order, loyalty). A visitor who is not logged in sees the login forms.
-const props = defineProps<{ section: string, id: string }>()
+const props = defineProps<{ section: string, id: string, design?: any }>()
 const site = inject<Ref<any>>('sfSite')!
 const w = useWords()
+// the login page of the site builder (section main_login); before it is published, the former theme settings
+const login = computed(() => {
+  const found = (props.design?.Sections || []).find((s: any) => s.Type === 'main_login')
+  const s = found?.Settings || {}, theme = site.value?.Theme?.Settings || {}
+  return found
+    ? { band: 'sf-i-' + found.Id, split: s.Layout === 'split', image: String(s.Image || ''), mobile: String(s.ImageMobile || ''), right: s.ImageSide === 'right', focus: ['top', 'bottom'].includes(s.ImageFocus) ? s.ImageFocus : 'center', onMobile: s.ImageOnMobile !== false, title: String(found.Texts?.Title || ''), text: String(found.Texts?.Text || ''), hide: [s.LoginGoogle === false ? 'google' : '', s.LoginFacebook === false ? 'facebook' : ''].filter(Boolean) }
+    : { band: '', split: theme.LoginLayout === 'split', image: String(theme.LoginImage || ''), mobile: '', right: false, focus: 'center', onMobile: true, title: '', text: '', hide: [] as string[] }
+})
 const { customer, loaded, busy, url, favoritesUrl, favorites, load, send, query } = useAccount()
 const lang = computed(() => site.value?.Route?.LanguageIsoCode || 'fr')
 const french = computed(() => lang.value === 'fr')
@@ -50,11 +58,16 @@ watch(() => [customer.value?.Email, props.section, props.id], open)
   <div class="sf-acc-page">
     <p v-if="!loaded" class="sf-cart-wait">{{ w('Chargement de votre compte…') }}</p>
     <!-- not logged in: the form alone, or (theme setting « Page de connexion ») a photo on one half and the form on the other -->
-    <div v-else-if="(!customer || customer.Guest) && site?.Theme?.Settings?.LoginLayout === 'split'" class="sf-login-split">
-      <div class="sf-login-pic"><img v-if="site.Theme.Settings.LoginImage" :src="site.Theme.Settings.LoginImage" alt="" fetchpriority="high" decoding="async"></div>
-      <div class="sf-login-side"><SfLogin /></div>
+    <div v-else-if="(!customer || customer.Guest) && login.split" class="sf-login-split" :class="[login.band, { 'is-right': login.right, 'is-no-mobile-pic': !login.onMobile }]" :data-section="login.band ? 'main_login' : undefined">
+      <div class="sf-login-pic">
+        <picture v-if="login.image">
+          <source v-if="login.mobile" media="(max-width: 860px)" :srcset="login.mobile">
+          <img :src="login.image" alt="" fetchpriority="high" decoding="async" :style="{ objectPosition: 'center ' + login.focus }">
+        </picture>
+      </div>
+      <div class="sf-login-side"><SfLogin :title="login.title" :text="login.text" :hide="login.hide" /></div>
     </div>
-    <div v-else-if="!customer || customer.Guest" class="sf-acc-login"><SfLogin /></div>
+    <div v-else-if="!customer || customer.Guest" class="sf-acc-login" :class="login.band" :data-section="login.band ? 'main_login' : undefined"><SfLogin :title="login.title" :text="login.text" :hide="login.hide" /></div>
     <div v-else-if="site?.Pro && customer.Business && !customer.Active" class="sf-acc-login sf-login"><h2>{{ w('Compte en cours de validation') }}</h2><p>{{ w('Votre demande de compte professionnel est enregistrée. Notre équipe l\'active dans les plus brefs délais ; vous verrez alors les prix.') }}</p><button type="button" class="sf-link" :disabled="busy" @click="logout">{{ w('Se déconnecter') }}</button></div>
     <div v-else class="sf-acc-grid">
       <nav class="sf-acc-menu" :aria-label="w('Mon compte')">

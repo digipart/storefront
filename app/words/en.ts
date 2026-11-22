@@ -625,4 +625,7 @@ export default {
   'Look': 'Look',
   'Produit ajouté à votre panier': 'Added to your bag',
   'Vous aimerez aussi': 'You may also like',
+  'Continuer avec Google': 'Continue with Google',
+  'Continuer avec Facebook': 'Continue with Facebook',
+  'La connexion n\'a pas abouti. Réessayez, ou connectez-vous avec votre adresse e-mail.': 'The login did not go through. Try again, or log in with your e-mail address.',
 }

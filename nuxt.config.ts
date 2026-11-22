@@ -16,6 +16,7 @@ export default defineNuxtConfig({
     forcePro: process.env.FORCE_PRO || '',                  // development only: treat the site as a professional one (wholesale prices) whatever the channel says
     returnPortalUrl: process.env.RETURN_PORTAL_URL || '',   // optional: the return portal of the shop (https://return.digipart.fr/<brand>); the account then links an order to it when Digipart says it can be returned
     googlePlacesKey: process.env.GOOGLE_PLACES_KEY || '',   // optional: address suggestions on the order page (Google Places API, used from the server only)
+    warmPages: process.env.WARM_PAGES || '',                // '0': no warm-up of the pages after a start or a publication; '1': also in local development
     fixtures: process.env.DIGIPART_FIXTURES || '',          // development only: a folder of JSON answers read instead of calling Digipart
   },
   app: { head: { meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }] } },

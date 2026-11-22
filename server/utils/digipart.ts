@@ -23,12 +23,12 @@ async function watch(ask: (file: string, query: Record<string, string>) => Promi
   try {
     const changed = await ask('changes.php', since ? { Since: String(since) } : {})
     if (changed && Number(changed.Now) > 0) {
-      if (since && changed.Complete === false) { cache.clear(); forgetProducts([], true); clearPages() }
+      if (since && changed.Complete === false) { cache.clear(); forgetProducts([], true); agePages() }
       else if (since && Array.isArray(changed.Products) && changed.Products.length) {
         const ids = changed.Products.map(Number).filter((n: number) => n > 0)
         forgetProducts(ids, false)
         for (const key of [...cache.keys()]) { if (ids.some((id: number) => key.includes('IdProduct=' + id + '&') || key.endsWith('IdProduct=' + id))) { cache.delete(key) } }
-        clearPages()
+        agePages()   // served once more, redrawn behind
       }
       since = Number(changed.Now)
     }

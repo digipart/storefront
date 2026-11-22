@@ -124,7 +124,7 @@ useHead(() => view.value?.Kind === 'product'
 <template>
   <main>
     <LazySfCheckout v-if="view?.Kind === 'checkout'" :design="view.Design" />
-    <LazySfAccount v-else-if="view?.Kind === 'account'" :section="view.Section" :id="view.Id" />
+    <LazySfAccount v-else-if="view?.Kind === 'account'" :section="view.Section" :id="view.Id" :design="view.Design" />
     <LazySfFavorites v-else-if="view?.Kind === 'favorites'" />
     <LazySfReset v-else-if="view?.Kind === 'reset'" />
     <LazySfLookbook v-else-if="view?.Kind === 'lookbook'" :lookbook="view.Lookbook" />

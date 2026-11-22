@@ -40,13 +40,13 @@ const type = computed(() => props.section.Type as string)
 // the frame every section shares: its width, the space around it (less on a phone) and its background
 // a picture behind a section or a column: the veil (dark or light) over it, the picture for a phone, and the colour of text that reads on it (the CSS picks the picture by screen width)
 const cssUrl = (src: string) => 'url("' + String(src).replace(/["\\)\s]/g, (c) => encodeURIComponent(c)) + '")'
-const bgPicture = (image: any, imageMobile: any, veil: any, tone: any, posX = 'center', posY = 'center') => {
+const bgPicture = (image: any, imageMobile: any, veil: any, tone: any, y = 'BgPosY', x = 'BgPosX') => {
   if (!image) { return {} }
   const a = Math.max(0, Math.min(90, Number(veil) || 0)) / 100, rgb = tone === 'light' ? '255,255,255' : '0,0,0'
-  return { '--bg': cssUrl(image), '--bg-m': cssUrl(imageMobile || image), '--bgv': `linear-gradient(rgba(${rgb},${a}),rgba(${rgb},${a}))`, '--bgpos': posX + ' ' + posY, color: tone === 'light' ? '#1e2129' : '#fff' }
+  return { '--bg': cssUrl(image), '--bg-m': cssUrl(imageMobile || image), '--bgv': `linear-gradient(rgba(${rgb},${a}),rgba(${rgb},${a}))`, ...focusVars(focusOf(s.value, y, x), 'bg'), color: tone === 'light' ? '#1e2129' : '#fff' }
 }
 const frame = computed(() => ({
-  ...bgPicture(s.value.BgImage, s.value.BgImageMobile, s.value.BgVeil ?? 30, s.value.BgTone, s.value.BgPosX, s.value.BgPosY),
+  ...bgPicture(s.value.BgImage, s.value.BgImageMobile, s.value.BgVeil ?? 30, s.value.BgTone),
   borderTop: Number(s.value.BorderTop) > 0 ? s.value.BorderTop + 'px solid ' + (s.value.BorderColor || '#e6e6ee') : undefined, borderBottom: Number(s.value.BorderBottom) > 0 ? s.value.BorderBottom + 'px solid ' + (s.value.BorderColor || '#e6e6ee') : undefined,
   '--pt': (s.value.PaddingTop || 0) + 'px', '--pb': (s.value.PaddingBottom || 0) + 'px', '--pl': (s.value.PaddingLeft || 0) + 'px', '--pr': (s.value.PaddingRight || 0) + 'px', '--pm': (s.value.PaddingMobile || 60) / 100,
   background: s.value.Background === 'custom' ? s.value.BackgroundColor : undefined, color: s.value.Background === 'custom' ? s.value.TextColor : undefined,
@@ -67,7 +67,7 @@ const justify = computed(() => ({ center: 'center', right: 'flex-end' } as Recor
 // a large picture with its content on it (a banner, the slides of a carousel)
 const picture = computed(() => ({
   '--h': (s.value.Height || 560) + 'px', '--hm': (s.value.HeightMobile || 480) + 'px', '--pad': (s.value.ContentPadding || 0) + 'px', '--shade': (s.value.Overlay || 0) / 100,
-  '--pos': (s.value.ImageX || 'center') + ' ' + (s.value.ImageY || 'center'), color: s.value.ContentColor, textAlign: s.value.Align || 'center',
+  ...focusVars(focusOf(s.value, 'ImageY', 'ImageX')), color: s.value.ContentColor, textAlign: s.value.Align || 'center',
   '--jc': ({ top: 'flex-start', bottom: 'flex-end' } as Record<string, string>)[s.value.Position] || 'center',
 }))
 const slides = computed(() => blocks.value.filter((b: any) => b.Type === 'slide'))
@@ -123,7 +123,7 @@ const columnsStyle = computed(() => {
 })
 const columnPicture = (i: number) => {
   const n = i + 1, v = s.value, height = Number(v['C' + n + 'Height']) || 0, pad = Number(v['C' + n + 'Pad']) || 0, align = v['C' + n + 'Valign']
-  return { ...bgPicture(v['C' + n + 'Image'], v['C' + n + 'ImageMobile'], v['C' + n + 'Veil'] ?? 30, v['C' + n + 'Tone']), '--col-h': height ? height + 'px' : undefined, padding: pad ? pad + 'px' : undefined,
+  return { ...bgPicture(v['C' + n + 'Image'], v['C' + n + 'ImageMobile'], v['C' + n + 'Veil'] ?? 30, v['C' + n + 'Tone'], 'C' + n + 'PosY', 'C' + n + 'PosX'), '--col-h': height ? height + 'px' : undefined, padding: pad ? pad + 'px' : undefined,
     ...(align === 'center' || align === 'bottom' ? { display: 'flex', flexDirection: 'column', justifyContent: align === 'center' ? 'center' : 'flex-end' } : {}) }
 }
 const columnsReverse = computed(() => !!s.value.ReverseMobile && ratios(s.value.LayoutMobile, '1').length === 1)

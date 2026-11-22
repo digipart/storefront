@@ -546,4 +546,7 @@ export default {
   'Look': 'Look',
   'Produit ajouté à votre panier': 'Producto añadido a tu cesta',
   'Vous aimerez aussi': 'También te puede gustar',
+  'Continuer avec Google': 'Continuar con Google',
+  'Continuer avec Facebook': 'Continuar con Facebook',
+  'La connexion n\'a pas abouti. Réessayez, ou connectez-vous avec votre adresse e-mail.': 'No se ha podido iniciar sesión. Inténtelo de nuevo o use su dirección de correo electrónico.',
 }

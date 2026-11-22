@@ -43,7 +43,7 @@ onBeforeUnmount(() => { if (timer) { clearInterval(timer) } })
   <div class="sf-carousel" @mouseenter="paused = true" @mouseleave="paused = false" @focusin="paused = true" @focusout="paused = false">
     <div class="sf-carousel-view">
       <div ref="track" class="sf-slides" :class="{ 'is-fade': fade }" @scroll.passive="onScroll" @touchstart.passive="touchStart" @touchend.passive="touchEnd">
-        <div v-for="(slide, index) in slides" :key="slide.Id" class="sf-hero sf-slide" :class="{ 'is-empty': !slide.Settings.Image && !vimeo(slide.Settings.Video), 'is-on': index === at }" :aria-hidden="fade && index !== at ? 'true' : undefined">
+        <div v-for="(slide, index) in slides" :key="slide.Id" class="sf-hero sf-slide" :class="{ 'is-empty': !slide.Settings.Image && !vimeo(slide.Settings.Video), 'is-on': index === at }" :style="focusVars(focusOf(slide.Settings, 'ImageY', 'ImageX', focusOf(s, 'ImageY', 'ImageX')))" :aria-hidden="fade && index !== at ? 'true' : undefined">
           <picture v-if="slide.Settings.Image">
             <source v-if="slide.Settings.ImageMobile" media="(max-width: 767px)" :srcset="slide.Settings.ImageMobile">
             <img :src="slide.Settings.Image" alt="" :loading="first && slide === slides[0] ? 'eager' : 'lazy'" decoding="async">

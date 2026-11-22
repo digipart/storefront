@@ -24,6 +24,7 @@ Copier `.env.example` en `.env` et renseigner :
 | `ID_MARKET_PLACE` | Le canal de vente du site |
 | `CLIENT_ID`, `CLIENT_SECRET` | La clé du site (Configuration > Interface). Elle reste sur ce serveur, le navigateur ne la voit jamais |
 | `CACHE_SECONDS` | Durée de garde d'une réponse de Digipart, en secondes (300 par défaut ; vidée dès que la boutique publie) |
+| `WARM_PAGES` | Réchauffement des pages après un démarrage ou une publication : `0` pour le couper, `1` pour l'avoir aussi en local |
 
 Ne jamais commiter `.env`.
 
@@ -75,6 +76,7 @@ Le `Dockerfile` construit le moteur en deux étapes (construction, puis une imag
 | `NUXT_ID_MARKET_PLACE` | Le canal de vente du site |
 | `NUXT_CLIENT_ID`, `NUXT_CLIENT_SECRET` | La clé du front |
 | `NUXT_CACHE_SECONDS` | Durée de garde d'une réponse de Digipart (300) |
+| `NUXT_WARM_PAGES` | `0` coupe le réchauffement des pages (actif par défaut) |
 | `NUXT_GOOGLE_PLACES_KEY`, `NUXT_RETURN_PORTAL_URL` | Facultatives |
 
 Sur Coolify : méthode de construction « Dockerfile », port exposé 3000, domaine du site, variables ci-dessus **sans** « disponible à la construction ». Le contrôle de santé du Dockerfile vérifie seulement que le port répond (un site fermé ou un Digipart arrêté ne rend pas le conteneur « mort »).

@@ -30,6 +30,29 @@ function enter(event: H3Event, auth: any): boolean {
   return true
 }
 
+/** Google / Facebook login (Digipart: api/storefront/social-login.php, module « Connexion sociale »): the provider's secret stays in Digipart. */
+async function socialCall(event: H3Event, fields: Record<string, string>): Promise<any> {
+  const config = useRuntimeConfig(event), root = String(config.digipartUrl || config.localUrl || '').replace(/\/+$/, '')
+  if (!root || !config.clientId || !config.clientSecret) { return null }
+  try {
+    return await $fetch<any>(root + '/api/storefront/social-login.php', { method: 'POST', retry: 0, timeout: 20000, ignoreResponseError: true, responseType: 'json',
+      headers: { 'X-Client-Id': String(config.clientId), 'X-Client-Secret': String(config.clientSecret), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ IdMarketPlace: String(config.idMarketPlace), ...fields }).toString() })
+  } catch { return null }
+}
+export const socialRedirect = (event: H3Event, provider: string) => siteOrigin(event) + '/account/social/' + provider + '/callback'
+/** Where the visitor logs in at the provider ('' when it is not set up). */
+export async function socialStart(event: H3Event, provider: string, state: string): Promise<string> {
+  const answer = await socialCall(event, { Action: 'start', Provider: provider, RedirectUri: socialRedirect(event, provider), State: state })
+  return typeof answer?.Url === 'string' && /^https:\/\//.test(answer.Url) ? answer.Url : ''
+}
+export async function socialFinish(event: H3Event, provider: string, code: string, lang: string): Promise<boolean> {
+  const answer = await socialCall(event, { Action: 'finish', Provider: provider, Code: code, RedirectUri: socialRedirect(event, provider), IdCart: String(cartId(event) || ''), IdFavorite: String(favId(event) || ''), LanguageIsoCode: lang })
+  if (!enter(event, answer?.AuthData)) { return false }
+  setLoggedIn(event, true)
+  return true
+}
+
 export async function signIn(event: H3Event, body: any): Promise<string> {
   const email = clean(body?.Email, 150), password = String(body?.Password ?? '')
   if (!EMAIL.test(email) || password === '' || password.length > 200) { return 'E-mail ou mot de passe incorrect.' }
