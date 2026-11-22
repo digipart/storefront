@@ -217,6 +217,9 @@ a.sf-split-img { display: block; }
 .sf-sizes button { min-width: 46px; height: 42px; padding: 0 12px; border: 1px solid var(--t-border, #d8d8e5); background: transparent; color: inherit; font: inherit; font-size: 14px; cursor: pointer; }
 .sf-sizes button.is-on { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; font-weight: 600; }
 .sf-sizes button:disabled { opacity: .4; text-decoration: line-through; cursor: not-allowed; }
+/* sold-out size that opens the stock alert */
+.sf-sizes button.is-out:not(:disabled) { color: color-mix(in srgb, currentColor 45%, transparent); text-decoration: line-through; background: color-mix(in srgb, currentColor 5%, transparent); }
+.sf-sizes button.is-out:not(:disabled):hover, .sf-sizes button.is-out.is-on { color: inherit; text-decoration: none; }
 .sf-select { width: 100%; padding: 11px 14px; border: 1px solid var(--t-border, #d8d8e5); background: transparent; color: inherit; font: inherit; }
 .sf-link { font-size: 13px; text-decoration: underline; }
 .sf-buy { display: inline-flex; max-width: 100%; } .sf-buy.is-full { display: flex; } .sf-buy.is-full .sf-btn { flex: 1 1 auto; text-align: center; padding-top: 15px; padding-bottom: 15px; }

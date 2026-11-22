@@ -71,6 +71,16 @@ const guideOpen = ref(false), storesOpen = ref(false), reviewOpen = ref(false), 
 const goBack = () => { if (window.history.length > 1) { window.history.back() } else { window.location.href = site.value?.Route?.Prefix || '/' } }
 // « M'avertir du retour en stock » when nothing is left (the sold-out sizes it can be asked for)
 const alertSizes = computed(() => (product.value?.Variants || []).filter((v: any) => v.Label && !v.Available))
+// stock alert on: a sold-out size can be picked and opens the alert panel
+const alertOn = computed(() => site.value?.Theme?.Settings?.StockAlert !== false && !locked.value)
+const alertFor = ref<number | null>(null)
+const soldOutChosen = computed(() => !!chosen.value && !chosen.value.Available && alertOn.value)
+function pickSize(variant: any) {
+  if (!variant) { return }
+  picked.value = variant.Id
+  if (!variant.Available && alertOn.value) { alertFor.value = variant.Id }
+}
+const pickSizeId = (id: number) => pickSize(sizes.value.find((v: any) => v.Id === id))
 const w = useWords()
 // the points a purchase earns and the reviews of the product: asked once for the page, only when one of these blocks is drawn
 const extra = ref<any>(null)
@@ -113,26 +123,27 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
         </div>
         <div class="sf-vgroup" role="group" :aria-label="w('Taille')">
           <div class="sf-vlegend" :class="{ 'sf-sr': !s.Labels }">{{ w('Taille') }}</div>
-          <select v-if="s.Style === 'dropdown'" v-model.number="picked" class="sf-select" :aria-label="w('Taille')">
+          <select v-if="s.Style === 'dropdown'" :value="picked" class="sf-select" :aria-label="w('Taille')" @change="pickSizeId(Number(($event.target as HTMLSelectElement).value))">
             <option :value="0" disabled>{{ w('Choisir une taille') }}</option>
-            <option v-for="variant in sizeChoices" :key="variant.Id" :value="variant.Id" :disabled="!variant.Available">{{ variant.Size }}{{ variant.Available ? '' : ' (' + w('épuisé') + ')' }}</option>
+            <option v-for="variant in sizeChoices" :key="variant.Id" :value="variant.Id" :disabled="!variant.Available && !alertOn">{{ variant.Size }}{{ variant.Available ? '' : ' (' + w('épuisé') + ')' }}</option>
           </select>
           <div v-else class="sf-sizes">
-            <button v-for="variant in sizeChoices" :key="variant.Id" type="button" :class="{ 'is-on': picked === variant.Id }" :disabled="!variant.Available" :aria-pressed="picked === variant.Id" :title="variant.Available ? '' : w('Épuisé')" @click="picked = variant.Id">{{ variant.Size }}</button>
+            <button v-for="variant in sizeChoices" :key="variant.Id" type="button" :class="{ 'is-on': picked === variant.Id, 'is-out': !variant.Available }" :disabled="!variant.Available && !alertOn" :aria-pressed="picked === variant.Id" :title="variant.Available ? '' : w(alertOn ? 'M\'avertir du retour en stock' : 'Épuisé')" @click="pickSize(variant)">{{ variant.Size }}<span v-if="!variant.Available" class="sf-sr"> ({{ w('Épuisé') }})</span></button>
           </div>
         </div>
       </template>
       <template v-else>
         <legend :class="{ 'sf-sr': !s.Labels }">{{ w('Taille') }}</legend>
-        <select v-if="s.Style === 'dropdown'" v-model.number="picked" class="sf-select" :aria-label="w('Taille')">
+        <select v-if="s.Style === 'dropdown'" :value="picked" class="sf-select" :aria-label="w('Taille')" @change="pickSizeId(Number(($event.target as HTMLSelectElement).value))">
           <option :value="0" disabled>{{ w('Choisir une taille') }}</option>
-          <option v-for="variant in sizes" :key="variant.Id" :value="variant.Id" :disabled="!variant.Available">{{ variant.Label }}{{ variant.Available ? '' : ' (' + w('épuisé') + ')' }}</option>
+          <option v-for="variant in sizes" :key="variant.Id" :value="variant.Id" :disabled="!variant.Available && !alertOn">{{ variant.Label }}{{ variant.Available ? '' : ' (' + w('épuisé') + ')' }}</option>
         </select>
         <div v-else class="sf-sizes">
-          <button v-for="variant in sizes" :key="variant.Id" type="button" :class="{ 'is-on': picked === variant.Id }" :disabled="!variant.Available" :aria-pressed="picked === variant.Id" :title="variant.Available ? '' : w('Épuisé')" @click="picked = variant.Id">{{ variant.Label }}</button>
+          <button v-for="variant in sizes" :key="variant.Id" type="button" :class="{ 'is-on': picked === variant.Id, 'is-out': !variant.Available }" :disabled="!variant.Available && !alertOn" :aria-pressed="picked === variant.Id" :title="variant.Available ? '' : w(alertOn ? 'M\'avertir du retour en stock' : 'Épuisé')" @click="pickSize(variant)">{{ variant.Label }}<span v-if="!variant.Available" class="sf-sr"> ({{ w('Épuisé') }})</span></button>
         </div>
       </template>
     </fieldset>
+    <LazySfStockAlert v-if="alertFor !== null" :product="product" :variant="alertFor" @close="alertFor = null" />
     <template v-else-if="block.Type === 'p_sizeguide' && t.Text">
       <button v-if="guidePage > 0" type="button" class="sf-link sf-guide" aria-haspopup="dialog" @click="guideOpen = true">{{ t.Text }}</button>
       <LazySfPagePanel v-if="guideOpen" :id="guidePage" :title="t.Text" @close="guideOpen = false" />
@@ -154,9 +165,9 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
       </div>
       <a v-if="s.LookButton && product.LookUrl" :href="product.LookUrl" class="sf-btn is-outline sf-look-btn" :style="{ fontSize: buyLook.style?.fontSize, letterSpacing: buyLook.style?.letterSpacing, textTransform: buyLook.style?.textTransform }">{{ w('Look') }}</a>
       <button v-if="locked" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="product.PriceState === 'pending'" @click="showPanel('account')">{{ w(product.PriceState === 'pending' ? 'Compte en cours de validation' : product.PriceState === 'business' ? 'Prix réservés aux professionnels' : 'Se connecter pour commander') }}</button>
-      <button v-else-if="!product.Available && alertSizes.length && site?.Theme?.Settings?.StockAlert !== false" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" @click="alertOpen = true">{{ w('M\'avertir du retour en stock') }}</button>
+      <button v-else-if="soldOutChosen || (!product.Available && alertSizes.length && site?.Theme?.Settings?.StockAlert !== false)" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" @click="alertOpen = true">{{ w('M\'avertir du retour en stock') }}</button>
       <button v-else type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="!product.Available || cartBusy" @click="buy">{{ w(product.Available ? (cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) : 'Épuisé') }}</button>
-      <LazySfStockAlert v-if="alertOpen" :product="product" @close="alertOpen = false" />
+      <LazySfStockAlert v-if="alertOpen" :product="product" :variant="soldOutChosen ? picked : undefined" @close="alertOpen = false" />
       <button type="button" class="sf-heart" :class="{ 'is-on': isFavorite(product.Id) }" :aria-pressed="isFavorite(product.Id)" :aria-label="w(isFavorite(product.Id) ? 'Retirer de mes favoris' : 'Ajouter à mes favoris')" @click="toggleFavorite(product.Id)"><svg viewBox="0 0 24 24" width="20" height="20" :fill="isFavorite(product.Id) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3 4.6 13a4.7 4.7 0 0 1 0-6.7 4.8 4.8 0 0 1 6.8 0l.6.6.6-.6a4.8 4.8 0 0 1 6.8 0 4.7 4.7 0 0 1 0 6.7z"/></svg></button>
       <button v-if="product.TaxExcl && locked" type="button" class="sf-prohelp" aria-haspopup="dialog" @click="proOpen = true"><strong>{{ w('Nouveau client professionnel ?') }}</strong><span>{{ w('Découvrez les étapes pour commander') }}</span></button>
       <LazySfLot v-if="lotOpen" :product="product" @close="lotOpen = false" />
