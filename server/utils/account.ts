@@ -103,7 +103,9 @@ export async function changeAccount(event: H3Event, body: any, lang: string, ori
   }
   if (action === 'forgot') {
     const email = clean(body?.Email, 150)
-    if (EMAIL.test(email)) { await cartCall(event, 'POST', 'customer/password/forget', { Email: email, LanguageIsoCode: lang.toUpperCase(), RootOrigin: origin.replace(/\/+$/, '') + '/' }) }
+    // the language in LOWER case for this script: Digipart uses it as it comes for the folder of the e-mail (templates/mail/fr/), for its subject and in the link of the e-mail
+    // (<site>/fr/reset). In upper case the folder does not exist on the server (it does on a Mac, whose disk ignores the case): no e-mail left, and nothing said so.
+    if (EMAIL.test(email)) { await cartCall(event, 'POST', 'customer/password/forget', { Email: email, LanguageIsoCode: lang.toLowerCase(), RootOrigin: origin.replace(/\/+$/, '') + '/' }) }
     return { error: '', note: 'Si un compte existe avec cette adresse, un e-mail vient de vous être envoyé pour choisir un nouveau mot de passe.' }   // the same words whether the account exists or not
   }
   if (action === 'reset') {
