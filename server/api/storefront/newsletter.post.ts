@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   const email = String(body?.Email ?? '').trim().slice(0, 150)
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { return { Done: false, Error: 'Indiquez une adresse e-mail valable.' } }
   if (String(body?.Website ?? '') !== '') { return { Done: true, Error: '' } }
-  const answer = await cartCall(event, 'POST', 'newsletter/subscribe', { Email: email, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR', IP: getRequestIP(event, { xForwardedFor: true }) || '' })
+  const answer = await cartCall(event, 'POST', 'newsletter/subscribe', { Email: email, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: visitorCurrency(event), IP: getRequestIP(event, { xForwardedFor: true }) || '' })
   const done = !!answer && (answer.Status === 'subscribed' || answer.status === 'success' || !!answer.Email)
   return { Done: done, Error: done ? '' : 'Votre inscription n\'a pas pu être enregistrée, merci de réessayer.' }
 })

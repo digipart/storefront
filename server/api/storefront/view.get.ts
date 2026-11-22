@@ -38,16 +38,16 @@ const view = async (event: any): Promise<any> => {
     const book = await digipart(event, 'lookbook.php', { ...preview, ...language, Slug: look[1] })
     if (!book) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
     const pinned: Record<number, any> = {}
-    await Promise.all(((book.ProductIds as number[]) || []).slice(0, 60).map(async (id) => { const product = await loadProduct(event, id, lang, prefix, 'EUR', priceBase); if (product) { pinned[id] = product } }))
+    await Promise.all(((book.ProductIds as number[]) || []).slice(0, 60).map(async (id) => { const product = await loadProduct(event, id, lang, prefix, visitorCurrency(event), priceBase); if (product) { pinned[id] = product } }))
     return { Kind: 'lookbook', Design: null, Page: null, Lookbook: { Alternates: Object.fromEntries(Object.entries(book.Slugs || {}).map(([iso, slug]) => [iso, 'lookbook/' + slug])), Title: String(book.Title || ''), SeoTitle: String(book.SeoTitle || book.Title || ''), SeoDescription: String(book.SeoDescription || ''), Blocks: book.Blocks || [], Products: pinned } }
   }
 
   // « Shop the look »: a product and the pieces that go with it (the products associated with it in Digipart), to buy together
   const lookAt = rest.match(/^shop-the-look\/[\p{L}\p{N}_.-]{1,200}-(\d{1,10})$/u)
   if (lookAt) {
-    const main = await loadProduct(event, Number(lookAt[1]), lang, prefix, 'EUR', priceBase)
+    const main = await loadProduct(event, Number(lookAt[1]), lang, prefix, visitorCurrency(event), priceBase)
     const ids: number[] = main ? (((await digipart(event, 'looks.php', { IdProduct: main.Id }).catch(() => null))?.ProductIds as number[]) || []) : []
-    const pieces = (await Promise.all(ids.slice(0, 12).map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean)
+    const pieces = (await Promise.all(ids.slice(0, 12).map(id => loadProduct(event, id, lang, prefix, visitorCurrency(event), priceBase)))).filter(Boolean)
     if (!main || !pieces.length) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
     return { Kind: 'look', Design: await design('look').catch(() => null), Page: null, Look: { Product: main, Pieces: pieces } }   // the page « Shop the look » of the site builder, when it was published
   }
@@ -64,7 +64,7 @@ const view = async (event: any): Promise<any> => {
     const answer = await digipart(event, 'brand.php', { ...preview, ...language, Slug: brandAt[1] })
     const brand = answer?.Brand
     if (!brand) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
-    const products = (await Promise.all(((brand.ProductIds as number[]) || []).slice(0, 48).map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean)
+    const products = (await Promise.all(((brand.ProductIds as number[]) || []).slice(0, 48).map(id => loadProduct(event, id, lang, prefix, visitorCurrency(event), priceBase)))).filter(Boolean)
     return { Kind: 'brand', Design: null, Page: null, Brand: { ...shapeBrand(brand), Description: String(brand.Description || '').slice(0, 20000), SeoTitle: text(brand.SeoTitle || brand.Title || brand.Name, 160), SeoDescription: text(brand.SeoDescription || brand.DescriptionShort, 300),
       Alternates: Object.fromEntries(Object.entries(brand.Slugs || {}).map(([iso, slug]) => [iso, 'marque/' + slug])), Products: products } }
   }
@@ -85,14 +85,14 @@ const view = async (event: any): Promise<any> => {
   // a product: its address ends with its id
   const idProduct = Number((segments[segments.length - 1].match(/-(\d{1,10})$/) || [])[1] || 0)
   if (segments.length >= 2 && idProduct > 0) {
-    const product = await loadProduct(event, idProduct, lang, prefix, 'EUR', priceBase)
+    const product = await loadProduct(event, idProduct, lang, prefix, visitorCurrency(event), priceBase)
     if (!product) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
     return { Kind: 'product', Design: await design('product', { IdProduct: Number(product.Id) || 0 }), Page: null, Product: await withPaths(product) }
   }
   // the addresses Digipart itself writes to a product, without its id: <category>/<name> and products/<name>
   if (segments.length === 2) {
     const found = await digipart(event, 'products.php', { Mode: 'slug', Slug: segments[1] }).catch(() => null)
-    const product = found?.ProductIds?.[0] ? await loadProduct(event, Number(found.ProductIds[0]), lang, prefix, 'EUR', priceBase) : null
+    const product = found?.ProductIds?.[0] ? await loadProduct(event, Number(found.ProductIds[0]), lang, prefix, visitorCurrency(event), priceBase) : null
     if (product) { return { Kind: 'product', Design: await design('product', { IdProduct: Number(product.Id) || 0 }), Page: null, Product: await withPaths(product) } }
   }
   if (segments.length !== 1) { throw createError({ statusCode: 404, statusMessage: 'not-found' }) }
@@ -127,7 +127,7 @@ const view = async (event: any): Promise<any> => {
   const filtered = { ...(attributes ? { FilterAttribute: attributes } : {}), ...priceRange, ...(promo ? { InPromotion: 1, ...(priceMax > priceMin ? {} : { FilterPrice: '0,1000000' }) } : {}) }
   // how many products the box would give with the other choices kept
   const promoAsk = { ...(attributes ? { FilterAttribute: attributes } : {}), ...(priceMax > priceMin ? priceRange : { FilterPrice: '0,1000000' }), InPromotion: 1 }
-  const same = { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR' }
+  const same = { CategoryDescriptionFriendlyURL: rest, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: visitorCurrency(event) }
   const [listing, filterAttributes, filterPrice, media, links, promoListing] = await Promise.all([
     shopApi(event, 'category/product', { ...same, Offset: (pageNumber - 1) * perPage, Limit: perPage, ...(SORTS[sort] || {}), ...filtered }),
     shopApi(event, 'category/filterAttribute', same), shopApi(event, 'category/filterPrice', same),
@@ -150,10 +150,10 @@ const view = async (event: any): Promise<any> => {
   const filters = { Groups: groups, PriceMin: Math.floor(Number(filterPrice?.RegularPrice?.MinPriceTaxIncl || 0)), PriceMax: Math.ceil(Number(filterPrice?.RegularPrice?.MaxPriceTaxIncl || 0)), Attributes: attributes ? attributes.split(',').map(Number) : [], Min: priceMax > priceMin ? priceMin : 0, Max: priceMax > priceMin ? priceMax : 0, Promo: promo, PromoCount: Number(promoListing?.TotalProduct || 0) }
   const seo = (Array.isArray(category.SEO) ? category.SEO : []).find((s: any) => String(s.LanguageIsoCode || '').toLowerCase() === lang) || category.SEO?.[0] || {}
   const total = Number(listing?.TotalProduct || 0)
-  let products = await shapeListed(event, (listing?.Products || []).filter(Boolean), lang, prefix, 'EUR', priceBase)
+  let products = await shapeListed(event, (listing?.Products || []).filter(Boolean), lang, prefix, visitorCurrency(event), priceBase)
   if (!products.length && total > 0 && !attributes && !filters.Max && !promo) {   // the listing named products it could not describe (a development server, another language): each is read on its own
     const ids: number[] = ((await digipart(event, 'products.php', { Mode: 'category', IdCategory: Number(category.IdCategory), Limit: perPage }).catch(() => null))?.ProductIds as number[]) || []
-    products = (await Promise.all(ids.map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase)))).filter(Boolean) as any[]
+    products = (await Promise.all(ids.map(id => loadProduct(event, id, lang, prefix, visitorCurrency(event), priceBase)))).filter(Boolean) as any[]
   }
   // the staging of the category (Catalogue > Catégories > Mise en scène): its order, the products put forward, the photo of each card and the editorial blocks. It is the default sort of the page:
   // a visitor who sorts or filters sees the products alone, in the order asked for
@@ -171,7 +171,7 @@ const view = async (event: any): Promise<any> => {
       const stagedItem = async (i: any) => {
           if (i.Type === 'edito') { return { Kind: 'edito', Id: String(i.Id), Size: String(i.Size), Image: /^https?:\/\//.test(String(i.Image)) ? String(i.Image) : '', Video: String(i.Video || ''), Title: String(i.Title || '').slice(0, 120), Height: Math.max(0, Math.min(1200, Number(i.Height) || 0)), HeightMobile: Math.max(0, Math.min(1200, Number(i.HeightMobile) || 0)), Url: /^(https?:\/\/|\/(?!\/))/.test(String(i.Url)) ? String(i.Url) : '' } }
           // a product put forward is read like its own page does (its price, its promotion and its old price are those of the product page), the listing only when that fails
-          const product: any = (await loadProduct(event, Number(i.IdProduct), lang, prefix, 'EUR', priceBase).catch(() => null)) || byId.get(Number(i.IdProduct))
+          const product: any = (await loadProduct(event, Number(i.IdProduct), lang, prefix, visitorCurrency(event), priceBase).catch(() => null)) || byId.get(Number(i.IdProduct))
           if (!product) { return null }
           const own = (Array.isArray(i.Images) ? i.Images : []).filter((x: any) => /^https?:\/\//.test(String(x?.Src)))
           const shown = own.length ? { ...product, Images: [own[own.length - 1].Src, ...product.Images.filter((src: string) => !own.some((x: any) => x.Src === src))], ImageSets: [own.map((x: any) => x.Src + ' ' + x.Width + 'w').join(', '), ...(product.ImageSets || [])] } : product
@@ -186,7 +186,7 @@ const view = async (event: any): Promise<any> => {
         const start = (pageNumber - 1) * perPage
         items = (await Promise.all(order.slice(start, start + perPage).map(async (entry) => {
           if (entry.staged) { return stagedItem(entry.staged) }
-          const product = (await loadProduct(event, entry.id!, lang, prefix, 'EUR', priceBase).catch(() => null)) || byId.get(entry.id)   // as the product page reads it (its promotion), like the staged ones
+          const product = (await loadProduct(event, entry.id!, lang, prefix, visitorCurrency(event), priceBase).catch(() => null)) || byId.get(entry.id)   // as the product page reads it (its promotion), like the staged ones
           return product ? { Kind: 'product', Size: '1x1', Product: product } : null
         }))).filter(Boolean)
         pages = Math.max(1, Math.ceil(order.length / perPage))

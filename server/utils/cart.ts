@@ -58,7 +58,7 @@ export async function readCart(event: H3Event, lang: string, prefix: string, cou
   if (!id) { return emptyCart() }
   // the cart, how prices are shown to this visitor and the free delivery step of the country are asked at the same time
   const [raw, policy, freeAsked] = await Promise.all([
-    cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: 'EUR', CountryIsoCode: country, LanguageIsoCode: lang.toUpperCase() }),
+    cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: visitorCurrency(event), CountryIsoCode: country, LanguageIsoCode: lang.toUpperCase() }),
     pricing(event),   // a professional site shows its prices without tax
     digipart(event, 'shipping.php', { CountryIsoCode: country }).catch(() => null),
   ])
@@ -95,7 +95,8 @@ export async function readCart(event: H3Event, lang: string, prefix: string, cou
   const cartCountry = String(raw.Country?.CountryIsoCode || country).toUpperCase()
   const free = cartCountry === country.toUpperCase() ? freeAsked : await digipart(event, 'shipping.php', { CountryIsoCode: cartCountry }).catch(() => null)
   return {
-    TaxExcl: policy.wholesale, FreeFrom: typeof free?.FreeShippingFrom === 'number' ? free.FreeShippingFrom : null, Relay: point ? { Name: String(point.Name), Address: [point.Address1, [point.Postcode, point.City].filter(Boolean).join(' ')].filter(Boolean).join(', ') } : null,
+    TaxExcl: policy.wholesale, FreeFrom: typeof free?.FreeShippingFrom === 'number' && visitorCurrency(event) === SHOP_CURRENCY ? free.FreeShippingFrom : null,   // the threshold is in the shop's currency
+    Relay: point ? { Name: String(point.Name), Address: [point.Address1, [point.Postcode, point.City].filter(Boolean).join(' ')].filter(Boolean).join(', ') } : null,
     IdCarrier: Number(carrier?.IdCarrier || 0), IdRelayPoint: String(carrier?.IdRelayPoint || ''), CarrierTitle: String(carrier?.Title || carrier?.Name || ''),
     ProductsTaxExcl: Number(raw.Total?.Product?.TaxExcl || 0), ToPayTaxExcl: Number(raw.Total?.ToPay?.TaxExcl || 0),
     Count: lines.reduce((sum, line) => sum + line.Quantity, 0), Currency: String(raw.Currency?.IsoCode || 'EUR'), Lines: lines, Codes: codes,

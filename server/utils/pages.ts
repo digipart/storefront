@@ -29,7 +29,9 @@ export function pageKey(event: H3Event): string {
   if (getCookie(event, 'sf_session') || getCookie(event, 'sf_preview')) { return '' }
   if (personalPath(path)) { return '' }
   const host = String(getRequestHeader(event, 'x-forwarded-host') || getRequestHeader(event, 'host') || '').toLowerCase()
-  return host ? host + path : ''
+  // a page carries prices: one copy per currency
+  const currency = visitorCurrency(event)
+  return host ? host + path + (currency === SHOP_CURRENCY ? '' : '#' + currency) : ''
 }
 
 export function getPage(key: string): Page | null {

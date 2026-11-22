@@ -630,4 +630,10 @@ export default {
   'La connexion n\'a pas abouti. Réessayez, ou connectez-vous avec votre adresse e-mail.': 'Die Anmeldung ist fehlgeschlagen. Versuchen Sie es erneut oder melden Sie sich mit Ihrer E-Mail-Adresse an.',
   'Précédent': 'Zurück',
   'Suivant': 'Weiter',
+  'Choisir votre pays et votre langue': 'Land und Sprache wählen',
+  'Langue': 'Sprache',
+  'Se souvenir de mon choix': 'Auswahl merken',
+  'Entrer': 'Weiter',
+  'Devise': 'Währung',
+  'Les cartes cadeaux ne sont pas acceptées dans cette devise.': 'Geschenkkarten werden in dieser Währung nicht akzeptiert.',
 }

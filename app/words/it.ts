@@ -551,4 +551,10 @@ export default {
   'La connexion n\'a pas abouti. Réessayez, ou connectez-vous avec votre adresse e-mail.': 'L\'accesso non è riuscito. Riprova o accedi con il tuo indirizzo e-mail.',
   'Précédent': 'Precedente',
   'Suivant': 'Successivo',
+  'Choisir votre pays et votre langue': 'Scegli paese e lingua',
+  'Langue': 'Lingua',
+  'Se souvenir de mon choix': 'Ricorda la mia scelta',
+  'Entrer': 'Entra',
+  'Devise': 'Valuta',
+  'Les cartes cadeaux ne sont pas acceptées dans cette devise.': 'Le carte regalo non sono accettate in questa valuta.',
 }

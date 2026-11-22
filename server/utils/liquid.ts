@@ -82,7 +82,7 @@ export async function withCode<T extends { Sections?: any[] } | null | undefined
   if (!sections.some((section: any) => section?.Type === 'code')) { return design }
   const preview = previewQuery(event), lang = langOf(event)
   const site = await digipart<any>(event, '', { ...preview, LanguageIsoCode: lang.lang }).catch(() => null)
-  const Site = { Name: String(site?.Name || ''), Url: siteOrigin(event) + (lang.prefix || '') + '/', LanguageIsoCode: lang.lang, Currency: 'EUR' }
+  const Site = { Name: String(site?.Name || ''), Url: siteOrigin(event) + (lang.prefix || '') + '/', LanguageIsoCode: lang.lang, Currency: visitorCurrency(event) }
   const drawn = await Promise.all(sections.map(async (section: any) => {
     if (section?.Type !== 'code') { return section }
     const file = String(section.Settings?.File || '')

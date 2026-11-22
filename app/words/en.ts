@@ -630,4 +630,10 @@ export default {
   'La connexion n\'a pas abouti. Réessayez, ou connectez-vous avec votre adresse e-mail.': 'The login did not go through. Try again, or log in with your e-mail address.',
   'Précédent': 'Previous',
   'Suivant': 'Next',
+  'Choisir votre pays et votre langue': 'Choose your country and language',
+  'Langue': 'Language',
+  'Se souvenir de mon choix': 'Remember my choice',
+  'Entrer': 'Enter',
+  'Devise': 'Currency',
+  'Les cartes cadeaux ne sont pas acceptées dans cette devise.': 'Gift cards are not accepted in this currency.',
 }

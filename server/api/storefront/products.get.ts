@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   const limit = Math.max(1, Math.min(24, Number(query.limit) || 4))
   const site = await digipart(event, '').catch(() => null)
   const priceBase = site?.PriceBaseType || 'retail'
-  const load = (ids: number[]) => Promise.all(ids.map(id => loadProduct(event, id, lang, prefix, 'EUR', priceBase))).then(list => list.filter(Boolean) as any[])
+  const load = (ids: number[]) => Promise.all(ids.map(id => loadProduct(event, id, lang, prefix, visitorCurrency(event), priceBase))).then(list => list.filter(Boolean) as any[])
   const idsOf = async (mode: string, category = 0, ids = '', count = limit, more: Record<string, string | number> = {}): Promise<number[]> => ((await digipart(event, 'products.php', { Mode: mode, IdCategory: category > 0 ? category : '', ProductIds: ids, Limit: count, ...more }).catch(() => null))?.ProductIds as number[]) || []   // no category: no IdCategory (Digipart refused 0)
   const rankings = ['top_viewed', 'top_cart', 'top_sales']
   const days = Math.max(1, Math.min(365, Math.floor(Number(query.days) || 30)))
@@ -36,12 +36,12 @@ export default defineEventHandler(async (event) => {
     const current = /^\d{1,10}$/.test(String(query.product ?? '')) ? Number(query.product) : 0
     let products: any[] = []
     if (current) {
-      const answer = await shopApi(event, 'product/recommendation', { IdProduct: current, Mode: String(query.reco) === 'upsell' ? 'upsell' : 'crosssell', LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR' })
+      const answer = await shopApi(event, 'product/recommendation', { IdProduct: current, Mode: String(query.reco) === 'upsell' ? 'upsell' : 'crosssell', LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: visitorCurrency(event) })
       const list: any[] = Array.isArray(answer) ? answer : (Array.isArray(answer?.Products) ? answer.Products : [])
       const ids = [...new Set(list.map(item => Number(item?.IdProduct || item?.Id || 0)).filter(id => id > 0 && id !== current))].slice(0, limit)
       products = await load(ids)
       if (products.length < limit) {   // nothing (or not enough) recommended yet: the other products of its category, then the newest
-        const self = await loadProduct(event, current, lang, prefix, 'EUR', priceBase)
+        const self = await loadProduct(event, current, lang, prefix, visitorCurrency(event), priceBase)
         const have = new Set([current, ...products.map(p => p.Id)])
         const more = [...(self?.IdCategory ? await idsOf('category', self.IdCategory, '', limit + 1) : []), ...(await idsOf('latest', 0, '', limit + 1))].filter(id => !have.has(id) && have.add(id))
         products = products.concat(await load(more.slice(0, limit - products.length)))

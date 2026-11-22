@@ -1406,3 +1406,21 @@ header.sf-over.is-bare:not(.is-solid):not(:hover):not(:focus-within) .sf-s-annou
 }
 @keyframes sf-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .sf-sheet-panel { animation: none; } }
+
+/* footer « pays et langue » and its full screen */
+.sf-fbottom { align-items: center; justify-content: space-between; }
+.sf-region-link { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
+.sf-region { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--t-bg, #fff) center / cover no-repeat; color: var(--t-text, #1e2129); outline: 0; }
+.sf-region.has-image::before { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, .35); }
+.sf-region-close { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border: 0; background: none; color: inherit; font-size: 18px; cursor: pointer; }
+.sf-region.has-image .sf-region-close, .sf-region.has-image .sf-region-name { color: #fff; }
+.sf-region-box { position: relative; display: grid; gap: 12px; width: min(340px, 100%); }
+.sf-region-name { margin: 0 0 20px; text-align: center; font-size: 28px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.sf-region-box label { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; border: 1px solid var(--t-text, #1e2129); background: #fff; color: #1e2129; font-size: 14px; }
+.sf-region-box label > span { flex: 0 0 auto; }
+.sf-region-box label > span::after { content: ' :'; }
+.sf-region-box select { flex: 1 1 auto; min-width: 0; height: 46px; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; }
+.sf-region-box .sf-region-check { justify-content: space-between; cursor: pointer; }
+.sf-region-box .sf-region-check > span::after { content: ''; }
+.sf-region-box .sf-region-check input { order: 2; width: 16px; height: 16px; accent-color: #1e2129; }
+.sf-region-box .sf-btn { min-height: 48px; text-align: center; }

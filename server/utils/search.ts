@@ -35,7 +35,7 @@ export async function readSearch(event: H3Event, ask: SearchAsk, lang: string, p
     LanguageIsoCode: lang, Term: ask.term, Facets: 1, Attributes: ask.attr, PriceMin: ask.min, PriceMax: ask.max, Tab: ask.tab, Promo: ask.promo ? 1 : '', Sort: ask.sort || 'newest', Limit: ask.size, Offset: (ask.page - 1) * ask.size,
   }).catch(() => null)
   if (!found) { return empty }
-  const products = (await Promise.all(((found.ProductIds as number[]) || []).map(id => loadProduct(event, Number(id), lang, prefix, 'EUR', priceBase)))).filter(Boolean)
+  const products = (await Promise.all(((found.ProductIds as number[]) || []).map(id => loadProduct(event, Number(id), lang, prefix, visitorCurrency(event), priceBase)))).filter(Boolean)
   const chosen = ask.attr ? ask.attr.split(',').map(Number) : []
   // a value no product would have with the other choices is not offered (unless it is chosen)
   const groups = (Array.isArray(found.Facets?.Groups) ? found.Facets.Groups : []).map((g: any) => ({

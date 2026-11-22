@@ -551,4 +551,10 @@ export default {
   'La connexion n\'a pas abouti. Réessayez, ou connectez-vous avec votre adresse e-mail.': 'No se ha podido iniciar sesión. Inténtelo de nuevo o use su dirección de correo electrónico.',
   'Précédent': 'Anterior',
   'Suivant': 'Siguiente',
+  'Choisir votre pays et votre langue': 'Elija su país e idioma',
+  'Langue': 'Idioma',
+  'Se souvenir de mon choix': 'Recordar mi elección',
+  'Entrer': 'Entrar',
+  'Devise': 'Divisa',
+  'Les cartes cadeaux ne sont pas acceptées dans cette devise.': 'Las tarjetas regalo no se aceptan en esta divisa.',
 }

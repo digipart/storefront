@@ -47,7 +47,7 @@ function amountShown(event: H3Event, shown?: number): Record<string, number> {
 /** The gift cards of the cart of this visit, or null (no cart, not identified yet, or a Digipart without gift card payment). */
 export async function readGiftCards(event: H3Event, shown?: number): Promise<GiftCardState | null> {
   const id = cartId(event)
-  if (!id || !sessionToken(event)) { return null }
+  if (!id || !sessionToken(event) || visitorCurrency(event) !== SHOP_CURRENCY) { return null }   // gift cards and Alma are in the shop's currency only
   return shapeGift(await cartCall(event, 'GET', 'cart/giftcard', { IdCart: id, ...amountShown(event, shown) }))
 }
 /** Puts a gift card on the cart ({Action: 'gift-add', CardNumber, Pin}) or takes one off ({Action: 'gift-remove', Id}). Returns '' or the reason it was refused. */
@@ -55,14 +55,16 @@ export async function changeGiftCards(event: H3Event, body: any): Promise<string
   const id = cartId(event)
   if (!id) { return 'Votre panier est vide.' }
   if (!sessionToken(event)) { return 'Validez vos coordonnées avant d\'ajouter une carte cadeau.' }
+  if (visitorCurrency(event) !== SHOP_CURRENCY) { return 'Les cartes cadeaux ne sont pas acceptées dans cette devise.' }
   const answer = String(body?.Action) === 'gift-remove'
     ? await cartCall(event, 'DELETE', 'cart/giftcard', { IdCart: id, ...amountShown(event), IdCartGiftCard: Math.floor(Number(body?.Id) || 0) })
-    : await cartCall(event, 'POST', 'cart/giftcard', { IdCart: id, ...amountShown(event), CardNumber: String(body?.CardNumber ?? '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40), Pin: String(body?.Pin ?? '').replace(/[^A-Za-z0-9]/g, '').slice(0, 12), CurrencyIsoCode: 'EUR' })
+    : await cartCall(event, 'POST', 'cart/giftcard', { IdCart: id, ...amountShown(event), CardNumber: String(body?.CardNumber ?? '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40), Pin: String(body?.Pin ?? '').replace(/[^A-Za-z0-9]/g, '').slice(0, 12), CurrencyIsoCode: visitorCurrency(event) })
   if (answer && Array.isArray(answer.GiftCards)) { return '' }
   return GIFT_WORDS[String(answer?.Reason || '')] || 'Cette carte cadeau n\'a pas pu être prise en compte, merci de réessayer.'
 }
 /** The customer validates the payment: the gift cards are debited of their part. Answers what is left to pay another way, in cents (`null` = no gift card on this cart). */
 async function holdGiftCards(event: H3Event, id: number, shown: number): Promise<{ left: number, covered: number } | null> {
+  if (visitorCurrency(event) !== SHOP_CURRENCY) { return null }
   const answer = await cartCall(event, 'POST', 'cart/giftcard/hold', { IdCart: id, ...amountShown(event, shown) })
   if (!answer || !Array.isArray(answer.GiftCards) || !answer.GiftCards.length) { return null }
   return { left: cents(number(answer.ToPay?.TaxIncl)), covered: cents(number(answer.Held?.TaxIncl)) }
@@ -87,7 +89,7 @@ export async function startStripe(event: H3Event, body: any, lang: string): Prom
   if (!customer?.Id || !address) { return { error: 'Validez vos coordonnées avant de payer.' } }
   const upper = lang.toUpperCase()
   const [raw, methods] = await Promise.all([
-    cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: 'EUR', CountryIsoCode: address.CountryIsoCode, LanguageIsoCode: upper }),
+    cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: visitorCurrency(event), CountryIsoCode: address.CountryIsoCode, LanguageIsoCode: upper }),
     cartCall(event, 'GET', 'payment/methods', { IdAddress: address.IdAddress, LanguageIsoCode: upper }),
   ])
   if (!raw || !raw.IdCart || raw.status === 'error' || Number(raw.IdCart) !== id) { return { error: 'Votre panier n\'a pas pu être lu, merci de réessayer.' } }
@@ -170,7 +172,7 @@ export async function startFree(event: H3Event, lang: string, held?: { left: num
   const address = (list.find((a: any) => a.IsDelivery) || list[0]) as CheckoutAddress | undefined
   if (!address) { return { error: 'Validez vos coordonnées avant de payer.' } }
   const upper = lang.toUpperCase()
-  const raw = await cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: 'EUR', CountryIsoCode: address.CountryIsoCode, LanguageIsoCode: upper })
+  const raw = await cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: visitorCurrency(event), CountryIsoCode: address.CountryIsoCode, LanguageIsoCode: upper })
   if (!raw || !raw.IdCart || raw.status === 'error' || Number(raw.IdCart) !== id) { return { error: 'Votre panier n\'a pas pu être lu, merci de réessayer.' } }
   const products: any[] = (Array.isArray(raw.Products) ? raw.Products : []).filter((line: any) => Number(line.IdProduct) > 0 && Number(line.Quantity) > 0)
   if (!products.length) { return { error: 'Votre panier est vide.' } }
@@ -208,7 +210,7 @@ async function paypalReady(event: H3Event, body: any, lang: string): Promise<{ e
   if (!address) { return { error: 'Validez vos coordonnées avant de payer.', ...none } }
   const upper = lang.toUpperCase()
   const [raw, methods] = await Promise.all([
-    cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: 'EUR', CountryIsoCode: address.CountryIsoCode, LanguageIsoCode: upper }),
+    cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: visitorCurrency(event), CountryIsoCode: address.CountryIsoCode, LanguageIsoCode: upper }),
     cartCall(event, 'GET', 'payment/methods', { IdAddress: address.IdAddress, LanguageIsoCode: upper }),
   ])
   if (!raw || !raw.IdCart || raw.status === 'error' || Number(raw.IdCart) !== id) { return { error: 'Votre panier n\'a pas pu être lu, merci de réessayer.', ...none } }
@@ -224,7 +226,7 @@ async function paypalReady(event: H3Event, body: any, lang: string): Promise<{ e
 export async function startPaypal(event: H3Event, body: any, lang: string): Promise<{ error: string, paypalOrder?: string, amount?: number }> {
   const ready = await paypalReady(event, body, lang)
   if (ready.error) { return { error: ready.error } }
-  const answer = await cartCall(event, 'POST', 'payment/paypal/order', { IdCart: ready.id, Amount: ready.toPay, CurrencyIsoCode: 'EUR' })
+  const answer = await cartCall(event, 'POST', 'payment/paypal/order', { IdCart: ready.id, Amount: ready.toPay, CurrencyIsoCode: visitorCurrency(event) })
   const paypalOrder = String(answer?.IdPaypalOrder || '')
   if (!/^[A-Za-z0-9-]{8,40}$/.test(paypalOrder)) { return { error: PAYPAL_WORDS[String(answer?.Reason || '')] || 'Le paiement n\'a pas pu être préparé, merci de réessayer.' } }
   return { error: '', paypalOrder, amount: cents(number(answer.ToPay?.TaxIncl)) }
@@ -235,7 +237,7 @@ export async function capturePaypal(event: H3Event, body: any, lang: string): Pr
   if (ready.error) { return { error: ready.error } }
   const paypalOrder = String(body?.PaypalOrder || '')
   if (!/^[A-Za-z0-9-]{8,40}$/.test(paypalOrder)) { return { error: 'Le paiement n\'a pas pu être préparé, merci de réessayer.' } }
-  const answer = await cartCall(event, 'POST', 'payment/paypal/capture', { IdCart: ready.id, IdPaypalOrder: paypalOrder, Amount: ready.toPay, CurrencyIsoCode: 'EUR' })
+  const answer = await cartCall(event, 'POST', 'payment/paypal/capture', { IdCart: ready.id, IdPaypalOrder: paypalOrder, Amount: ready.toPay, CurrencyIsoCode: visitorCurrency(event) })
   if (answer?.Status !== 'paid') { await releaseGiftCards(event); return { error: PAYPAL_WORDS[String(answer?.Reason || '')] || 'Votre paiement PayPal n\'a pas abouti, merci de réessayer.' } }
   // development on the machine where Digipart is installed: PayPal cannot reach it, the local Digipart is handed the notification (dev/paypal-notify.php; it checks the payment with PayPal itself)
   const config = useRuntimeConfig(event)
@@ -257,7 +259,7 @@ export interface AlmaPlan { IdPayment: number, Installments: number, Eligible: b
 /** What Alma offers for the cart of this visit: one plan per Alma method of the shop. [] when Alma is not offered or did not answer. */
 export async function almaPlans(event: H3Event, shown: number): Promise<AlmaPlan[]> {
   const id = cartId(event)
-  if (!id || !sessionToken(event) || !(await payConfig(event)).Alma) { return [] }
+  if (!id || !sessionToken(event) || visitorCurrency(event) !== SHOP_CURRENCY || !(await payConfig(event)).Alma) { return [] }
   const answer = await cartCall(event, 'GET', 'payment/alma/plans', { IdCart: id, ...amountShown(event, shown) })
   return (Array.isArray(answer?.Plans) ? answer.Plans : []).map((p: any) => ({
     IdPayment: Number(p.IdPayment) || 0, Installments: Number(p.Installments) || 0, Eligible: p.Eligible === true, CustomerFee: number(p.CustomerFee), Total: number(p.Total),
@@ -269,13 +271,13 @@ export async function startAlma(event: H3Event, body: any, lang: string, prefix:
   const id = cartId(event)
   if (!id) { return { error: 'Votre panier est vide.' } }
   if (!sessionToken(event)) { return { error: 'Validez vos coordonnées avant de payer.' } }
-  if (!(await payConfig(event)).Alma) { return { error: ALMA_WORDS['alma-off']! } }
+  if (visitorCurrency(event) !== SHOP_CURRENCY || !(await payConfig(event)).Alma) { return { error: ALMA_WORDS['alma-off']! } }
   const list = await addresses(event)
   const address = (list.find((a: any) => a.IsDelivery) || list[0]) as CheckoutAddress | undefined
   if (!address) { return { error: 'Validez vos coordonnées avant de payer.' } }
   const upper = lang.toUpperCase()
   const [raw, methods] = await Promise.all([
-    cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: 'EUR', CountryIsoCode: address.CountryIsoCode, LanguageIsoCode: upper }),
+    cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: visitorCurrency(event), CountryIsoCode: address.CountryIsoCode, LanguageIsoCode: upper }),
     cartCall(event, 'GET', 'payment/methods', { IdAddress: address.IdAddress, LanguageIsoCode: upper }),
   ])
   if (!raw || !raw.IdCart || raw.status === 'error' || Number(raw.IdCart) !== id) { return { error: 'Votre panier n\'a pas pu être lu, merci de réessayer.' } }

@@ -34,8 +34,8 @@ export async function readRewards(event: H3Event, lang: string) {
   const mine = await program(event, lang)
   if (!mine) { return { Member: false, Points: 0, Catalogue: [], Mine: [] } }
   const [catalogue, owned] = await Promise.all([
-    cartCall(event, 'GET', 'loyalty/reward', { IdLoyaltyProgram: mine.id, CurrencyIsoCode: 'EUR', LanguageIsoCode: upper(lang) }),
-    cartCall(event, 'GET', 'loyalty/reward/0/customerReward', { IdLoyaltyProgram: mine.id, CurrencyIsoCode: 'EUR', LanguageIsoCode: upper(lang) }),
+    cartCall(event, 'GET', 'loyalty/reward', { IdLoyaltyProgram: mine.id, CurrencyIsoCode: visitorCurrency(event), LanguageIsoCode: upper(lang) }),
+    cartCall(event, 'GET', 'loyalty/reward/0/customerReward', { IdLoyaltyProgram: mine.id, CurrencyIsoCode: visitorCurrency(event), LanguageIsoCode: upper(lang) }),
   ])
   const states = ['available', 'used', 'expired']
   return {

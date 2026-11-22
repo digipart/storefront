@@ -2,5 +2,5 @@
 export default defineEventHandler(async (event) => {
   const { lang, prefix } = langOf(event)
   setResponseHeader(event, 'Cache-Control', 'private, no-store')
-  return readCheckout(event, lang, prefix, String(getQuery(event).country ?? '').toUpperCase().slice(0, 2))
+  return readCheckout(event, lang, prefix, String(getQuery(event).country ?? '').toUpperCase().slice(0, 2) || visitorCountry(event))
 })

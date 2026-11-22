@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 // A menu of Digipart (Catalogue > Menus) for the header or a column of the footer: its tabs, and under each its columns of links (the large menu). Read from the public menu API of Digipart
 // (api/menu, the one the other fronts use: untouched), kept a while in memory. `id` = 0: the main menu. A menu that cannot be read is an empty one: the site is drawn without it.
-const cache = new Map<string, { at: number, data: unknown }>()
+const cache = menuCache
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
@@ -12,7 +12,8 @@ export default defineEventHandler(async (event) => {
   const lang = /^[a-z]{2,3}$/i.test(String(query.lang ?? '')) ? String(query.lang).toUpperCase() : 'FR'
   const key = id + '-' + lang
   const hit = cache.get(key)
-  if (hit && Date.now() - hit.at < Number(config.cacheSeconds) * 1000) { return hit.data }
+  // 30 s at most: Digipart keeps the menu itself and drops it when the shop changes it, so asking often is cheap
+  if (hit && Date.now() - hit.at < Math.min(Number(config.cacheSeconds) || 30, 30) * 1000) { return hit.data }
   let raw: any = null
   try {
     raw = config.fixtures

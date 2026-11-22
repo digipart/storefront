@@ -38,7 +38,7 @@ export async function readCheckout(event: H3Event, lang: string, prefix: string,
   // an address Digipart knows, else the place alone (the payment API finds the country by its NAME)
   const place: Record<string, string | number> = address ? { IdAddress: address.IdAddress } : { Address1: '-', Postcode: '-', City: '-', Country: countryName }
   const [carrierAnswer, paymentAnswer] = cart.Count ? await Promise.all([
-    cartCall(event, 'GET', 'carrier', { ...place, LanguageIsoCode: upper, CurrencyIsoCode: 'EUR', IdCart: cartId(event), CountryIsoCode: iso }),
+    cartCall(event, 'GET', 'carrier', { ...place, LanguageIsoCode: upper, CurrencyIsoCode: visitorCurrency(event), IdCart: cartId(event), CountryIsoCode: iso }),
     cartCall(event, 'GET', 'payment/methods', { ...place, LanguageIsoCode: upper }),
   ]) : [null, null]
   const carriers: CheckoutCarrier[] = []
@@ -55,7 +55,7 @@ export async function readCheckout(event: H3Event, lang: string, prefix: string,
   })).filter((p: CheckoutPayment) => p.IdPayment > 0)
   return {
     Mode: site?.Preferences?.CheckoutMode === 'steps' ? 'steps' : 'onepage', TaxExcl: (await pricing(event)).wholesale,
-    LastOrder: last?.Id || '', Pay: pay, GiftCards: giftCards, Customer: who, Address: address, Countries: countries, CountryIsoCode: iso, Cart: cart, Carriers: carriers, Payments: payments,
+    LastOrder: last?.Id || '', Pay: visitorCurrency(event) === SHOP_CURRENCY ? pay : { ...pay, Alma: null }, GiftCards: giftCards, Customer: who, Address: address, Countries: countries, CountryIsoCode: iso, Cart: cart, Carriers: carriers, Payments: payments,
   }
 }
 
@@ -98,7 +98,7 @@ export async function readRelays(event: H3Event, lang: string, idCarrier: number
 /** The newest order of the customer (what the confirmation page shows once the payment made it), or null. */
 export async function newestOrder(event: H3Event, lang: string): Promise<{ Id: string, Date: string, State: string, Total: number, Currency: string } | null> {
   if (!sessionToken(event)) { return null }
-  const answer = await cartCall(event, 'GET', 'order/list', { Limit: 1, Offset: 0, CurrencyIsoCode: 'EUR', LanguageIsoCode: lang.toUpperCase() })
+  const answer = await cartCall(event, 'GET', 'order/list', { Limit: 1, Offset: 0, CurrencyIsoCode: visitorCurrency(event), LanguageIsoCode: lang.toUpperCase() })
   const order = Array.isArray(answer?.Orders) ? answer.Orders[0] : null
   if (!order || !order.IdOrder) { return null }
   const total = order.Total || {}
@@ -130,7 +130,7 @@ export async function changeCheckout(event: H3Event, body: any, lang: string): P
       // an e-mail that already has an account must log in: Digipart would otherwise hand this visitor the account of someone else
       const free = await cartCall(event, 'POST', 'customer/email/available', { Email: f.Email })
       if (!free || free.status !== 'success') { return { error: 'Un compte existe déjà avec cette adresse e-mail : connectez-vous pour continuer.', code: 'login' } }
-      const made = await cartCall(event, 'POST', 'customer', { Guest: 'true', ...f, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR', IsInvoice: 'true', IsDelivery: 'true', IdCart: id })
+      const made = await cartCall(event, 'POST', 'customer', { Guest: 'true', ...f, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: visitorCurrency(event), IsInvoice: 'true', IsDelivery: 'true', IdCart: id })
       const token = String(made?.AuthData?.Token || '')
       if (!token) { return { error: 'Vos coordonnées n\'ont pas pu être enregistrées.' } }
       setSession(event, token)

@@ -4,6 +4,6 @@
 export default defineEventHandler((event) => {
   const path = event.path.split('?')[0]
   if (event.method !== 'GET' || path.startsWith('/api/') || path.startsWith('/_nuxt/') || /\.(xml|txt|css|js|woff2?|png|jpe?g|webp|svg|ico)$/.test(path)) { return }
-  const personal = !!getCookie(event, 'sf_session') || !!getCookie(event, 'sf_preview') || getQuery(event).preview !== undefined || /\/(panier|cart|commande|checkout|compte|account|favoris|wishlist|reset)(\/|$)/.test(path)
+  const personal = visitorCurrency(event) !== SHOP_CURRENCY || !!getCookie(event, 'sf_session') || !!getCookie(event, 'sf_preview') || getQuery(event).preview !== undefined || /\/(panier|cart|commande|checkout|compte|account|favoris|wishlist|reset)(\/|$)/.test(path)
   setResponseHeader(event, 'Cache-Control', personal ? 'private, no-store' : 'public, max-age=0, s-maxage=60, stale-while-revalidate=600')
 })

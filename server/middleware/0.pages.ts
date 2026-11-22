@@ -15,6 +15,6 @@ export default defineEventHandler(async (event) => {
     useNitroApp().localFetch(event.path, { headers }).then((answer) => { if (answer.status < 500) { dropPage(key, page) } }).catch(() => {}).finally(() => { page.refreshing = false })
   }
   const { body, encoding } = pageBody(page, String(getRequestHeader(event, 'accept-encoding') || ''))
-  setResponseHeaders(event, { 'content-type': 'text/html;charset=utf-8', 'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=600', vary: 'Accept-Encoding', 'x-sf-cache': old ? 'stale' : 'hit', ...(encoding ? { 'content-encoding': encoding } : {}) })
+  setResponseHeaders(event, { 'content-type': 'text/html;charset=utf-8', 'cache-control': visitorCurrency(event) === SHOP_CURRENCY ? 'public, max-age=0, s-maxage=60, stale-while-revalidate=600' : 'private, no-store', vary: 'Accept-Encoding', 'x-sf-cache': old ? 'stale' : 'hit', ...(encoding ? { 'content-encoding': encoding } : {}) })
   return body
 })

@@ -119,7 +119,7 @@ export async function changeAccount(event: H3Event, body: any, lang: string, ori
       if (!/^\+?[0-9 ().-]{6,30}$/.test(phone)) { return { error: 'Indiquez un numéro de téléphone.' } }
       business = { Type: 'business', CompanyName: company, CompanyNumber: number, ...(tax ? { TaxNumber: tax } : {}), MobilePhone: phone, IsMainContact: 'true' }
     }
-    const made = await cartCall(event, 'POST', 'customer', { ...f, ...business, Password: password, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR', IdCart: cartId(event) || '', IdFavorite: favId(event) || '', ...(body?.Newsletter ? { NewsletterSubscribe: '1' } : {}), ...(body?.Loyalty && !body?.Business ? { LoyaltySubscribe: 'true' } : {}) })
+    const made = await cartCall(event, 'POST', 'customer', { ...f, ...business, Password: password, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: visitorCurrency(event), IdCart: cartId(event) || '', IdFavorite: favId(event) || '', ...(body?.Newsletter ? { NewsletterSubscribe: '1' } : {}), ...(body?.Loyalty && !body?.Business ? { LoyaltySubscribe: 'true' } : {}) })
     if (!enter(event, made?.AuthData)) { return { error: 'Votre compte n\'a pas pu être créé.' } }
     setLoggedIn(event, true)
     return { error: '', note: body?.Business ? 'Votre demande de compte professionnel est enregistrée. Notre équipe l\'active dans les plus brefs délais ; vous verrez alors les prix.' : '' }
@@ -195,7 +195,7 @@ export async function changeAccount(event: H3Event, body: any, lang: string, ori
   if (action === 'newsletter') {
     const answer = body?.On === false
       ? await cartCall(event, 'POST', 'newsletter/unsubscribe', { Email: who.Email })
-      : await cartCall(event, 'POST', 'newsletter/subscribe', { Email: who.Email, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: 'EUR' })
+      : await cartCall(event, 'POST', 'newsletter/subscribe', { Email: who.Email, LanguageIsoCode: lang.toUpperCase(), CurrencyIsoCode: visitorCurrency(event) })
     return { error: answer?.Status ? '' : 'Votre choix n\'a pas pu être enregistré.' }
   }
   return { error: 'Action inconnue.' }
@@ -219,7 +219,7 @@ export async function favoriteIds(event: H3Event, lang: string): Promise<number[
   let id = favId(event)
   if (!id && sessionToken(event)) { await profile(event); id = favId(event) }
   if (!id) { return [] }
-  const answer = await cartCall(event, 'GET', 'favorite', { IdFavorite: id, CurrencyIsoCode: 'EUR', LanguageIsoCode: lang.toUpperCase(), ResponseLevel: 'summary' })
+  const answer = await cartCall(event, 'GET', 'favorite', { IdFavorite: id, CurrencyIsoCode: visitorCurrency(event), LanguageIsoCode: lang.toUpperCase(), ResponseLevel: 'summary' })
   return (Array.isArray(answer?.Products) ? answer.Products : []).map((p: any) => Number(p.IdProduct)).filter((n: number) => n > 0)
 }
 
@@ -227,7 +227,7 @@ export async function readFavorites(event: H3Event, lang: string, prefix: string
   let id = favId(event)
   if (!id && sessionToken(event)) { await profile(event); id = favId(event) }
   if (!id) { return { Ids: [], Products: [] } }
-  const answer = await cartCall(event, 'GET', 'favorite', { IdFavorite: id, CurrencyIsoCode: 'EUR', LanguageIsoCode: lang.toUpperCase(), ResponseLevel: 'complete' })
+  const answer = await cartCall(event, 'GET', 'favorite', { IdFavorite: id, CurrencyIsoCode: visitorCurrency(event), LanguageIsoCode: lang.toUpperCase(), ResponseLevel: 'complete' })
   const products = (Array.isArray(answer?.Products) ? answer.Products : []).map((p: any) => {
     const regular = Number(p.Price?.RegularPrice?.PriceTaxIncl || 0), promo = Number(p.Price?.PromotionalPrice?.PriceTaxIncl || 0), sale = promo > 0 && promo < regular
     return { Id: Number(p.IdProduct), Name: String(p.Description?.Title || p.Reference || ''), Reference: String(p.Reference || ''), Image: picture(p.Media), Url: prefix + '/p/' + slugOf(p.SEO) + '-' + Number(p.IdProduct), Price: sale ? promo : regular, PriceOld: sale ? regular : 0, Currency: String(p.Price?.Currency?.CurrencyIsoCode || 'EUR'), TaxExcl: false, PriceState: 'ok' }
@@ -255,7 +255,7 @@ function returnOf(event: H3Event, order: any, email: string) {
 }
 
 export async function readOrders(event: H3Event, lang: string, page: number, email = '', size = 10) {
-  const answer = await cartCall(event, 'GET', 'order/list', { Limit: size, Offset: (Math.max(1, page) - 1) * size, CurrencyIsoCode: 'EUR', LanguageIsoCode: lang.toUpperCase() })
+  const answer = await cartCall(event, 'GET', 'order/list', { Limit: size, Offset: (Math.max(1, page) - 1) * size, CurrencyIsoCode: visitorCurrency(event), LanguageIsoCode: lang.toUpperCase() })
   const orders = (Array.isArray(answer?.Orders) ? answer.Orders : []).map((o: any) => ({
     Id: String(o.IdOrder), Date: String(o.DateAdd || ''), State: String(o.State?.Label || ''), Total: amount(o.Total?.Paid?.TaxIncl ?? (Number(o.Total?.Product?.TaxIncl || 0) + Number(o.Total?.Shipping?.TaxIncl || 0) - Number(o.Total?.Discount?.TaxIncl || 0))),
     Return: returnOf(event, o, email), Images: (Array.isArray(o.Products) ? o.Products : []).map((p: any) => picture(p.Media)).filter(Boolean).slice(0, 4), Count: Array.isArray(o.Products) ? o.Products.length : 0,
@@ -266,7 +266,7 @@ export async function readOrders(event: H3Event, lang: string, page: number, ema
 
 export async function readOrder(event: H3Event, lang: string, prefix: string, idOrder: string, email = '') {
   if (!/^[A-Za-z0-9_-]{1,40}$/.test(idOrder)) { return null }   // a number, or the code of the shop and a number
-  const o = await cartCall(event, 'GET', 'order/detail', { IdOrder: idOrder, CurrencyIsoCode: 'EUR', LanguageIsoCode: lang.toUpperCase() })
+  const o = await cartCall(event, 'GET', 'order/detail', { IdOrder: idOrder, CurrencyIsoCode: visitorCurrency(event), LanguageIsoCode: lang.toUpperCase() })
   if (!o || !o.IdOrder || o.status === 'error') { return null }   // not this customer's order, or no such order
   const where = (a: any) => (a && (a.Address1 || a.City) ? { Name: [a.Firstname, a.Lastname].filter(Boolean).join(' '), Company: String(a.Company || ''), Line: [a.Address1, a.Address2].filter(Boolean).join(', '), City: [a.Postcode, a.City].filter(Boolean).join(' '), Country: String(a.Country || '') } : null)
   const tracking = String(o.Shipping?.Tracking?.URL || '')
