@@ -628,4 +628,6 @@ export default {
   'Continuer avec Google': 'Weiter mit Google',
   'Continuer avec Facebook': 'Weiter mit Facebook',
   'La connexion n\'a pas abouti. Réessayez, ou connectez-vous avec votre adresse e-mail.': 'Die Anmeldung ist fehlgeschlagen. Versuchen Sie es erneut oder melden Sie sich mit Ihrer E-Mail-Adresse an.',
+  'Précédent': 'Zurück',
+  'Suivant': 'Weiter',
 }

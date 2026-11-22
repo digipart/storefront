@@ -44,6 +44,13 @@ const locked = computed(() => (product.value?.PriceState || 'ok') !== 'ok')
 const lotOpen = ref(false), proOpen = ref(false)
 const { isFavorite, toggleFavorite, customer } = useAccount()
 const ask = ref(false)
+// mobile (settings of the section « Produit »): sizes in a sheet opened by the buy button, and a buy bar that stays at the bottom once the button is out of sight
+const pdp = inject<Ref<any>>('sfSectionSettings', ref({}))
+const sheetMode = computed(() => pdp.value?.MobileSizes === 'sheet')
+const sheetOpen = useState<boolean>('sf-sheet-' + (product.value?.Id || 0), () => false)
+const guideShared = useState<{ text: string, open: boolean }>('sf-guide-' + (product.value?.Id || 0), () => ({ text: '', open: false }))
+const onPhone = () => import.meta.client && window.matchMedia('(max-width: 767px)').matches
+const buyBox = ref<HTMLElement | null>(null), barOn = ref(false)
 watch(picked, () => { ask.value = false })
 // an e-gift card: whom it is for, what it says and when it is sent (sent with the line of the cart; Digipart makes the card)
 const isGift = computed(() => product.value?.Type === 'e-giftcard')
@@ -52,7 +59,8 @@ const today = new Date().toISOString().slice(0, 10)
 const giftError = ref('')
 async function buy() {
   if (product.value.TaxExcl && sizes.value.length > 0) { lotOpen.value = true; return }
-  if (needsChoice.value) { ask.value = true; return }
+  if (needsChoice.value && sheetMode.value && onPhone()) { sheetOpen.value = true; return }
+  if (needsChoice.value) { ask.value = true; if (barOn.value) { buyBox.value?.scrollIntoView({ block: 'center', behavior: 'smooth' }) } return }
   if (isGift.value) {
     giftError.value = gift.Personal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gift.Email.trim()) ? w('Indiquez l\'adresse e-mail du destinataire.') : ''
     if (giftError.value) { return }
@@ -81,6 +89,23 @@ function pickSize(variant: any) {
   if (!variant.Available && alertOn.value) { alertFor.value = variant.Id }
 }
 const pickSizeId = (id: number) => pickSize(sizes.value.find((v: any) => v.Id === id))
+// a size chosen in the sheet: added at once; sold out: the stock alert
+async function pickInSheet(variant: any) {
+  picked.value = variant.Id
+  sheetOpen.value = false
+  if (!variant.Available) { if (alertOn.value) { alertOpen.value = true } return }
+  await add(product.value.Id, variant.Id, 1)
+}
+const sheetSizes = computed(() => (split.value ? sizeChoices.value : sizes.value))
+if (props.block.Type === 'p_buy') {
+  let watcher: IntersectionObserver | null = null
+  onMounted(() => {
+    if (!buyBox.value || pdp.value?.StickyBuy === false || !('IntersectionObserver' in window)) { return }
+    watcher = new IntersectionObserver(([entry]) => { barOn.value = !!entry && !entry.isIntersecting }, { threshold: 0 })
+    watcher.observe(buyBox.value)
+  })
+  onBeforeUnmount(() => { watcher?.disconnect() })
+}
 const w = useWords()
 // the points a purchase earns and the reviews of the product: asked once for the page, only when one of these blocks is drawn
 const extra = ref<any>(null)
@@ -94,6 +119,10 @@ const guidePage = computed(() => {
   for (const id of extra.value?.Categories || []) { const rule = rules.find(r => Number(r.IdCategory) === Number(id)); if (rule && Number(rule.IdPage) > 0) { return Number(rule.IdPage) } }
   return Number(s.value.IdPage) || 0
 })
+if (props.block.Type === 'p_sizeguide') {
+  watchEffect(() => { guideShared.value.text = guidePage.value > 0 ? String(t.value.Text || '') : '' })
+  watch(() => guideShared.value.open, (open) => { if (open) { guideOpen.value = true; guideShared.value.open = false } })
+}
 const earn = computed(() => (extra.value?.Points?.Active ? Number(extra.value.Points.Earn) || 0 : 0))
 const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n))
 </script>
@@ -114,14 +143,14 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
     <div v-else-if="block.Type === 'p_variants' && product.GiftAmounts?.length" class="sf-gift-amounts" role="group" :aria-label="w('Montant')">
       <a v-for="a in product.GiftAmounts" :key="a.Id" :href="a.Url" :class="{ 'is-on': a.Current }" :aria-current="a.Current ? 'page' : undefined">{{ a.Label }}</a>
     </div>
-    <fieldset v-else-if="block.Type === 'p_variants' && sizes.length" class="sf-variants" :class="{ 'is-split': split }">
+    <fieldset v-else-if="block.Type === 'p_variants' && sizes.length" class="sf-variants" :class="{ 'is-split': split, 'sf-vsizes': !split }">
       <template v-if="split">
         <div v-if="colors.length > 1" class="sf-vgroup" role="group" :aria-label="w('Couleur')">
           <div class="sf-vlegend" :class="{ 'sf-sr': !s.Labels }">{{ w('Couleur') }}<span v-if="color"> : {{ color }}</span></div>
           <select v-if="s.Style === 'dropdown'" :value="color" class="sf-select" :aria-label="w('Couleur')" @change="chooseColor(($event.target as HTMLSelectElement).value)"><option v-for="name in colors" :key="name" :value="name">{{ name }}</option></select>
           <div v-else class="sf-sizes"><button v-for="name in colors" :key="name" type="button" :class="{ 'is-on': color === name, 'sf-swatch': !!swatchOf(name) }" :style="swatchOf(name) ? { '--sw': swatchOf(name) } : undefined" :title="name" :aria-label="name" :aria-pressed="color === name" @click="chooseColor(name)"><template v-if="!swatchOf(name)">{{ name }}</template></button></div>
         </div>
-        <div class="sf-vgroup" role="group" :aria-label="w('Taille')">
+        <div class="sf-vgroup sf-vsizes" role="group" :aria-label="w('Taille')">
           <div class="sf-vlegend" :class="{ 'sf-sr': !s.Labels }">{{ w('Taille') }}</div>
           <select v-if="s.Style === 'dropdown'" :value="picked" class="sf-select" :aria-label="w('Taille')" @change="pickSizeId(Number(($event.target as HTMLSelectElement).value))">
             <option :value="0" disabled>{{ w('Choisir une taille') }}</option>
@@ -148,7 +177,7 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
       <button v-if="guidePage > 0" type="button" class="sf-link sf-guide" aria-haspopup="dialog" @click="guideOpen = true">{{ t.Text }}</button>
       <LazySfPagePanel v-if="guideOpen" :id="guidePage" :title="t.Text" @close="guideOpen = false" />
     </template>
-    <div v-else-if="block.Type === 'p_buy'" class="sf-buy" :class="{ 'is-full': s.Full, 'is-gift': isGift }">
+    <div v-else-if="block.Type === 'p_buy'" ref="buyBox" class="sf-buy" :class="{ 'is-full': s.Full, 'is-gift': isGift }">
       <div v-if="isGift && !locked" class="sf-gift">
         <label class="sf-gift-check"><input v-model="gift.Personal" type="checkbox">{{ w('Je souhaite personnaliser ma carte cadeau avant de l\'envoyer') }}</label>
         <template v-if="gift.Personal">
@@ -168,6 +197,18 @@ const stars = (n: number) => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math
       <button v-else-if="soldOutChosen || (!product.Available && alertSizes.length && site?.Theme?.Settings?.StockAlert !== false)" type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" @click="alertOpen = true">{{ w('M\'avertir du retour en stock') }}</button>
       <button v-else type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="!product.Available || cartBusy" @click="buy">{{ w(product.Available ? (cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) : 'Épuisé') }}</button>
       <LazySfStockAlert v-if="alertOpen" :product="product" :variant="soldOutChosen ? picked : undefined" @close="alertOpen = false" />
+      <Teleport to="body">
+        <div v-if="sheetOpen" class="sf-sheet" @keydown.esc="sheetOpen = false">
+          <div class="sf-sheet-veil" @click="sheetOpen = false" />
+          <div class="sf-sheet-panel" :class="{ 'is-center': pdp?.SheetAlign === 'center' }" role="dialog" aria-modal="true" :aria-label="w('Choisir une taille')">
+            <button v-for="variant in sheetSizes" :key="variant.Id" type="button" :class="{ 'is-out': !variant.Available }" :disabled="(!variant.Available && !alertOn) || cartBusy" @click="pickInSheet(variant)">
+              <span>{{ split ? variant.Size : variant.Label }}</span><small v-if="!variant.Available">{{ w(alertOn ? 'M\'avertir du retour en stock' : 'Épuisé') }}</small>
+            </button>
+            <button v-if="guideShared.text && pdp?.SheetGuide !== false" type="button" class="is-guide" @click="sheetOpen = false; guideShared.open = true">{{ guideShared.text }}</button>
+          </div>
+        </div>
+        <div v-if="barOn && !locked && !isGift && product.Available" class="sf-buybar"><span class="sf-buybar-price"><SfPrice :product="product" /></span><button type="button" class="sf-btn" :class="buyLook.class" :style="buyLook.style" :disabled="cartBusy" @click="buy">{{ w(cartBusy ? 'Ajout…' : (t.Text || 'Ajouter au panier')) }}</button></div>
+      </Teleport>
       <button type="button" class="sf-heart" :class="{ 'is-on': isFavorite(product.Id) }" :aria-pressed="isFavorite(product.Id)" :aria-label="w(isFavorite(product.Id) ? 'Retirer de mes favoris' : 'Ajouter à mes favoris')" @click="toggleFavorite(product.Id)"><svg viewBox="0 0 24 24" width="20" height="20" :fill="isFavorite(product.Id) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3 4.6 13a4.7 4.7 0 0 1 0-6.7 4.8 4.8 0 0 1 6.8 0l.6.6.6-.6a4.8 4.8 0 0 1 6.8 0 4.7 4.7 0 0 1 0 6.7z"/></svg></button>
       <button v-if="product.TaxExcl && locked" type="button" class="sf-prohelp" aria-haspopup="dialog" @click="proOpen = true"><strong>{{ w('Nouveau client professionnel ?') }}</strong><span>{{ w('Découvrez les étapes pour commander') }}</span></button>
       <LazySfLot v-if="lotOpen" :product="product" @close="lotOpen = false" />

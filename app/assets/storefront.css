@@ -1257,6 +1257,8 @@ header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { bac
 .sf-navtabs-list { display: flex; gap: 24px; min-width: 0; overflow-x: auto; scrollbar-width: none; } .sf-navtabs-list::-webkit-scrollbar { display: none; }
 .sf-navtabs-tab { flex: 0 0 auto; padding: 8px 0; border: 0; border-bottom: 1.5px solid transparent; background: none; font: inherit; font-size: 15px; color: inherit; text-decoration: none; white-space: nowrap; cursor: pointer; }
 .sf-navtabs-tab[aria-selected="true"] { border-bottom-color: currentColor; }
+.sf-navtabs-list { flex: 1 1 auto; }
+.sf-navtabs-more { flex: 0 0 auto; width: 32px; height: 44px; padding: 0; border: 0; background: none; color: inherit; font-size: 22px; line-height: 1; cursor: pointer; }
 .sf-navdrawer.is-tabs .sf-drawer-body { padding: 14px 26px 24px; }
 .sf-navtabs-block { display: flex; flex-direction: column; padding: 8px 0 20px; }
 .sf-navtabs-block > a, .sf-navtabs-block > span, .sf-navtabs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 9px 0; border: 0; background: none; font: inherit; font-size: 14px; color: inherit; text-align: left; text-decoration: none; cursor: pointer; }
@@ -1384,3 +1386,23 @@ header.sf-over.is-bare:not(.is-solid):not(:hover):not(:focus-within) .sf-s-annou
 .sf-co.is-tabs .sf-co-pay .sf-co-option-main { align-items: center; text-align: center; }
 .sf-co.is-tabs .sf-co-pay.is-on { border-color: var(--t-text, #1e2129); box-shadow: inset 0 0 0 1px var(--t-text, #1e2129); background: transparent; }
 @media (max-width: 700px) { .sf-co.is-tabs .sf-co-steps { gap: 20px; } .sf-co.is-tabs .sf-co-pays { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* product page on a phone: sizes in a sheet opened by the buy button, and the buy bar */
+.sf-sheet, .sf-buybar { display: none; }
+@media (max-width: 767px) {
+  .sf-pdp.is-msheet .sf-vsizes { display: none; }
+  .sf-sheet { display: block; position: fixed; inset: 0; z-index: 1100; }
+  .sf-sheet-veil { position: absolute; inset: 0; background: rgba(0, 0, 0, .25); }
+  .sf-sheet-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 75svh; overflow-y: auto; display: flex; flex-direction: column; padding: 4px 0 calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--t-bg, #fff); color: var(--t-text, #1e2129); animation: sf-sheet-up .2s ease-out; }
+  .sf-sheet-panel button { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 24px; border: 0; border-bottom: 1px solid var(--t-border, #ececf1); background: transparent; color: inherit; font: inherit; font-size: 14px; text-align: left; text-transform: uppercase; cursor: pointer; }
+  .sf-sheet-panel button:last-child { border-bottom: 0; }
+  .sf-sheet-panel.is-center button { justify-content: center; text-align: center; }
+  .sf-sheet-panel button.is-out span { text-decoration: line-through; opacity: .45; }
+  .sf-sheet-panel button small { font-size: 11px; text-transform: none; opacity: .7; }
+  .sf-sheet-panel button:disabled { cursor: default; }
+  .sf-buybar { display: flex; align-items: center; gap: 12px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--t-bg, #fff); border-top: 1px solid var(--t-border, #ececf1); }
+  .sf-buybar .sf-btn { flex: 1 1 auto; text-align: center; }
+  .sf-buybar-price { font-size: 14px; white-space: nowrap; }
+}
+@keyframes sf-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sf-sheet-panel { animation: none; } }

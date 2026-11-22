@@ -18,6 +18,14 @@ const drill = ref<{ Name: string, Links: any[] } | null>(null)
 watch(current, () => { drill.value = null })
 const panel = ref<HTMLElement | null>(null)
 onMounted(() => { document.documentElement.style.overflow = 'hidden'; nextTick(() => panel.value?.focus()) })
+// the row of tabs may be wider than the panel: arrows at its ends, and the wheel moves it sideways
+const tabRow = ref<HTMLElement | null>(null), more = reactive({ left: false, right: false })
+const measure = () => { const el = tabRow.value; if (el) { more.left = el.scrollLeft > 2; more.right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2 } }
+const slide = (way: number) => tabRow.value?.scrollBy({ left: way * tabRow.value.clientWidth * 0.7, behavior: 'smooth' })
+const onWheel = (event: WheelEvent) => { const el = tabRow.value; if (el && el.scrollWidth > el.clientWidth && Math.abs(event.deltaY) > Math.abs(event.deltaX)) { el.scrollLeft += event.deltaY; event.preventDefault() } }
+onMounted(() => { nextTick(measure); window.addEventListener('resize', measure) })
+onBeforeUnmount(() => window.removeEventListener('resize', measure))
+watch(current, () => nextTick(() => { tabRow.value?.querySelector('[aria-selected="true"]')?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' }) }))
 onBeforeUnmount(() => { document.documentElement.style.overflow = '' })
 </script>
 
@@ -27,12 +35,14 @@ onBeforeUnmount(() => { document.documentElement.style.overflow = '' })
     <aside v-if="tabbed" ref="panel" class="sf-drawer-panel sf-navdrawer is-tabs" role="dialog" aria-modal="true" :aria-label="w('Menu principal')" tabindex="-1">
       <header class="sf-navtabs">
         <button type="button" class="sf-navtabs-close" :aria-label="w('Fermer')" @click="emit('close')"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" /></svg></button>
-        <div class="sf-navtabs-list" role="tablist" :aria-label="w('Menu principal')">
+        <button v-if="more.left" type="button" class="sf-navtabs-more" :aria-label="w('Précédent')" @click="slide(-1)">‹</button>
+        <div ref="tabRow" class="sf-navtabs-list" role="tablist" :aria-label="w('Menu principal')" @scroll.passive="measure" @wheel="onWheel">
           <template v-for="(item, i) in tabs" :key="item.Name">
             <a v-if="!item.Columns.length && item.Url" :href="href(item.Url)" class="sf-navtabs-tab">{{ item.Name }}</a>
             <button v-else type="button" role="tab" class="sf-navtabs-tab" :aria-selected="i === current" @click="current = i">{{ item.Name }}</button>
           </template>
         </div>
+        <button v-if="more.right" type="button" class="sf-navtabs-more" :aria-label="w('Suivant')" @click="slide(1)">›</button>
       </header>
       <nav class="sf-drawer-body" :aria-label="tab?.Name">
         <template v-if="drill">

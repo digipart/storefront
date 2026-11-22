@@ -52,6 +52,7 @@ const frame = computed(() => ({
   background: s.value.Background === 'custom' ? s.value.BackgroundColor : undefined, color: s.value.Background === 'custom' ? s.value.TextColor : undefined,
 }))
 // what stands in this section is on something dark (a dark band, a picture with a dark veil): a logo block then takes the version for dark backgrounds
+provide('sfSectionSettings', s)   // the product blocks read the mobile choices of their section
 provide('sfOnDark', computed(() => s.value.Background === 'dark' || (!!s.value.BgImage && s.value.BgTone !== 'light')))
 const wrap = computed(() => ['sf-wrap', 'is-' + (s.value.Width || 'page'), { 'is-full-mobile': s.value.FullMobile }])
 // the CSS the shop wrote for this section (cleaned by Digipart): written inside the rule of the section (CSS nesting), so it only reaches this section
@@ -462,7 +463,7 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
       </div>
 
       <!-- a product: its photos beside its blocks (name, price, sizes, buy button, description...) in the order the shop gave them -->
-      <div v-else-if="type === 'main_product' && product" class="sf-pdp" :class="{ 'is-reverse': s.GalleryPosition === 'right' }" :style="pdp">
+      <div v-else-if="type === 'main_product' && product" class="sf-pdp" :class="{ 'is-reverse': s.GalleryPosition === 'right', 'is-msheet': s.MobileSizes === 'sheet' }" :style="pdp">
         <SfGallery :images="product.Images" :sets="product.ImageSets" :name="product.Name" :layout="s.GalleryLayout" :per-view="Number(s.GalleryPerView) || 2" :arrows="s" :thumbs="s.GalleryThumbs" :fit="s.GalleryFit" :scroll="s.GalleryScroll" @zoom="zoomAt = $event" />
         <!-- the column is as tall as the photos; inside it the blocks follow the scroll (when the shop asked) and stop where the section ends, before the next one -->
         <div class="sf-info-col" :class="{ 'is-sticky': s.InfoSticky !== false, 'is-center': s.InfoY === 'center' }"><div ref="infoBox" class="sf-info" :style="info"><SfBlocks :blocks="blocks" /></div></div>

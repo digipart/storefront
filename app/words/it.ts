@@ -549,4 +549,6 @@ export default {
   'Continuer avec Google': 'Continua con Google',
   'Continuer avec Facebook': 'Continua con Facebook',
   'La connexion n\'a pas abouti. Réessayez, ou connectez-vous avec votre adresse e-mail.': 'L\'accesso non è riuscito. Riprova o accedi con il tuo indirizzo e-mail.',
+  'Précédent': 'Precedente',
+  'Suivant': 'Successivo',
 }
