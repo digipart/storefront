@@ -196,7 +196,7 @@ a.sf-split-img { display: block; }
 .sf-pdp { display: grid; grid-template-columns: var(--cols, 60fr 40fr); gap: var(--gap, 48px); align-items: start; }
 .sf-pdp.is-reverse .sf-gallery-wrap { order: 2; }
 .sf-gallery { position: relative; display: grid; gap: 8px; min-height: 320px; } .sf-gallery.is-grid { grid-template-columns: 1fr 1fr; }
-.sf-gallery img { width: 100%; aspect-ratio: var(--t-card-ratio, 3 / 4); object-fit: var(--gfit, cover); object-position: 50% var(--gy, 0%); border-radius: var(--t-card-radius, 0); background: #f1f1f4; }
+.sf-gallery img { width: 100%; aspect-ratio: var(--t-card-ratio, 3 / 4); object-fit: var(--gfit, cover); object-position: 50% var(--gy, 0%); border-radius: var(--t-card-radius, 0); background: var(--gbg, #f1f1f4); }
 .sf-gallery-wrap { position: relative; min-width: 0; }
 .sf-gallery.is-slider, .sf-gallery.is-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; } .sf-gallery.is-slider::-webkit-scrollbar, .sf-gallery.is-carousel::-webkit-scrollbar { display: none; }
 .sf-gallery.is-slider img { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
