@@ -203,10 +203,10 @@ a.sf-split-img { display: block; }
 .sf-gallery.is-carousel img { flex: 0 0 calc((100% - (var(--per, 2) - 1) * 8px) / var(--per, 2)); min-width: 0; scroll-snap-align: start; }   /* min-width: a photo is never wider than its share, whatever its own size */
 .sf-gallery-nav { position: absolute; top: 50%; z-index: 1; width: 44px; height: 44px; margin-top: -22px; border: 1px solid currentColor; border-radius: 50%; background: rgba(255, 255, 255, .85); color: #1e2129; font-size: 24px; line-height: 1; cursor: pointer; }
 .sf-gallery-nav.is-prev { left: 16px; } .sf-gallery-nav.is-next { right: 16px; }
-.sf-gallery-thumbs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
+.sf-gallery-thumbs { display: flex; gap: 8px; margin-top: var(--gtg, 8px); overflow-x: auto; }
 /* « Centrage des miniatures », under the photo: left, centre, right */
 .sf-gallery-wrap.is-ta-center > .sf-gallery-thumbs { justify-content: safe center; } .sf-gallery-wrap.is-ta-end > .sf-gallery-thumbs { justify-content: flex-end; }
-.sf-gallery-thumbs button { flex: 0 0 64px; padding: 0; border: 0; background: none; opacity: .55; cursor: pointer; } .sf-gallery-thumbs button.is-on { opacity: 1; outline: 1.5px solid currentColor; outline-offset: 1px; }
+.sf-gallery-thumbs button { flex: 0 0 var(--gts, 64px); padding: 0; border: 0; background: none; opacity: .55; cursor: pointer; } .sf-gallery-thumbs button.is-on { opacity: 1; outline: 1.5px solid currentColor; outline-offset: 1px; }
 .sf-gallery-thumbs img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
 .sf-info-col { align-self: stretch; min-width: 0; } .sf-info { width: 100%; min-width: 0; }
 .sf-info-col.is-sticky .sf-info { position: sticky; top: calc(var(--sf-head, 0px) + 24px); }
@@ -1275,11 +1275,11 @@ header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { bac
 @media (max-width: 767px) { .sf-gallery-wrap.has-mh .sf-gallery img { height: var(--ghm); aspect-ratio: auto; } }
 /* The photos of a product as one photo and its small ones in a column on the left (Produit > « Miniatures » : à gauche), the photo as tall as the screen (« Hauteur de la photo ») : on a computer */
 @media (min-width: 768px) {
-  .sf-gallery-wrap.is-thumbs-left, .sf-gallery-wrap.is-thumbs-right { display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 16px; }
+  .sf-gallery-wrap.is-thumbs-left, .sf-gallery-wrap.is-thumbs-right { display: flex; flex-direction: row-reverse; align-items: flex-start; gap: var(--gtg, 16px); }
   .sf-gallery-wrap.is-thumbs-right { flex-direction: row; }
   .sf-gallery-wrap.is-thumbs-left .sf-gallery, .sf-gallery-wrap.is-thumbs-right .sf-gallery { flex: 1 1 auto; min-width: 0; }
-  .sf-gallery-wrap:is(.is-thumbs-left, .is-thumbs-right, .is-thumbs-inside) > .sf-gallery-thumbs { flex: 0 0 44px; flex-direction: column; justify-content: flex-start; margin: 0; padding: 24px 0; max-height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); overflow: hidden auto; scrollbar-width: none; }
-  .sf-gallery-wrap:is(.is-thumbs-left, .is-thumbs-right, .is-thumbs-inside) > .sf-gallery-thumbs button { flex: 0 0 auto; width: 44px; }
+  .sf-gallery-wrap:is(.is-thumbs-left, .is-thumbs-right, .is-thumbs-inside) > .sf-gallery-thumbs { flex: 0 0 var(--gts, 44px); flex-direction: column; justify-content: flex-start; margin: 0; padding: 24px 0; max-height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); overflow: hidden auto; scrollbar-width: none; }
+  .sf-gallery-wrap:is(.is-thumbs-left, .is-thumbs-right, .is-thumbs-inside) > .sf-gallery-thumbs button { flex: 0 0 auto; width: var(--gts, 44px); }
   /* « Centrage des miniatures » along the photo: top, middle, bottom */
   .sf-gallery-wrap:is(.is-thumbs-left, .is-thumbs-right).is-ta-center > .sf-gallery-thumbs { align-self: center; } .sf-gallery-wrap:is(.is-thumbs-left, .is-thumbs-right).is-ta-end > .sf-gallery-thumbs { align-self: flex-end; }
   /* the small photos ON the photo, along its left or its right edge */
@@ -1287,6 +1287,8 @@ header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { bac
   .sf-gallery-wrap.is-thumbs-inside.is-ta-center > .sf-gallery-thumbs { top: 50%; transform: translateY(-50%); } .sf-gallery-wrap.is-thumbs-inside.is-ta-end > .sf-gallery-thumbs { top: auto; bottom: 0; }
   .sf-gallery-wrap.is-thumbs-inside > .sf-gallery-thumbs button { opacity: .8; box-shadow: 0 0 0 1px rgba(255, 255, 255, .7); }
   .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider { min-height: 0; }
+  /* header laid over the product page: the photo takes the whole height of the window, under it */
+  :root:has(header.sf-over.is-bare) .sf-gallery-wrap { --sf-head: 0px; }
   .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider img { height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); aspect-ratio: auto; }
   /* « Défilement des photos » : vertical. The frame is one photo tall and stays under the header; the photos are stacked inside it and the wheel goes from one to the next (it stops on each);
      after the last one the browser hands the scroll to the page, which goes on to what is under the photos. */
@@ -1294,6 +1296,11 @@ header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { bac
   .sf-gallery-wrap.is-scroll-down .sf-gallery.is-slider { flex-direction: column; overflow: hidden auto; scroll-snap-type: y mandatory; overscroll-behavior-y: auto; min-height: 0; gap: 0; aspect-ratio: var(--t-card-ratio, 3 / 4); max-height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); }
   .sf-gallery-wrap.is-scroll-down .sf-gallery.is-slider img { flex: 0 0 100%; width: 100%; height: 100%; aspect-ratio: auto; scroll-snap-align: start; }
   .sf-gallery-wrap.is-scroll-down.is-fit-screen .sf-gallery.is-slider { aspect-ratio: auto; height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); }
+  /* frame as wide as the photo: thumbnails stay beside it, the whole stands left, centre or right */
+  .sf-gallery-wrap.is-hug.is-fit-screen .sf-gallery.is-slider { flex: 0 0 auto; height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); aspect-ratio: var(--t-card-ratio, 3 / 4); max-width: 100%; margin-left: var(--gml, 0); margin-right: var(--gmr, auto); }
+  .sf-gallery-wrap.is-hug.is-fit-screen:is(.is-thumbs-left, .is-thumbs-right) { justify-content: var(--gjust, flex-start); }
+  .sf-gallery-wrap.is-hug.is-fit-screen:is(.is-thumbs-left, .is-thumbs-right) .sf-gallery.is-slider { margin: 0; }
+  .sf-gallery-wrap.is-hug.is-fit-screen .sf-gallery.is-slider img { height: 100%; }
 }
 /* The photo viewer fills the window: the photo covers it from edge to edge (on a computer it moves up and down with the pointer: --zy, SfZoom.vue), the small pictures and the cross lie over it */
 .sf-zoom { background: #111; }
@@ -1407,20 +1414,52 @@ header.sf-over.is-bare:not(.is-solid):not(:hover):not(:focus-within) .sf-s-annou
 @keyframes sf-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .sf-sheet-panel { animation: none; } }
 
-/* footer « pays et langue » and its full screen */
+/* footer « pays et langue » */
 .sf-fbottom { align-items: center; justify-content: space-between; }
-.sf-region-link { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
-.sf-region { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--t-bg, #fff) center / cover no-repeat; color: var(--t-text, #1e2129); outline: 0; }
-.sf-region.has-image::before { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, .35); }
-.sf-region-close { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; border: 0; background: none; color: inherit; font-size: 18px; cursor: pointer; }
-.sf-region.has-image .sf-region-close, .sf-region.has-image .sf-region-name { color: #fff; }
-.sf-region-box { position: relative; display: grid; gap: 12px; width: min(340px, 100%); }
-.sf-region-name { margin: 0 0 20px; text-align: center; font-size: 28px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-.sf-region-box label { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; border: 1px solid var(--t-text, #1e2129); background: #fff; color: #1e2129; font-size: 14px; }
-.sf-region-box label > span { flex: 0 0 auto; }
-.sf-region-box label > span::after { content: ' :'; }
-.sf-region-box select { flex: 1 1 auto; min-width: 0; height: 46px; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; }
-.sf-region-box .sf-region-check { justify-content: space-between; cursor: pointer; }
-.sf-region-box .sf-region-check > span::after { content: ''; }
-.sf-region-box .sf-region-check input { order: 2; width: 16px; height: 16px; accent-color: #1e2129; }
-.sf-region-box .sf-btn { min-height: 48px; text-align: center; }
+.sf-region-link { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; color: inherit; text-decoration: none; text-transform: uppercase; letter-spacing: .04em; }
+/* page « Choix du pays » */
+.sf-region { --fx: var(--fx-d, 50%); --fy: var(--fy-d, 50%); position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; min-height: 100svh; padding: calc(var(--rg-size) + 72px) 24px; color: var(--t-text, #1e2129); }
+.sf-region.is-top { justify-content: flex-start; } .sf-region.is-bottom { justify-content: flex-end; }
+.sf-region.has-image { color: #fff; }
+.sf-region-pic { position: absolute; inset: 0; z-index: -1; overflow: hidden; background: #1e2129; }
+.sf-region-pic::after { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, var(--rg-veil, 0)); }
+.sf-region-pic img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: var(--fx) var(--fy); }
+.sf-region-close { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: inherit; font-size: 18px; text-decoration: none; }
+.sf-region-brand { position: absolute; top: 24px; left: 40px; max-width: calc(100% - 120px); }
+.sf-region-brand img { display: block; width: auto; max-width: 100%; height: var(--rg-size); object-fit: contain; }
+.sf-region-brand img.is-white { filter: brightness(0) invert(1); } .sf-region-brand img.is-black { filter: brightness(0); }
+.sf-region-brand span { font-size: var(--rg-size); line-height: 1; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+.sf-region.is-brand-top_center .sf-region-brand { left: 50%; transform: translateX(-50%); }
+.sf-region.is-brand-above .sf-region-brand { position: static; margin-bottom: 32px; }
+.sf-region-form { width: 100%; text-align: center; }
+.sf-region-form h1 { margin: 0 0 12px; color: inherit; font-size: 28px; }
+.sf-region-text { margin: 12px auto 20px; max-width: 560px; }
+.sf-region-fields { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.sf-pick, .sf-region-check, .sf-region-enter { position: relative; flex: 0 1 240px; min-width: 0; height: 44px; font-size: 14px; }
+.sf-pick-head, .sf-region-check { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; height: 44px; margin: 0; padding: 0 14px; border: 1px solid #000; border-radius: 0; background: #fff; color: #000; font: inherit; cursor: pointer; }
+.sf-region-check { width: auto; font-size: 14px; }
+.sf-pick-head > span { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sf-pick-head svg { flex: 0 0 auto; transition: transform .15s; } .sf-pick.is-open .sf-pick-head svg { transform: rotate(180deg); }
+.sf-pick.is-fixed .sf-pick-head { cursor: default; }
+.sf-region-check input { flex: 0 0 auto; appearance: none; width: 16px; height: 16px; min-height: 0; margin: 0; padding: 2px; border: 1px solid #000; border-radius: 0; background: #fff; cursor: pointer; }
+.sf-region-check input:checked { background: #000 content-box; }
+.sf-region-enter { flex-basis: 160px; border: 0; background: #000; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.sf-region-enter:disabled { cursor: default; }
+.sf-pick-panel { position: absolute; top: calc(100% + 8px); left: 0; z-index: 5; display: flex; flex-direction: column; width: max(100%, 300px); max-width: calc(100vw - 48px); overflow: hidden; border: 1px solid #000; background: #fff; color: #000; text-align: left; }
+.sf-pick.is-up .sf-pick-panel { top: auto; bottom: calc(100% + 8px); }
+.sf-pick-search { flex: 0 0 auto; width: 100%; height: 42px; margin: 0; padding: 0 16px; border: 0; border-bottom: 1px solid #ddd; border-radius: 0; background: #fff; color: #000; font: inherit; font-size: 16px; }
+.sf-pick-list { position: relative; flex: 1 1 auto; min-height: 0; padding: 8px 0; overflow-y: auto; overscroll-behavior: contain; }
+.sf-pick-list button { display: block; width: 100%; min-height: 32px; padding: 6px 16px; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.sf-pick-list button:hover, .sf-pick-list button:focus-visible { background: #f3f3f3; }
+.sf-pick-list button[aria-selected="true"] { font-weight: 700; text-decoration: underline; }
+.sf-pick-list p { margin: 0; padding: 8px 16px; font-size: 13px; }
+.sf-region-fields.is-column { flex-direction: column; align-items: center; gap: 12px; }
+.sf-region-fields.is-column > * { flex: 0 0 auto; width: min(340px, 100%); }
+@media (max-width: 767px) {
+  .sf-region { --fx: var(--fx-m, 50%); --fy: var(--fy-m, 50%); }
+  .sf-region:not(.is-brand-above) .sf-region-brand { top: 24px; left: 50%; transform: translateX(-50%); }
+  .sf-region-fields { flex-direction: column; align-items: center; gap: 12px; }
+  .sf-region-fields > * { flex: 0 0 auto; width: min(300px, 100%); }
+  .sf-pick-panel { width: 100%; }
+  .sf-pick-list button { min-height: 44px; }
+}

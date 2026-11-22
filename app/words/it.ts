@@ -557,4 +557,7 @@ export default {
   'Entrer': 'Entra',
   'Devise': 'Valuta',
   'Les cartes cadeaux ne sont pas acceptées dans cette devise.': 'Le carte regalo non sono accettate in questa valuta.',
+  'Rechercher un pays': 'Cerca un paese',
+  'Aucun pays trouvé': 'Nessun paese trovato',
+  'Votre choix n\'a pas pu être enregistré, merci de réessayer.': 'Non è stato possibile salvare la scelta, riprova.',
 }

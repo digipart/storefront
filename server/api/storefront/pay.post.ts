@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(event, 'Cache-Control', 'private, no-store')
   const action = String(body?.Action || '')
   // the gift cards pay the amount the cart shows: it is read first, for the country the page shows
-  const shown = async () => (await readCart(event, lang, prefix, /^[A-Z]{2}$/.test(String(body?.CountryIsoCode || '')) ? String(body.CountryIsoCode) : 'FR')).ToPay
+  const shown = async () => (await readCart(event, lang, prefix, /^[A-Z]{2}$/.test(String(body?.CountryIsoCode || '')) ? String(body.CountryIsoCode) : '')).ToPay
   if (action === 'gift-add' || action === 'gift-remove') { await readGiftCards(event, await shown()); const error = await changeGiftCards(event, body); return { Error: error, GiftCards: await readGiftCards(event) } }
   if (action === 'release') { await releaseGiftCards(event); return { Error: '', GiftCards: await readGiftCards(event, await shown()) } }   // the bank payment was refused: the gift cards get their part back
   if (action === 'paypal-create') { const made = await startPaypal(event, body, lang); return { Error: made.error, PaypalOrder: made.paypalOrder || '', Amount: made.amount || 0 } }

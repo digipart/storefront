@@ -12,7 +12,13 @@ const run = promisify(execFile)
 // publication shows within seconds while the answers can be kept for minutes.
 // The products changed in Digipart (api/storefront/changes.php: a product saved, a stock moved by a sale or a synchronisation) are asked at the same time: what is kept of them is forgotten
 // (server/utils/shop.ts) and the pages are drawn again, so a product changed in Digipart shows on the site within seconds.
-let stamp = '', stampAt = 0, since = 0, live = '', pokedAt = 0
+let stamp = '', stampAt = 0, since = 0, live = '', rates = '', pokedAt = 0
+/** An exchange rate changed: again a little later, for the answers that were on their way while Digipart emptied its own cache. */
+function forgetRates() {
+  const forget = () => { cache.clear(); forgetProducts([], true) }
+  forget()
+  setTimeout(forget, 10000).unref?.()
+}
 // Digipart pokes the site when something changes (server/api/storefront/poke.post.ts): while it does, looking by ourselves is only a safety net
 const pause = () => (Date.now() - pokedAt < 24 * 60 * 60 * 1000 ? 60000 : 3000)
 /** A poke of Digipart: the next request looks at once. */
@@ -22,10 +28,11 @@ async function watch(ask: (file: string, query: Record<string, string>) => Promi
   stampAt = Date.now()
   try {
     const answer = await ask('version.php', {})
-    const now = String(answer?.Version || ''), published = String(answer?.Published || now)
+    const now = String(answer?.Version || ''), published = String(answer?.Published || now), rated = String(answer?.Rates || '')
     // a draft saved moves Version only: the pages of the visitors are kept
     if (now && now !== stamp) { if (stamp) { cache.clear(); if (published !== live) { clearPages() } } stamp = now }
     if (published) { live = published }
+    if (rated && rated !== rates) { if (rates) { forgetRates() } rates = rated }
   } catch { /* Digipart did not answer: what is in memory is kept its usual time */ }
   try {
     const changed = await ask('changes.php', since ? { Since: String(since) } : {})

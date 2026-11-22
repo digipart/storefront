@@ -37,6 +37,7 @@ $answer = match ($argv[2]) {
         'min' => (int) $text('PriceMin'), 'max' => (int) $text('PriceMax'), 'tab' => (int) $text('Tab'), 'sort' => $text('Sort'), 'promo' => $text('Promo') === '1', 'limit' => (int) ($text('Limit') ?: 24), 'offset' => (int) $text('Offset')])
         : $api->search($idMarketPlace, $text('Term'), $language, (int) ($text('Limit') ?: 24), (int) $text('Offset')),
     'version.php' => $api->version($idMarketPlace),
+    'countries.php' => $api->countries($idMarketPlace),
     'payment.php' => $api->payment($idMarketPlace),
     'category-stage.php' => $api->categoryStage($idMarketPlace, (int) $text('IdCategory')),
     'looks.php' => $api->looks($idMarketPlace, (int) $text('IdProduct')),

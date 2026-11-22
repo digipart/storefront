@@ -108,6 +108,8 @@ useHead(() => view.value?.Kind === 'product'
   ? { title: 'WhatsApp', meta: [{ name: 'description', content: w('Nouveautés, ventes privées et conseils, directement sur WhatsApp.') }] }
   : view.value?.Kind === 'referral'
   ? { title: w('Parrainage'), meta: [{ name: 'robots', content: 'noindex' }] }
+  : view.value?.Kind === 'region'
+  ? { title: w('Choisir votre pays et votre langue'), meta: [{ name: 'robots', content: 'noindex' }] }
   : ['account', 'favorites', 'reset'].includes(view.value?.Kind)
   ? { title: w(view.value.Kind === 'favorites' ? 'Mes favoris' : 'Mon compte'), meta: [{ name: 'robots', content: 'noindex' }] }
   : view.value?.Kind === 'thanks'
@@ -124,6 +126,7 @@ useHead(() => view.value?.Kind === 'product'
 <template>
   <main>
     <LazySfCheckout v-if="view?.Kind === 'checkout'" :design="view.Design" />
+    <LazySfRegion v-else-if="view?.Kind === 'region'" :design="view.Design" />
     <LazySfAccount v-else-if="view?.Kind === 'account'" :section="view.Section" :id="view.Id" :design="view.Design" />
     <LazySfFavorites v-else-if="view?.Kind === 'favorites'" />
     <LazySfReset v-else-if="view?.Kind === 'reset'" />

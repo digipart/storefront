@@ -18,9 +18,24 @@ const scrolls = computed(() => layout.value === 'carousel' || layout.value === '
 const look = computed(() => props.arrows || {})
 const thumbsAt = computed(() => (['left', 'right', 'inside', 'inside_right', 'none'].includes(String(props.thumbs)) ? String(props.thumbs) : 'below'))
 const thumbsAlign = computed(() => (['center', 'end'].includes(String(look.value.GalleryThumbsAlign)) ? String(look.value.GalleryThumbsAlign) : 'start'))
+// « Cadre à la forme de la photo »: the frame is as wide as a photo of the theme's format at that height, and stands left, centre or right in its column; the thumbnails stay beside it
+const hugging = computed(() => props.layout === 'slider' && props.fit === 'screen' && look.value.GalleryFrame === 'photo')
+const hug = computed(() => {
+  if (!hugging.value) { return {} }
+  const at = ['center', 'right'].includes(String(look.value.GalleryAlign)) ? String(look.value.GalleryAlign) : 'left'
+  // beside thumbnails on the left the row is reversed: its start is the right side
+  const reversed = thumbsAt.value === 'left'
+  return { '--gjust': at === 'center' ? 'center' : (at === 'left') !== reversed ? 'flex-start' : 'flex-end', '--gml': at === 'left' ? '0' : 'auto', '--gmr': at === 'right' ? '0' : 'auto' }
+})
+const thumbLook = computed(() => {
+  const size = Math.max(0, Math.min(160, Number(look.value.GalleryThumbSize) || 0)), gap = Number(look.value.GalleryThumbGap)
+  // under the photo the untouched defaults (44, 16) keep what the site drew before these settings: 64 and 8
+  const beside = ['left', 'right', 'inside', 'inside_right'].includes(thumbsAt.value)
+  return { ...(size >= 24 && (beside || size !== 44) ? { '--gts': size + 'px' } : {}), ...(Number.isFinite(gap) && look.value.GalleryThumbGap !== undefined && look.value.GalleryThumbGap !== '' && (beside || gap !== 16) ? { '--gtg': Math.max(0, Math.min(120, gap)) + 'px' } : {}) }
+})
 const frame = computed(() => {
   const mobile = Math.max(0, Math.min(100, Number(look.value.GalleryHeightMobile) || 0)), part = Math.max(50, Math.min(100, Number(look.value.GalleryScreenPart) || 100))
-  return { '--per': per.value, '--gy': ({ center: '50%', bottom: '100%' } as Record<string, string>)[String(look.value.GalleryFocus)] || '0%', '--gfit': look.value.GalleryCrop === 'contain' ? 'contain' : 'cover', '--gpart': String(part / 100), ...(look.value.GalleryBg === 'none' ? { '--gbg': 'transparent' } : look.value.GalleryBg === 'custom' && /^#[0-9a-f]{3,8}$/i.test(String(look.value.GalleryBgColor || '')) ? { '--gbg': String(look.value.GalleryBgColor) } : {}), ...(mobile > 0 ? { '--ghm': mobile + 'svh' } : {}) }
+  return { '--per': per.value, '--gy': ({ center: '50%', bottom: '100%' } as Record<string, string>)[String(look.value.GalleryFocus)] || '0%', '--gfit': look.value.GalleryCrop === 'contain' ? 'contain' : 'cover', '--gpart': String(part / 100), ...hug.value, ...thumbLook.value, ...(look.value.GalleryBg === 'none' ? { '--gbg': 'transparent' } : look.value.GalleryBg === 'custom' && /^#[0-9a-f]{3,8}$/i.test(String(look.value.GalleryBgColor || '')) ? { '--gbg': String(look.value.GalleryBgColor) } : {}), ...(mobile > 0 ? { '--ghm': mobile + 'svh' } : {}) }
 })
 const down = (box: HTMLElement) => box.scrollHeight > box.clientHeight + 4 && box.scrollWidth <= box.clientWidth + 4   // the photos are stacked in the frame (scroll = down, on a computer)
 function watch() { const box = track.value; if (!box) { return } if (down(box)) { at.value = Math.round(box.scrollTop / Math.max(1, box.clientHeight)); atEnd.value = box.scrollTop + box.clientHeight >= box.scrollHeight - 4; return } const step = box.firstElementChild ? (box.firstElementChild as HTMLElement).offsetWidth : box.clientWidth; at.value = Math.round(box.scrollLeft / Math.max(1, step)); atEnd.value = box.scrollLeft + box.clientWidth >= box.scrollWidth - 4 }
@@ -39,7 +54,7 @@ const arrow = (next: boolean) => {
 </script>
 
 <template>
-  <div class="sf-gallery-wrap" :class="['is-' + layout, 'is-ta-' + thumbsAlign, { 'has-hover-arrows': arrows?.ArrowHover, 'is-thumbs-left': layout === 'slider' && thumbsAt === 'left', 'is-thumbs-right': layout === 'slider' && thumbsAt === 'right', 'is-thumbs-inside': layout === 'slider' && (thumbsAt === 'inside' || thumbsAt === 'inside_right'), 'is-thumbs-end': thumbsAt === 'inside_right', 'is-fit-screen': layout === 'slider' && fit === 'screen', 'is-scroll-down': layout === 'slider' && scroll === 'down', 'has-mh': Number(look.GalleryHeightMobile) > 0 }]" :style="frame">
+  <div class="sf-gallery-wrap" :class="['is-' + layout, 'is-ta-' + thumbsAlign, { 'has-hover-arrows': arrows?.ArrowHover, 'is-thumbs-left': layout === 'slider' && thumbsAt === 'left', 'is-thumbs-right': layout === 'slider' && thumbsAt === 'right', 'is-thumbs-inside': layout === 'slider' && (thumbsAt === 'inside' || thumbsAt === 'inside_right'), 'is-thumbs-end': thumbsAt === 'inside_right', 'is-fit-screen': layout === 'slider' && fit === 'screen', 'is-hug': hugging, 'is-scroll-down': layout === 'slider' && scroll === 'down', 'has-mh': Number(look.GalleryHeightMobile) > 0 }]" :style="frame">
     <div ref="track" class="sf-gallery" :class="'is-' + layout" @scroll.passive="watch">
       <template v-if="images.length"><img v-for="(src, index) in images" :key="src" :src="src" :srcset="sets?.[index] || undefined" :sizes="sizes" :alt="index === 0 ? name : ''" :loading="index === 0 ? 'eager' : 'lazy'" :fetchpriority="index === 0 ? 'high' : undefined" decoding="async" role="button" tabindex="0" :aria-label="w('Agrandir la photo {a}', { a: index + 1 })" @click="emit('zoom', index)" @keydown.enter="emit('zoom', index)"></template>
       <span v-else class="sf-card-empty" aria-hidden="true" />

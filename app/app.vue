@@ -51,7 +51,9 @@ onMounted(() => {
 })
 const ordering = computed(() => ['commande', 'checkout', 'commande/merci', 'checkout/thanks'].includes(site.value?.Route?.Rest || ''))
 // the order page has its own small header: the logo of the shop (the SVG, else the image), as in the header of the site; the name only when the shop has no logo
-const orderLogo = computed(() => { const svg = site.value?.LogoFiles?.Svg?.Src; if (svg) { return String(svg) } const copies = [...(site.value?.Logo || [])].filter((c: any) => c.Src).sort((x: any, y: any) => (x.Height || 0) - (y.Height || 0)); return String((copies.find((c: any) => (c.Height || 0) >= 72) || copies[copies.length - 1])?.Src || '') })
+const orderLogo = computed(() => shopLogo(site.value))
+// the page « Choix du pays » stands alone
+const choosing = computed(() => ['pays-et-langue', 'country-and-language'].includes(site.value?.Route?.Rest || ''))
 const closed = computed(() => !!site.value && !site.value.Preview && (status.value ? !status.value.IsLive && status.value.Bypass !== true : site.value.State !== 'online'))
 const closedPage = computed(() => (closed.value ? status.value?.Page || null : null))
 // the page of a closed site drawn in the site builder of Digipart (`ClosedDesign`: sections, as any page), in place of the page of the settings. A preview opened by the builder on that page
@@ -117,12 +119,12 @@ if (import.meta.server && closed.value) {
   <template v-else>
     <!-- the order page keeps the visitor on the order: a slim bar instead of the menu, no footer -->
     <header v-if="ordering" class="sf-cohead"><a :href="site.Route.Prefix || '/'">‹ {{ words(site.Route.LanguageIsoCode, 'Continuer mes achats') }}</a><a :href="site.Route.Prefix || '/'" class="sf-logo"><img v-if="orderLogo" :src="orderLogo" :alt="site.Name"><template v-else>{{ site.Name }}</template></a><span /></header>
-    <header v-else-if="site.Header" ref="headerBox" :class="{ 'sf-sticky': stickyHeader, 'sf-over': overHero || overProduct, 'is-bare': overProduct, 'is-solid': (overHero || overProduct) && scrolled }"><SfSection v-for="section in site.Header.Sections" :key="section.Id" :section="section" /></header>
+    <header v-else-if="site.Header && !choosing" ref="headerBox" :class="{ 'sf-sticky': stickyHeader, 'sf-over': overHero || overProduct, 'is-bare': overProduct, 'is-solid': (overHero || overProduct) && scrolled }"><SfSection v-for="section in site.Header.Sections" :key="section.Id" :section="section" /></header>
     <NuxtPage />
     <ClientOnly><LazySfCart /></ClientOnly>
     <!-- the search panel (opened by the search of the header) -->
     <ClientOnly><LazySfSearchPanel v-if="searchOpen" /></ClientOnly>
-    <footer v-if="site.Footer && !ordering"><SfSection v-for="section in site.Footer.Sections" :key="section.Id" :section="section" /></footer>
+    <footer v-if="site.Footer && !ordering && !choosing"><SfSection v-for="section in site.Footer.Sections" :key="section.Id" :section="section" /></footer>
     <!-- the bar of a preview: which theme is shown, in which language, and the way out. Only whoever holds a preview link sees it. -->
     <aside v-if="site.Preview && !barHidden && route.query.builder === undefined" class="sf-pbar" aria-label="Aperçu du thème">
       <div class="sf-pbar-name"><strong>{{ site.Theme.Name }}</strong><span class="sf-pbar-badge" :class="{ 'is-live': site.Theme.Live }">{{ site.Theme.Live ? 'En ligne · modifications non publiées' : 'Brouillon' }}</span><small>Aperçu : les visiteurs ne voient pas cette version</small></div>

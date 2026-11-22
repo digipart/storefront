@@ -30,8 +30,7 @@ export function pageKey(event: H3Event): string {
   if (personalPath(path)) { return '' }
   const host = String(getRequestHeader(event, 'x-forwarded-host') || getRequestHeader(event, 'host') || '').toLowerCase()
   // a page carries prices: one copy per currency
-  const currency = visitorCurrency(event)
-  return host ? host + path + (currency === SHOP_CURRENCY ? '' : '#' + currency) : ''
+  return host ? host + path + priceMark(event) : ''
 }
 
 export function getPage(key: string): Page | null {

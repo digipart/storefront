@@ -212,14 +212,14 @@ export async function loadProduct(event: H3Event, id: number, lang: string, pref
   if (policy.wholesale) { priceBase = 'wholesale' }
   const raw = await rawProduct(event, id, lang, currency)
   if (!raw || raw.status === 'error') { return null }
-  return withLook(event, priced(shapeProduct(await complete(event, raw, currency, priceBase), lang, prefix), policy), prefix)
+  return withLook(event, priced(taxed(event, shapeProduct(await complete(event, raw, currency, priceBase), lang, prefix)), policy), prefix)
 }
 
 export async function shapeListed(event: H3Event, products: any[], lang: string, prefix: string, currency = '', priceBase = 'retail'): Promise<ShopProduct[]> {
   currency = currency || visitorCurrency(event)
   const policy = await pricing(event)
   if (policy.wholesale) { priceBase = 'wholesale' }
-  const shaped = await Promise.all((Array.isArray(products) ? products : []).map(async raw => priced(shapeProduct(policy.wholesale && raw ? await complete(event, { ...raw, Price: null }, currency, priceBase) : await complete(event, raw, currency, priceBase), lang, prefix), policy)))
+  const shaped = await Promise.all((Array.isArray(products) ? products : []).map(async raw => priced(taxed(event, shapeProduct(policy.wholesale && raw ? await complete(event, { ...raw, Price: null }, currency, priceBase) : await complete(event, raw, currency, priceBase), lang, prefix)), policy)))
   return (await Promise.all(shaped.map(product => withLook(event, product, prefix)))).filter((product): product is ShopProduct => product !== null)
 }
 

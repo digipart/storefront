@@ -53,16 +53,23 @@ export async function cartCall(event: H3Event, method: 'GET' | 'POST' | 'PUT' | 
 }
 
 /** The cart as the theme draws it. `create` = make one when the visitor has none (only when something is added: a visitor who only looks never gets a cart). */
-export async function readCart(event: H3Event, lang: string, prefix: string, country = 'FR'): Promise<ShopCart> {
+export async function readCart(event: H3Event, lang: string, prefix: string, asked = ''): Promise<ShopCart> {
+  const country = asked || visitorCountry(event) || 'FR'
   const id = cartId(event)
   if (!id) { return emptyCart() }
   // the cart, how prices are shown to this visitor and the free delivery step of the country are asked at the same time
-  const [raw, policy, freeAsked] = await Promise.all([
+  let [raw, policy, freeAsked] = await Promise.all([
     cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: visitorCurrency(event), CountryIsoCode: country, LanguageIsoCode: lang.toUpperCase() }),
     pricing(event),   // a professional site shows its prices without tax
     digipart(event, 'shipping.php', { CountryIsoCode: country }).catch(() => null),
   ])
   if (!raw || !raw.IdCart || raw.status === 'error') { return emptyCart() }
+  // the cart follows the country of the visitor (France when none is valid any more), until a customer's address decides
+  if ((visitorCountry(event) || 'FR') === country && !sessionToken(event) && String(raw.Country?.CountryIsoCode || '').toUpperCase() !== country) {
+    await placeCart(event, country)
+    const again = await cartCall(event, 'GET', 'cart', { IdCart: id, CurrencyIsoCode: visitorCurrency(event), CountryIsoCode: country, LanguageIsoCode: lang.toUpperCase() })
+    if (again?.IdCart && again.status !== 'error') { raw = again }
+  }
   keep(event, Number(raw.IdCart))   // an ordered cart is replaced by a new one by Digipart
   const tax = policy.wholesale ? 'PriceTaxExcl' : 'PriceTaxIncl'
   let lines: CartLine[] = (Array.isArray(raw.Products) ? raw.Products : []).map((line: any) => {

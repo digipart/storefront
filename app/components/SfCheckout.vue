@@ -170,7 +170,7 @@ function loadStripe(): Promise<void> {
 function unmountCard() { try { cardElement?.destroy() } catch { /* already gone */ } cardElement = null; elements = null; cardReady.value = false }
 async function mountCard() {
   if (!byCard.value || !cardBox.value || amountNow() <= 0) { return }
-  if (elements) { elements.update({ amount: amountNow() }); return }
+  if (elements) { elements.update({ amount: amountNow(), currency: String(state.value.Cart.Currency || 'EUR').toLowerCase() }); return }
   payError.value = ''
   try {
     await loadStripe()
@@ -193,7 +193,7 @@ async function pay() {
     const answer = await $fetch<any>('/api/storefront/pay', { method: 'POST', query: query(), body: { IdPayment: payment.value } })
     if (!answer.Error && answer.Order) { try { sessionStorage.setItem('sf-order-before', String(state.value?.LastOrder || '')) } catch { /* no order number then */ } location.href = (site.value?.Route?.Prefix || '') + '/commande/merci'; return }   // the gift cards covered everything
     if (answer.Error || !answer.ClientSecret) { payError.value = answer.Error || 'Le paiement n\'a pas pu être préparé, merci de réessayer.'; return }
-    if (answer.Amount !== amountNow()) { await giftCall({ Action: 'release' }); await load(form.CountryIsoCode); payError.value = 'Le montant de votre commande a changé : vérifiez-le, puis payez à nouveau.'; return }
+    if (answer.Amount !== amountNow() || answer.Currency !== String(state.value.Cart.Currency || 'EUR').toLowerCase()) { await giftCall({ Action: 'release' }); await load(form.CountryIsoCode); payError.value = 'Le montant de votre commande a changé : vérifiez-le, puis payez à nouveau.'; return }
     try { sessionStorage.setItem('sf-order-before', String(state.value?.LastOrder || '')) } catch { /* the confirmation page then shows no order number */ }
     const done = await stripe.confirmPayment({ elements, clientSecret: answer.ClientSecret, confirmParams: { return_url: location.origin + (site.value?.Route?.Prefix || '') + '/commande/merci' } })
     // the customer is sent to the confirmation page by Stripe; coming here means the payment was refused

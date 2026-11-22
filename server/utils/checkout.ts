@@ -34,28 +34,28 @@ export async function readCheckout(event: H3Event, lang: string, prefix: string,
   // the country the delivery and payment methods are shown for: the one of the address, else the one the visitor picked, else the first country of the shop
   const iso = address?.CountryIsoCode || (countries.some((c: any) => c.IsoCode === askedCountry) ? askedCountry : (countries.find((c: any) => c.IsoCode === 'FR') || countries[0])?.IsoCode || 'FR')
   const countryName = countries.find((c: any) => c.IsoCode === iso)?.Name || address?.Country || iso
-  const cart = await readCart(event, lang, prefix, iso)
+  await settleCountry(event, iso)
   // an address Digipart knows, else the place alone (the payment API finds the country by its NAME)
   const place: Record<string, string | number> = address ? { IdAddress: address.IdAddress } : { Address1: '-', Postcode: '-', City: '-', Country: countryName }
-  const [carrierAnswer, paymentAnswer] = cart.Count ? await Promise.all([
-    cartCall(event, 'GET', 'carrier', { ...place, LanguageIsoCode: upper, CurrencyIsoCode: visitorCurrency(event), IdCart: cartId(event), CountryIsoCode: iso }),
-    cartCall(event, 'GET', 'payment/methods', { ...place, LanguageIsoCode: upper }),
-  ]) : [null, null]
+  // carriers first: that call writes the country and the zone on the cart, whose tax and delivery are read next
+  const carrierAnswer = cartId(event) ? await cartCall(event, 'GET', 'carrier', { ...place, LanguageIsoCode: upper, CurrencyIsoCode: visitorCurrency(event), IdCart: cartId(event), CountryIsoCode: iso }) : null
+  const [cart, paymentAnswer] = await Promise.all([readCart(event, lang, prefix, iso), cartId(event) ? cartCall(event, 'GET', 'payment/methods', { ...place, LanguageIsoCode: upper }) : null])
   const carriers: CheckoutCarrier[] = []
   for (const type of ['Home', 'RelayPoint', 'Store']) {
-    for (const c of (carrierAnswer?.Carrier?.[type] || [])) {
+    for (const c of ((cart.Count && carrierAnswer?.Carrier?.[type]) || [])) {
       carriers.push({ IdCarrier: Number(c.IdCarrier), Type: type, Title: String(c.Title || c.Name || ''), Description: String(c.Description || ''), Price: Number(c.Price?.TaxIncl || 0), PriceTaxExcl: Number(c.Price?.TaxExcl || 0), Delay: Number(c.Delivery?.Delay || 0), Date: String(c.Delivery?.ApproximateDate || '') })
     }
   }
-  const total = cart.ToPay
+  const total = cart.ToPay, limited = inShopCurrency(event, total)   // AmountMin and AmountMax are in the currency of the shop
   const giftCards = who && cart.Count ? await readGiftCards(event, total) : null
+  const euros = visitorCurrency(event) === SHOP_CURRENCY
   const payments: CheckoutPayment[] = (Array.isArray(paymentAnswer?.PaymentMethods) ? paymentAnswer.PaymentMethods : []).map((p: any) => ({
     IdPayment: Number(p.IdPayment), Code: String(p.PaymentCode || ''), Provider: String(p.PaymentProvider || p.PaymentName || ''), Title: String(p.PaymentTitle || p.PaymentName || ''), Description: String(p.PaymentDescription || ''),
-    Available: !(Number(p.AmountMin) > 0 && total < Number(p.AmountMin)) && !(Number(p.AmountMax) > 0 && total > Number(p.AmountMax)),
-  })).filter((p: CheckoutPayment) => p.IdPayment > 0)
+    Available: !(Number(p.AmountMin) > 0 && limited < Number(p.AmountMin)) && !(Number(p.AmountMax) > 0 && limited > Number(p.AmountMax)),
+  })).filter((p: CheckoutPayment) => p.IdPayment > 0 && cart.Count > 0)
   return {
     Mode: site?.Preferences?.CheckoutMode === 'steps' ? 'steps' : 'onepage', TaxExcl: (await pricing(event)).wholesale,
-    LastOrder: last?.Id || '', Pay: visitorCurrency(event) === SHOP_CURRENCY ? pay : { ...pay, Alma: null }, GiftCards: giftCards, Customer: who, Address: address, Countries: countries, CountryIsoCode: iso, Cart: cart, Carriers: carriers, Payments: payments,
+    LastOrder: last?.Id || '', Pay: euros ? pay : { ...pay, Alma: null, Paypal: null }, GiftCards: giftCards, Customer: who, Address: address, Countries: countries, CountryIsoCode: iso, Cart: cart, Carriers: carriers, Payments: euros ? payments : payments.filter(p => !['Alma', 'Paypal'].includes(p.Provider)),
   }
 }
 

@@ -16,6 +16,6 @@ export default defineNitroPlugin((nitro) => {
     if (!type) { return }
     const raw = Buffer.from(body, 'utf8')
     response.body = (type === 'br' ? brotliCompressSync(raw, { params: { [constants.BROTLI_PARAM_QUALITY]: 5, [constants.BROTLI_PARAM_SIZE_HINT]: raw.length } }) : gzipSync(raw, { level: 6 })) as any
-    response.headers = { ...response.headers, 'content-encoding': type, vary: [response.headers?.vary, 'Accept-Encoding'].filter(Boolean).join(', ') }
+    response.headers = { ...response.headers, 'content-encoding': type, vary: 'Accept-Encoding, Cookie' }
   })
 })

@@ -636,4 +636,7 @@ export default {
   'Entrer': 'Enter',
   'Devise': 'Currency',
   'Les cartes cadeaux ne sont pas acceptées dans cette devise.': 'Gift cards are not accepted in this currency.',
+  'Rechercher un pays': 'Search for a country',
+  'Aucun pays trouvé': 'No country found',
+  'Votre choix n\'a pas pu être enregistré, merci de réessayer.': 'Your choice could not be saved, please try again.',
 }

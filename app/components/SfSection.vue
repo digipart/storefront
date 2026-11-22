@@ -155,16 +155,17 @@ const openSearch = (event: MouseEvent) => { if (s.value.SearchPanel === false ||
 const searchUrl = computed(() => (site.value?.Route?.Prefix || '') + (lang.value === 'fr' ? '/recherche' : '/search'))
 const zoomAt = ref(-1)   // the photo of the product shown full screen (-1 = none)
 // footer « pays et langue »: the country comes from the visitor's choice (kept in the browser), asked once otherwise
-const regionOpen = ref(false), regionName = ref(''), regionCurrency = ref('')
+const regionName = ref(''), regionCurrency = ref('')
+const regionUrl = computed(() => { const here = site.value?.Route; return (here?.Prefix || '') + '/' + (here?.LanguageIsoCode === 'fr' ? 'pays-et-langue' : 'country-and-language') + '?retour=' + encodeURIComponent((here?.Prefix || '') + '/' + (here?.Rest || '')) })
 const languageName = computed(() => { const iso = String(site.value?.Route?.LanguageIsoCode || 'fr'); try { return new Intl.DisplayNames([iso], { type: 'language' }).of(iso) || iso } catch { return iso } })
 if (props.section.Type === 'main_footer') {
   const readRegion = async () => {
     if (s.value.ShowLanguage === false || s.value.LanguageStyle !== 'region') { return }
     const lang = String(site.value?.Route?.LanguageIsoCode || 'fr')
-    try { const kept = JSON.parse(window.localStorage.getItem('sf_region') || 'null'); if (kept?.name && kept.lang === lang) { regionName.value = String(kept.name); regionCurrency.value = String(kept.currency || ''); return } } catch { /* nothing kept */ }
+    try { const kept = JSON.parse(window.sessionStorage.getItem('sf_place') || window.localStorage.getItem('sf_place') || 'null'); if (kept?.name && kept.lang === lang) { regionName.value = String(kept.name); regionCurrency.value = String(kept.currency || ''); return } } catch { /* nothing kept */ }
     const answer = await $fetch<any>('/api/storefront/regions', { query: { lang } }).catch(() => null)
     const now = (answer?.Countries || []).find((c: any) => c.IsoCode === answer?.Current)
-    if (now) { regionName.value = now.Name; regionCurrency.value = String(answer.Currency || ''); try { window.localStorage.setItem('sf_region', JSON.stringify({ iso: now.IsoCode, name: now.Name, lang, currency: answer.Currency })) } catch { /* private window */ } }
+    if (now) { regionName.value = now.Name; regionCurrency.value = String(answer.Currency || ''); try { window.sessionStorage.setItem('sf_place', JSON.stringify({ name: now.Name, lang, currency: answer.Currency })) } catch { /* private window */ } }
   }
   onMounted(() => { readRegion(); watch(() => s.value.LanguageStyle, readRegion) })
 }
@@ -395,11 +396,10 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
           </div>
         </div>
         <div class="sf-fbottom"><span>{{ t.Copyright }}</span>
-          <button v-if="s.ShowLanguage !== false && s.LanguageStyle === 'region'" type="button" class="sf-region-link" aria-haspopup="dialog" @click="regionOpen = true">
+          <a v-if="s.ShowLanguage !== false && s.LanguageStyle === 'region'" :href="regionUrl" rel="nofollow" class="sf-region-link">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18" /></svg>
             <span v-if="regionName">{{ regionName }}</span><span v-if="regionName" aria-hidden="true">|</span><span>{{ languageName }}</span><template v-if="regionCurrency"><span aria-hidden="true">|</span><span>{{ regionCurrency }}</span></template>
-          </button>
-          <LazySfRegion v-if="regionOpen" :image="s.RegionImage" @close="regionOpen = false" />
+          </a>
         </div>
       </div>
 

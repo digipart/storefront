@@ -27,7 +27,7 @@ async function refresh(iso: string, carrier = 0, passive = false): Promise<boole
   const answer = await call({ Action: 'rates', CountryIsoCode: iso, IdCarrier: carrier, Passive: passive })
   if (answer.Error || !answer.Rates?.length || answer.Amount <= 0) { if (!passive) { error.value = answer.Error || '' } else { shown.value = false } return false }
   rates = answer.Rates; country = iso
-  elements?.update({ amount: answer.Amount })
+  elements?.update({ amount: answer.Amount, currency: answer.Currency })
   if (passive) { shown.value = available } else { emit('changed') }
   return true
 }

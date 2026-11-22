@@ -636,4 +636,7 @@ export default {
   'Entrer': 'Weiter',
   'Devise': 'Währung',
   'Les cartes cadeaux ne sont pas acceptées dans cette devise.': 'Geschenkkarten werden in dieser Währung nicht akzeptiert.',
+  'Rechercher un pays': 'Land suchen',
+  'Aucun pays trouvé': 'Kein Land gefunden',
+  'Votre choix n\'a pas pu être enregistré, merci de réessayer.': 'Ihre Auswahl konnte nicht gespeichert werden, bitte versuchen Sie es erneut.',
 }

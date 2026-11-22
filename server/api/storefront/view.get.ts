@@ -28,6 +28,7 @@ const view = async (event: any): Promise<any> => {
   const account = rest.match(/^(?:compte|account)(?:\/([a-z-]{2,20}))?(?:\/([A-Za-z0-9_-]{1,40}))?$/)
   const referral = rest.match(/^(?:parrainage|referral)\/([A-Za-z0-9]{4,20})$/)
   if (referral) { return { Kind: 'referral', Design: null, Page: null, Code: referral[1]!.toUpperCase() } }
+  if (rest === 'pays-et-langue' || rest === 'country-and-language') { return { Kind: 'region', Design: await design('region').catch(() => null), Page: null } }
   if (account) { return { Kind: 'account', Design: await design('login').catch(() => null), Page: null, Section: account[1] || '', Id: String(account[2] || '') } }
   if (rest === 'favoris' || rest === 'wishlist') { return { Kind: 'favorites', Design: null, Page: null } }
   if (/^(?:[a-z]{2,3}\/)?reset$/.test(rest)) { return { Kind: 'reset', Design: null, Page: null } }
