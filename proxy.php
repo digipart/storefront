@@ -12,7 +12,24 @@ foreach (['HTTP_ACCEPT' => 'Accept', 'HTTP_ACCEPT_LANGUAGE' => 'Accept-Language'
 $curl = curl_init($target);
 curl_setopt_array($curl, [CURLOPT_CUSTOMREQUEST => $_SERVER['REQUEST_METHOD'] ?? 'GET', CURLOPT_HTTPHEADER => $headers, CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_FOLLOWLOCATION => false, CURLOPT_CONNECTTIMEOUT => 2, CURLOPT_TIMEOUT => 30]);
 if (!in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)) {
-    curl_setopt($curl, CURLOPT_POSTFIELDS, (string) file_get_contents('php://input'));
+    if (str_starts_with(strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? '')), 'multipart/form-data')) {
+        // PHP has already read a multipart body (php://input is empty): it is sent again from $_POST and $_FILES, curl writes its own Content-Type with the new boundary
+        $fields = [];
+        foreach ($_POST as $name => $value) {
+            if (is_string($value)) {
+                $fields[$name] = $value;
+            }
+        }
+        foreach ($_FILES as $name => $file) {
+            if (is_array($file) && is_string($file['tmp_name'] ?? null) && ($file['error'] ?? 1) === UPLOAD_ERR_OK) {
+                $fields[$name] = new CURLFile($file['tmp_name'], (string) ($file['type'] ?? 'application/octet-stream'), (string) ($file['name'] ?? $name));
+            }
+        }
+        curl_setopt($curl, CURLOPT_HTTPHEADER, array_values(array_filter($headers, static fn (string $line): bool => stripos($line, 'Content-Type:') !== 0)));
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $fields);
+    } else {
+        curl_setopt($curl, CURLOPT_POSTFIELDS, (string) file_get_contents('php://input'));
+    }
 }
 $answer = curl_exec($curl);
 if ($answer === false) {

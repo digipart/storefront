@@ -1543,3 +1543,73 @@ html.sf-has-pbar .sf-buybar { bottom: var(--sf-pbar-h, 0px); }
 .sf-gallery-film.is-vimeo { position: relative; overflow: hidden; } .sf-gallery-film.is-vimeo iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
 .sf-gallery-thumbs button.is-film { position: relative; } .sf-gallery-play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 14px; text-shadow: 0 1px 4px rgba(0, 0, 0, .6); background: rgba(0, 0, 0, .18); }
 .sf-card-film { position: absolute; inset: 0; overflow: hidden; pointer-events: none; } .sf-card-film video { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .6s ease; } .sf-card-film.is-shown video { opacity: 1; }   /* the product video over the photo of a card */
+
+/* ---- virtual try-on (SfTryOnButton, SfTryOn): the button over the photos of a product, then a window above the page, in the colours of the theme ---- */
+.sf-tryon-launch { position: absolute; top: 16px; right: 16px; z-index: 3; }
+.sf-tryon-btn { display: inline-flex; align-items: center; gap: 10px; padding: 0; border: 0; background: none; color: var(--t-text, #1e2129); font: inherit; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.sf-tryon-btn > span:first-child { padding: 4px 8px; background: rgba(255, 255, 255, .75); border-radius: 2px; }
+.sf-tryon-btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--t-bg, #fff); box-shadow: inset 0 0 0 1px var(--t-text, #1e2129); transition: background .15s, color .15s; }
+.sf-tryon-btn:hover .sf-tryon-btn-icon, .sf-tryon-btn:focus-visible .sf-tryon-btn-icon { background: var(--t-text, #1e2129); color: var(--t-bg, #fff); }
+.sf-tryon { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.sf-tryon-veil { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); }
+.sf-tryon-panel { position: relative; width: min(640px, 100%); max-height: calc(100svh - 32px); overflow: auto; padding: 44px 48px 36px; background: var(--t-bg, #fff); color: var(--t-text, #1e2129); outline: none; box-shadow: 0 24px 60px rgba(0, 0, 0, .25); }
+.sf-tryon-panel.is-result { width: min(1080px, 100%); }
+.sf-tryon-panel h2 { margin: 0 0 22px; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; text-align: center; }
+.sf-tryon-close { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border: 0; background: none; color: inherit; font-size: 20px; cursor: pointer; }
+.sf-tryon-tips { display: grid; gap: 18px; margin: 0 0 28px; padding: 0; list-style: none; }
+.sf-tryon-tips li { display: flex; gap: 14px; align-items: flex-start; }
+.sf-tryon-tips strong { display: block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.sf-tryon-tips span { font-size: 13px; color: color-mix(in srgb, currentColor 62%, transparent); }
+.sf-tryon-tip-icon { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 1px currentColor; background-position: center; background-repeat: no-repeat; background-size: 15px; }
+.sf-tryon-tip-icon.is-camera { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2'%3E%3Cpath d='M4 8h3l2-3h6l2 3h3v11H4z'/%3E%3Ccircle cx='12' cy='13' r='3.5'/%3E%3C/svg%3E"); }
+.sf-tryon-tip-icon.is-sun { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5'/%3E%3C/svg%3E"); }
+.sf-tryon-tip-icon.is-star { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000'%3E%3Cpath d='M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z'/%3E%3C/svg%3E"); }
+.sf-tryon-actions { display: grid; gap: 12px; justify-items: center; margin: 0 auto 22px; max-width: 280px; }
+.sf-tryon-actions .sf-btn { width: 100%; text-align: center; }
+.sf-tryon-kept { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 0 0 16px; }
+.sf-tryon-kept img { width: 56px; height: 70px; object-fit: cover; }
+.sf-tryon-remember { display: flex; gap: 10px; align-items: flex-start; max-width: 380px; margin: 0 auto 12px; font-size: 12px; cursor: pointer; }
+.sf-tryon-remember strong { display: block; font-weight: 600; }
+.sf-tryon-remember span { color: color-mix(in srgb, currentColor 62%, transparent); }
+.sf-tryon-remember strong { color: var(--t-text, #1e2129); }
+.sf-tryon-privacy { max-width: 380px; margin: 0 auto; font-size: 11px; color: color-mix(in srgb, currentColor 62%, transparent); text-align: center; }
+.sf-tryon-camera video { display: block; width: 100%; max-height: 60svh; margin: 0 0 22px; background: #000; transform: scaleX(-1); object-fit: contain; }
+.sf-tryon-work, .sf-tryon-error { display: grid; justify-items: center; text-align: center; }
+.sf-tryon-thumb { width: 96px; height: 120px; margin: 0 0 18px; object-fit: cover; box-shadow: 0 0 0 1px var(--t-border, #ececf1); }
+.sf-tryon-bar { position: relative; display: flex; justify-content: space-between; width: min(360px, 100%); padding-bottom: 10px; margin: 0 0 24px; font-size: 12px; }
+.sf-tryon-bar::after, .sf-tryon-bar i { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; }
+.sf-tryon-bar::after { right: 0; background: var(--t-border, #ececf1); }
+.sf-tryon-bar i { z-index: 1; background: var(--t-text, #1e2129); transition: width .25s linear; }
+.sf-tryon-stages { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; text-align: left; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.sf-tryon-stages li { position: relative; padding-left: 30px; color: color-mix(in srgb, currentColor 62%, transparent); }
+.sf-tryon-stages li::before { content: ''; position: absolute; left: 0; top: -2px; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px currentColor; }
+.sf-tryon-stages li.is-done, .sf-tryon-stages li.is-now { color: var(--t-text, #1e2129); }
+.sf-tryon-stages li.is-done::before { background: var(--t-text, #1e2129) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3'%3E%3Cpath d='M6 12l4 4 8-8'/%3E%3C/svg%3E") center / 12px no-repeat; }
+.sf-tryon-stages li.is-now::before { box-shadow: inset 0 0 0 2px var(--t-border, #ececf1); border-top: 2px solid var(--t-text, #1e2129); box-sizing: border-box; animation: sf-tryon-turn .9s linear infinite; }
+@keyframes sf-tryon-turn { to { transform: rotate(360deg); } }
+.sf-tryon-error p { max-width: 420px; margin: 0 0 22px; }
+.sf-tryon-result { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+.sf-tryon-picture figure { position: relative; margin: 0; }
+.sf-tryon-picture img { display: block; width: 100%; max-height: 70svh; object-fit: contain; background: var(--t-line, #f5f5f7); }
+.sf-tryon-ai { position: absolute; right: 10px; bottom: 10px; padding: 3px 8px; border-radius: 10px; background: rgba(30, 33, 41, .75); color: #fff; font-size: 12px; font-weight: 700; }
+.sf-tryon-tools { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 14px 0 6px; }
+.sf-tryon-switch { display: inline-flex; box-shadow: inset 0 0 0 1px var(--t-text, #1e2129); }
+.sf-tryon-switch button { padding: 7px 14px; border: 0; background: none; color: inherit; font: inherit; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.sf-tryon-switch button.is-on { background: var(--t-text, #1e2129); color: var(--t-bg, #fff); }
+.sf-tryon-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; background: none; color: inherit; cursor: pointer; }
+.sf-tryon-note { margin: 0; font-size: 11px; color: color-mix(in srgb, currentColor 62%, transparent); text-align: center; }
+.sf-tryon-buy h2 { margin: 0 0 6px; text-align: left; }
+.sf-tryon-ask, .sf-tryon-label { margin: 0 0 18px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.sf-tryon-label { margin: 18px 0 10px; font-weight: 500; }
+.sf-tryon-sizes { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px; }
+.sf-tryon-sizes button { min-width: 44px; padding: 9px 12px; border: 0; background: none; color: inherit; box-shadow: inset 0 0 0 1px var(--t-text, #1e2129); font: inherit; font-size: 13px; cursor: pointer; }
+.sf-tryon-sizes button.is-on { background: var(--t-text, #1e2129); color: var(--t-bg, #fff); }
+.sf-tryon-add { width: 100%; text-align: center; }
+.sf-tryon-link { margin-top: 16px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.sf-tryon-guard:empty { display: none; }
+.sf-tryon-guard { display: flex; justify-content: center; margin-top: 12px; }
+@media (max-width: 767px) {
+  .sf-tryon-launch { top: 10px; right: 10px; }
+  .sf-tryon-panel { padding: 40px 20px 24px; }
+  .sf-tryon-result { grid-template-columns: 1fr; gap: 20px; }
+}

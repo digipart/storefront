@@ -130,6 +130,7 @@ export async function changeCart(event: H3Event, body: any): Promise<string> {
       const answer = await cartCall(event, 'POST', 'cart/product/add', { IdCart: cartId(event) || '', IdProduct: idProduct, IdProductAttribute: item.variant, Quantity: item.quantity })
       if (answer && answer.IdCart) { keep(event, Number(answer.IdCart)) } else { failed++ }
     }
+    if (failed < items.length) { tryOnAdded(event, idProduct, cartId(event)) }   // a product tried on (server/utils/tryon.ts)
     return failed === items.length ? 'Ces articles n\'ont pas pu être ajoutés au panier.' : failed ? 'Certaines tailles n\'ont pas pu être ajoutées au panier.' : ''
   }
   if (action === 'add') {
@@ -147,6 +148,7 @@ export async function changeCart(event: H3Event, body: any): Promise<string> {
     const answer = await cartCall(event, 'POST', 'cart/product/add', { IdCart: id || '', IdProduct: idProduct, IdProductAttribute: idVariant, Quantity: gift ? 1 : quantity, ...giftFields })
     if (!answer || !answer.IdCart) { return answer?.status === 'error' ? 'Ce produit ne peut pas être ajouté au panier.' : 'Le panier ne répond pas, merci de réessayer.' }
     keep(event, Number(answer.IdCart))
+    tryOnAdded(event, idProduct, Number(answer.IdCart))   // a product tried on follows the cart (server/utils/tryon.ts)
     return ''
   }
   if (!id) { return 'Votre panier est vide.' }

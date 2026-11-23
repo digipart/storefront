@@ -58,6 +58,47 @@ $answer = match ($argv[2]) {
     'changes.php' => (float) $text('Since') > 0 ? \Digipart\Storefront\StorefrontChanges::since((float) $text('Since')) : ['Now' => microtime(true), 'Products' => [], 'Complete' => true],
     'category-links.php' => $api->categoryLinks($idMarketPlace, (int) $text('IdCategory'), $language),
     'attribute-looks.php' => $api->attributeLooks($idMarketPlace, array_map('intval', explode(',', $text('Ids')))),
+    // as api/storefront/try-on.php, without the key and the anti-robot checks (development only): the product (IdProduct), where a try-on stands (IdTryOn + Visitor), a start (PhotoFile: a file the engine wrote);
+    // `try-on-run` makes the picture, started by the engine in the background, then deletes the photo
+    'try-on.php' => (function () use ($pdo, $idMarketPlace, $text) {
+        $tryOn = new \Digipart\TryOn($pdo);
+        $tryOn->ensureTable();
+        if ($text('IdTryOn') !== '') {
+            $token = \Digipart\TryOn::token($text('IdTryOn'));
+            $state = $token === null ? null : $tryOn->status($token, $text('Visitor'));
+            return $state === null ? null : ['IdTryOn' => $token] + $state;
+        }
+        $id = (int) $text('IdProduct');
+        if ($text('Event') === 'cart') {
+            return ['Followed' => $tryOn->added($text('Visitor'), $id, (int) $text('IdCart'))];
+        }
+        $product = $tryOn->product($id);
+        $head = ['IdProduct' => $id, 'Kind' => $product['kind'], 'Framing' => $product['framing']];
+        if ($text('PhotoFile') === '') {
+            return $head + ['Enabled' => $tryOn->offered($id), 'TurnstileSiteKey' => ''];
+        }
+        $photo = (string) @file_get_contents($text('PhotoFile'));
+        try {
+            $opened = $tryOn->open($idMarketPlace, $id, $text('Visitor'), $text('IP') ?: '127.0.0.1', $photo);
+        } catch (\Digipart\TryOnRefused $refusal) {
+            @unlink($text('PhotoFile'));
+            return ['code' => $refusal->status, 'status' => 'error', 'message' => $refusal->getMessage(), 'Reason' => $refusal->reason];
+        }
+        if ($opened['reused']) {
+            @unlink($text('PhotoFile'));
+            return ['IdTryOn' => $opened['token'], 'Kind' => $product['kind'], 'Framing' => $product['framing']] + (array) $tryOn->status($opened['token'], $text('Visitor'));
+        }
+        return ['IdTryOn' => $opened['token'], 'Kind' => $product['kind'], 'Framing' => $product['framing'], 'Status' => 'running', 'Reason' => null, 'Image' => null, 'Run' => true];
+    })(),
+    'try-on-run' => (function () use ($pdo, $text) {
+        $photo = (string) @file_get_contents($text('PhotoFile'));
+        @unlink($text('PhotoFile'));
+        $token = \Digipart\TryOn::token($text('IdTryOn'));
+        if ($token !== null) {
+            (new \Digipart\TryOn($pdo))->run($token, $photo);
+        }
+        return ['Done' => true];
+    })(),
     'sitemap.php' => $api->sitemap($idMarketPlace, in_array($text('Type'), ['product', 'category', 'brand', 'page'], true) ? $text('Type') : null, $language, max(1, (int) $text('Page'))),
     default => null,
 };

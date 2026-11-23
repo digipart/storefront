@@ -92,5 +92,7 @@ const arrow = (next: boolean) => {
     <div v-if="layout === 'slider' && slides.length > 1 && (thumbsAt !== 'none' || thumbsPhone !== 'none')" class="sf-gallery-thumbs" :class="{ 'is-no-desk': thumbsAt === 'none', 'is-no-phone': thumbsPhone === 'none' }">
       <button v-for="(item, index) in slides" :key="item.kind + item.src" type="button" :class="{ 'is-on': index === at, 'is-film': item.kind !== 'img' }" :aria-label="item.kind === 'img' ? w('Photo {a} sur {b}', { a: item.i + 1, b: images.length }) : w('Vidéo du produit')" :aria-current="index === at ? 'true' : undefined" @click="go(index)"><img v-if="item.kind === 'img' || images.length" :src="item.kind === 'img' ? item.src : images[0]" alt="" loading="lazy"><span v-if="item.kind !== 'img'" class="sf-gallery-play" aria-hidden="true">▶</span></button>
     </div>
+    <!-- what the page puts over the photos (the « Essayez-le » button of the virtual try-on) -->
+    <slot />
   </div>
 </template>
