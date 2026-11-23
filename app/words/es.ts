@@ -312,6 +312,7 @@ export default {
   'Votre adresse n\'a pas pu être enregistrée.': 'No se pudo guardar tu dirección.',
   'Choisissez un mode de livraison.': 'Elige un método de envío.',
   'Ce mode de livraison n\'a pas pu être choisi.': 'No se pudo elegir este envío.',
+  'Vidéo du produit': 'Vídeo del producto',
   'Agrandir la photo {a}': 'Ampliar la foto {a}',
   'Photo {a} sur {b}': 'Foto {a} de {b}',
   'Photo précédente': 'Foto anterior',

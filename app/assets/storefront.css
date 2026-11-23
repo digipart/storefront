@@ -196,11 +196,11 @@ a.sf-split-img { display: block; }
 .sf-pdp { display: grid; grid-template-columns: var(--cols, 60fr 40fr); gap: var(--gap, 48px); align-items: start; }
 .sf-pdp.is-reverse .sf-gallery-wrap { order: 2; }
 .sf-gallery { position: relative; display: grid; gap: 8px; min-height: 320px; } .sf-gallery.is-grid { grid-template-columns: 1fr 1fr; }
-.sf-gallery img { width: 100%; aspect-ratio: var(--t-card-ratio, 3 / 4); object-fit: var(--gfit, cover); object-position: 50% var(--gy, 0%); border-radius: var(--t-card-radius, 0); background: var(--gbg, #f1f1f4); }
+.sf-gallery :is(img, .sf-gallery-film) { width: 100%; aspect-ratio: var(--t-card-ratio, 3 / 4); object-fit: var(--gfit, cover); object-position: 50% var(--gy, 0%); border-radius: var(--t-card-radius, 0); background: var(--gbg, #f1f1f4); }
 .sf-gallery-wrap { position: relative; min-width: 0; }
 .sf-gallery.is-slider, .sf-gallery.is-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; } .sf-gallery.is-slider::-webkit-scrollbar, .sf-gallery.is-carousel::-webkit-scrollbar { display: none; }
-.sf-gallery.is-slider img { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
-.sf-gallery.is-carousel img { flex: 0 0 calc((100% - (var(--per, 2) - 1) * 8px) / var(--per, 2)); min-width: 0; scroll-snap-align: start; }   /* min-width: a photo is never wider than its share, whatever its own size */
+.sf-gallery.is-slider :is(img, .sf-gallery-film) { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
+.sf-gallery.is-carousel :is(img, .sf-gallery-film) { flex: 0 0 calc((100% - (var(--per, 2) - 1) * 8px) / var(--per, 2)); min-width: 0; scroll-snap-align: start; }   /* min-width: a photo is never wider than its share, whatever its own size */
 .sf-gallery-nav { position: absolute; top: 50%; z-index: 1; width: 44px; height: 44px; margin-top: -22px; border: 1px solid currentColor; border-radius: 50%; background: rgba(255, 255, 255, .85); color: #1e2129; font-size: 24px; line-height: 1; cursor: pointer; }
 .sf-gallery-nav.is-prev { left: 16px; } .sf-gallery-nav.is-next { right: 16px; }
 .sf-gallery-thumbs { display: flex; gap: 8px; margin-top: var(--gtg, 8px); overflow-x: auto; }
@@ -239,7 +239,7 @@ a.sf-split-img { display: block; }
   .sf-hero { min-height: var(--hm, 480px); padding: calc(var(--pad, 40px) / 2); }
   .sf-spacer { height: calc(var(--h, 32px) * .6); }
   .sf-split { grid-template-columns: 1fr; gap: 24px; } .sf-split.is-reverse .sf-split-img { order: 0; }
-  .sf-pdp { grid-template-columns: 1fr; gap: 20px; } .sf-pdp.is-reverse .sf-gallery-wrap { order: 0; } .sf-gallery, .sf-gallery.is-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; } .sf-gallery img { flex: 0 0 100%; scroll-snap-align: start; } .sf-info-col.is-sticky .sf-info, .sf-info-col.is-sticky.is-center .sf-info { position: static; }
+  .sf-pdp { grid-template-columns: 1fr; gap: 20px; } .sf-pdp.is-reverse .sf-gallery-wrap { order: 0; } .sf-gallery, .sf-gallery.is-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; } .sf-gallery :is(img, .sf-gallery-film) { flex: 0 0 100%; scroll-snap-align: start; } .sf-info-col.is-sticky .sf-info, .sf-info-col.is-sticky.is-center .sf-info { position: static; }
   .sf-products.is-carousel-mobile, .sf-products.is-carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: var(--gx, 16px); } .sf-products.is-carousel-mobile > *, .sf-products.is-carousel > * { flex: 0 0 62%; scroll-snap-align: start; }
   .sf-header { gap: 12px; padding: 0 16px; min-height: min(var(--h, 72px), 60px); } .sf-nav, .sf-desk { display: none !important; }
   .sf-hicons { gap: 12px; font-size: 12px; }
@@ -633,7 +633,7 @@ iframe.sf-closed-cover { top: 50%; left: 50%; width: max(100%, 177.78vh); height
 .sf-lot-title { display: flex; flex-direction: column; gap: 3px; }
 .sf-lot-foot { padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--t-line, #e6e6e6); }
 .sf-lot-foot .sf-btn { display: block; width: 100%; margin-top: 10px; padding-top: 15px; padding-bottom: 15px; text-align: center; }
-@media (max-width: 767px) { .sf-gallery.is-carousel img { flex: 0 0 100%; } .sf-gallery-nav { display: none; } }
+@media (max-width: 767px) { .sf-gallery.is-carousel :is(img, .sf-gallery-film) { flex: 0 0 100%; } .sf-gallery-nav { display: none; } }
 
 /* the order page: reassurance lines, legal words */
 .sf-reassure { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--t-line, #e0e0e0); }
@@ -1262,7 +1262,7 @@ header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { bac
 .sf-plink { display: block; margin: 0; padding: 7px 0; border: 0; background: none; font: inherit; font-size: 13px; color: inherit; text-align: left; cursor: pointer; }
 .sf-pdesc { font-size: 14px; }
 /* « Hauteur de la photo sur mobile »: a part of the height of the screen of the phone instead of the format of the theme */
-@media (max-width: 767px) { .sf-gallery-wrap.has-mh .sf-gallery img { height: var(--ghm); aspect-ratio: auto; } }
+@media (max-width: 767px) { .sf-gallery-wrap.has-mh .sf-gallery :is(img, .sf-gallery-film) { height: var(--ghm); aspect-ratio: auto; } }
 /* The photos of a product as one photo and its small ones in a column on the left (Produit > « Miniatures » : à gauche), the photo as tall as the screen (« Hauteur de la photo ») : on a computer */
 @media (min-width: 768px) {
   .sf-gallery-wrap.is-thumbs-left, .sf-gallery-wrap.is-thumbs-right { display: flex; flex-direction: row-reverse; align-items: flex-start; gap: var(--gtg, 16px); }
@@ -1279,18 +1279,18 @@ header.sf-over.is-solid, header.sf-over:hover, header.sf-over:focus-within { bac
   .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider { min-height: 0; }
   /* header laid over the product page: the photo takes the whole height of the window, under it */
   :root:has(header.sf-over.is-bare) .sf-gallery-wrap { --sf-head: 0px; }
-  .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider img { height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); aspect-ratio: auto; }
+  .sf-gallery-wrap.is-fit-screen .sf-gallery.is-slider :is(img, .sf-gallery-film) { height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); aspect-ratio: auto; }
   /* « Défilement des photos » : vertical. The frame is one photo tall and stays under the header; the photos are stacked inside it and the wheel goes from one to the next (it stops on each);
      after the last one the browser hands the scroll to the page, which goes on to what is under the photos. */
   .sf-gallery-wrap.is-scroll-down { position: sticky; top: var(--sf-head, 0px); align-self: start; }
   .sf-gallery-wrap.is-scroll-down .sf-gallery.is-slider { flex-direction: column; overflow: hidden auto; scroll-snap-type: y mandatory; overscroll-behavior-y: auto; min-height: 0; gap: 0; aspect-ratio: var(--t-card-ratio, 3 / 4); max-height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); }
-  .sf-gallery-wrap.is-scroll-down .sf-gallery.is-slider img { flex: 0 0 100%; width: 100%; height: 100%; aspect-ratio: auto; scroll-snap-align: start; }
+  .sf-gallery-wrap.is-scroll-down .sf-gallery.is-slider :is(img, .sf-gallery-film) { flex: 0 0 100%; width: 100%; height: 100%; aspect-ratio: auto; scroll-snap-align: start; }
   .sf-gallery-wrap.is-scroll-down.is-fit-screen .sf-gallery.is-slider { aspect-ratio: auto; height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); }
   /* frame as wide as the photo: thumbnails stay beside it, the whole stands left, centre or right */
   .sf-gallery-wrap.is-hug.is-fit-screen .sf-gallery.is-slider { flex: 0 0 auto; height: calc((100svh - var(--sf-head, 0px)) * var(--gpart, 1)); aspect-ratio: var(--t-card-ratio, 3 / 4); max-width: 100%; margin-left: var(--gml, 0); margin-right: var(--gmr, auto); }
   .sf-gallery-wrap.is-hug.is-fit-screen:is(.is-thumbs-left, .is-thumbs-right) { justify-content: var(--gjust, flex-start); }
   .sf-gallery-wrap.is-hug.is-fit-screen:is(.is-thumbs-left, .is-thumbs-right) .sf-gallery.is-slider { margin: 0; }
-  .sf-gallery-wrap.is-hug.is-fit-screen .sf-gallery.is-slider img { height: 100%; }
+  .sf-gallery-wrap.is-hug.is-fit-screen .sf-gallery.is-slider :is(img, .sf-gallery-film) { height: 100%; }
 }
 /* The photo viewer fills the window: the photo covers it from edge to edge (on a computer it moves up and down with the pointer: --zy, SfZoom.vue), the small pictures and the cross lie over it */
 .sf-zoom { background: #111; }
@@ -1527,9 +1527,9 @@ html.sf-has-pbar .sf-buybar { bottom: var(--sf-pbar-h, 0px); }
 }
 @media (prefers-reduced-motion: reduce) { .sf-pperf, .sf-pbar-pop { transition: none; animation: none; } }
 @media (max-width: 767px) {   /* the fill of the photo on a phone: « Remplir » fills the phone height, « Photo entière » keeps the photo's shape (no empty band) */
-  .sf-gallery-wrap.is-mfit-cover .sf-gallery img { object-fit: cover; }
+  .sf-gallery-wrap.is-mfit-cover .sf-gallery :is(img, .sf-gallery-film) { object-fit: cover; }
   .sf-gallery-wrap.is-mfit-contain .sf-gallery { align-items: flex-start; }
-  .sf-gallery-wrap.is-mfit-contain .sf-gallery img { object-fit: contain; aspect-ratio: auto var(--t-card-ratio, 3 / 4); height: auto; max-height: var(--ghm, none); }   /* the theme's shape until the photo is read: nothing jumps */
+  .sf-gallery-wrap.is-mfit-contain .sf-gallery :is(img, .sf-gallery-film) { object-fit: contain; aspect-ratio: auto var(--t-card-ratio, 3 / 4); height: auto; max-height: var(--ghm, none); }   /* the theme's shape until the photo is read: nothing jumps */
 }
 /* the language of the header on a phone: a globe and the language of the page, the others in a small menu */
 .sf-lang-m { display: none; position: relative; }
@@ -1538,3 +1538,8 @@ html.sf-has-pbar .sf-buybar { bottom: var(--sf-pbar-h, 0px); }
 .sf-langs .sf-lang-pop a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 6px; opacity: 1; font-weight: 400; } .sf-lang-pop a b { min-width: 22px; font-size: 12px; }
 .sf-langs .sf-lang-pop a[aria-current] { background: var(--t-soft, #f6f6f6); font-weight: 600; }
 @media (max-width: 767px) { .sf-langs a.sf-lang-d, .sf-hicons .sf-langs a.sf-lang-d { display: none; } .sf-lang-m { display: inline-block; } }
+
+.sf-gallery-film { display: block; width: 100%; aspect-ratio: var(--t-card-ratio, 3 / 4); object-fit: var(--gfit, cover); background: var(--gbg, #f1f1f4); border-radius: var(--t-card-radius, 0); }   /* the product video, as tall as a photo */
+.sf-gallery-film.is-vimeo { position: relative; overflow: hidden; } .sf-gallery-film.is-vimeo iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.sf-gallery-thumbs button.is-film { position: relative; } .sf-gallery-play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 14px; text-shadow: 0 1px 4px rgba(0, 0, 0, .6); background: rgba(0, 0, 0, .18); }
+.sf-card-film { position: absolute; inset: 0; overflow: hidden; pointer-events: none; } .sf-card-film video { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .6s ease; } .sf-card-film.is-shown video { opacity: 1; }   /* the product video over the photo of a card */

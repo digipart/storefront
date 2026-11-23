@@ -8,8 +8,12 @@ const view = async (event: any): Promise<any> => {
   const { lang, prefix } = langOf(event)
   const language = { LanguageIsoCode: lang }
   const preview = previewQuery(event)
-  // the address of the product in every language of the site (for the search engines): asked once per product page
-  const withPaths = async (product: any) => { const found = await digipart(event, 'products.php', { Mode: 'paths', IdProduct: product.Id }).catch(() => null); const paths = found?.Paths && typeof found.Paths === 'object' ? found.Paths : {}; return { ...product, Alternates: { ...product.Alternates, ...paths }, Canonical: paths[lang] || product.Canonical } }
+  // the address of the product in every language of the site (for the search engines) and its video (a file on S3 or the server, or Vimeo): asked once per product page
+  const withPaths = async (product: any) => {
+    const [found, film] = await Promise.all([digipart(event, 'products.php', { Mode: 'paths', IdProduct: product.Id }).catch(() => null), digipart(event, 'product-video.php', { IdProduct: product.Id }).catch(() => null)])
+    const paths = found?.Paths && typeof found.Paths === 'object' ? found.Paths : {}
+    return { ...product, Alternates: { ...product.Alternates, ...paths }, Canonical: paths[lang] || product.Canonical, Video: productVideo(film?.Video) }
+  }
   // `more`: the category (`IdCategory`) or the product (`IdProduct`) the page is about: Digipart answers its own alternate design when it was given one in the site builder, else the one asked for.
   // In a preview opened by the site builder on an alternate (`template=catalog.<name>`), that alternate draws the page whatever uses it: it is the one being written.
   const forced = Object.keys(preview).length && /^(catalog|product|page)\.[a-z0-9-]{1,30}$/.test(String(query.template ?? '')) ? String(query.template) : ''

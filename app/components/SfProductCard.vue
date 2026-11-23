@@ -10,8 +10,9 @@ const wanted = computed(() => (!props.images || props.images === 'theme' ? Strin
 const withDots = computed(() => (!props.images || props.images === 'theme' ? theme.value.CardDots !== false : props.dots))   // a boolean prop not given is false: the theme decides when the section chose nothing
 const most = computed(() => Math.max(2, Math.min(16, Number(theme.value.CardImagesMax) || 8)))
 const mode = computed(() => (wanted.value === 'wide' ? 'wide' : wanted.value === 'row' ? 'row' : wanted.value === 'carousel' && props.product.Images.length > 1 ? 'carousel' : wanted.value === 'hover' && props.product.Images.length > 1 ? 'hover' : 'single'))
-// the Vimeo video the shop chose for this card (the staging of the category): played silent, in a loop, over the photo
-const film = computed(() => { const found = String(props.video || '').match(/vimeo\.com\/(?:video\/)?(\d{6,12})(?:\/([0-9a-f]{6,20}))?/i); return found ? 'https://player.vimeo.com/video/' + found[1] + '?background=1&autoplay=1&loop=1&muted=1&dnt=1' + (found[2] ? '&h=' + found[2] : '') : '' })
+// the Vimeo video the shop chose for this card (the staging of the category), else the video put on the cover of the product (a file, or Vimeo): played silent, in a loop, over the photo
+const ownFilm = computed(() => (!props.video && props.product.Video?.Type === 'file' ? props.product.Video : null))
+const film = computed(() => { const found = String(props.video || (props.product.Video?.Type === 'vimeo' ? props.product.Video.Src : '') || '').match(/vimeo\.com\/(?:video\/)?(\d{6,12})(?:\/([0-9a-f]{6,20}))?/i); return found ? 'https://player.vimeo.com/video/' + found[1] + '?background=1&autoplay=1&loop=1&muted=1&dnt=1' + (found[2] ? '&h=' + found[2] : '') : '' })
 const w = useWords()
 const { add, busy } = useCart()
 const { isFavorite, toggleFavorite } = useAccount()
@@ -65,6 +66,7 @@ const sizesOf = computed(() => {
       </template>
       <span v-else class="sf-card-empty" aria-hidden="true" />
       <SfVimeo v-if="film" :src="film" />
+      <SfFilm v-else-if="ownFilm" :src="ownFilm.Src" :type="ownFilm.MimeType" />
       <span v-if="product.LookUrl" class="sf-card-look" aria-hidden="true">LOOK</span>
       <span v-if="product.Discount" class="sf-card-badge">-{{ product.Discount }} %</span>
       <span v-if="mode === 'carousel' && withDots && shown.length > 1" class="sf-card-dots" :class="'is-' + dotsStyle" aria-hidden="true"><template v-if="dotsStyle === 'counter'">{{ at + 1 }} / {{ shown.length }}</template><i v-for="(src, index) in shown" v-else :key="index" :class="{ 'is-on': index === at }" /></span>

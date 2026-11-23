@@ -43,6 +43,7 @@ $answer = match ($argv[2]) {
     'looks.php' => $api->looks($idMarketPlace, (int) $text('IdProduct')),
     'category-cover.php' => $api->categoryCover($idMarketPlace, (int) $text('IdCategory')),
     'brand.php' => $api->brands($idMarketPlace, $language, $text('Slug')),
+    'product-video.php' => (int) $text('IdProduct') > 0 ? $api->productVideo($idMarketPlace, (int) $text('IdProduct')) : $api->coverVideos($idMarketPlace),
     'product-extra.php' => $api->productExtras($idMarketPlace, (int) $text('IdProduct'), (float) $text('Amount'), $language),
     'product-batch.php' => (function () use ($api, $idMarketPlace, $text) {   // as api/storefront/product-batch.php (no reserved category is checked here: development only)
         $ids = preg_match('/^\d{1,10}(,\d{1,10}){0,59}$/', $text('Ids')) === 1 ? array_values(array_unique(array_map('intval', explode(',', $text('Ids'))))) : [];

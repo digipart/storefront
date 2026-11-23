@@ -376,6 +376,7 @@ export default {
   'Votre adresse n\'a pas pu être enregistrée.': 'Ihre Adresse konnte nicht gespeichert werden.',
   'Choisissez un mode de livraison.': 'Bitte eine Versandart wählen.',
   'Ce mode de livraison n\'a pas pu être choisi.': 'Diese Versandart konnte nicht gewählt werden.',
+  'Vidéo du produit': 'Produktvideo',
   'Agrandir la photo {a}': 'Foto {a} vergrößern',
   'Photo {a} sur {b}': 'Foto {a} von {b}',
   'Photo précédente': 'Vorheriges Foto',

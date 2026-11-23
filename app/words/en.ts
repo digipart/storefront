@@ -376,6 +376,7 @@ export default {
   'Votre adresse n\'a pas pu être enregistrée.': 'Your address could not be saved.',
   'Choisissez un mode de livraison.': 'Please choose a delivery method.',
   'Ce mode de livraison n\'a pas pu être choisi.': 'This delivery method could not be selected.',
+  'Vidéo du produit': 'Product video',
   'Agrandir la photo {a}': 'Enlarge photo {a}',
   'Photo {a} sur {b}': 'Photo {a} of {b}',
   'Photo précédente': 'Previous photo',

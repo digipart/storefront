@@ -3,7 +3,16 @@
 // small ones under it (or, on a computer, in a column on its left: `thumbs` = left; the photo may then fill the height of the screen: `fit` = screen). On a phone they are always swiped one by
 // one. A photo opens the full-screen viewer. With `scroll` = down (one photo, on a computer) the photos are one under the other inside the frame of one photo: the wheel over the photo shows
 // the next one, and after the last one the page goes on scrolling (the browser hands the scroll over: nothing is held back).
-const props = defineProps<{ images: string[], sets?: string[], name: string, layout?: string, perView?: number, arrows?: any, thumbs?: string, fit?: string, scroll?: string }>()
+const props = defineProps<{ images: string[], sets?: string[], name: string, layout?: string, perView?: number, arrows?: any, thumbs?: string, fit?: string, scroll?: string, video?: { Type: string, Src: string, MimeType: string, Cover: boolean } | null }>()
+// the photos and the video of the product, in the order they are shown: the video first when the shop put it on the cover, else after the photos
+type Slide = { kind: 'img' | 'file' | 'vimeo', src: string, i: number }
+const slides = computed<Slide[]>(() => {
+  const list: Slide[] = props.images.map((src, i) => ({ kind: 'img', src, i }))
+  const v = props.video
+  if (!v?.Src || (v.Type !== 'file' && v.Type !== 'vimeo')) { return list }
+  const film: Slide = { kind: v.Type, src: v.Type === 'vimeo' ? v.Src + '?background=1&autoplay=1&loop=1&muted=1&dnt=1' : v.Src, i: -1 }
+  return v.Cover ? [film, ...list] : [...list, film]
+})
 // how wide a photo is drawn, for the browser to take the right size of it
 const sizes = computed(() => '(max-width: 767px) 100vw, ' + (layout.value === 'grid' || (layout.value === 'carousel' && per.value > 1) ? Math.round(64 / (layout.value === 'carousel' ? per.value : 2)) : 64) + 'vw')
 const emit = defineEmits<{ zoom: [index: number] }>()
@@ -43,8 +52,17 @@ const frame = computed(() => {
 })
 const down = (box: HTMLElement) => box.scrollHeight > box.clientHeight + 4 && box.scrollWidth <= box.clientWidth + 4   // the photos are stacked in the frame (scroll = down, on a computer)
 function watch() { const box = track.value; if (!box) { return } if (down(box)) { at.value = Math.round(box.scrollTop / Math.max(1, box.clientHeight)); atEnd.value = box.scrollTop + box.clientHeight >= box.scrollHeight - 4; return } const step = box.firstElementChild ? (box.firstElementChild as HTMLElement).offsetWidth : box.clientWidth; at.value = Math.round(box.scrollLeft / Math.max(1, step)); atEnd.value = box.scrollLeft + box.clientWidth >= box.scrollWidth - 4 }
-function go(to: number) { const box = track.value; const item = box?.children[Math.max(0, Math.min(props.images.length - 1, to))] as HTMLElement | undefined; if (box && item) { box.scrollTo(down(box) ? { top: item.offsetTop - box.offsetTop, behavior: 'smooth' } : { left: item.offsetLeft - box.offsetLeft, behavior: 'smooth' }) } }
-onMounted(watch)
+function go(to: number) { const box = track.value; const item = box?.children[Math.max(0, Math.min(slides.value.length - 1, to))] as HTMLElement | undefined; if (box && item) { box.scrollTo(down(box) ? { top: item.offsetTop - box.offsetTop, behavior: 'smooth' } : { left: item.offsetLeft - box.offsetLeft, behavior: 'smooth' }) } }
+// a video file plays only while it is seen (no data spent on a film under the fold)
+let seen: IntersectionObserver | null = null
+onMounted(() => {
+  watch()
+  const films = track.value?.querySelectorAll('video') || []
+  if (!films.length || typeof IntersectionObserver === 'undefined') { return }
+  seen = new IntersectionObserver(entries => entries.forEach((e) => { const film = e.target as HTMLVideoElement; if (e.isIntersecting) { film.play().catch(() => {}) } else { film.pause() } }), { threshold: 0.3 })
+  films.forEach(f => seen!.observe(f))
+})
+onBeforeUnmount(() => seen?.disconnect())
 // the arrows of the carousel as the shop drew them (site builder, section Produit, group « Flèches du carrousel »): shape, size, place, colours, border; by default a white circle with a dark line
 const rgba = (hex: string, alpha: number) => { let h = String(hex || '#ffffff').replace('#', ''); if (h.length === 3) { h = h.split('').map(c => c + c).join('') } const n = parseInt(h, 16) || 0; return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})` }
 const arrow = (next: boolean) => {
@@ -60,15 +78,19 @@ const arrow = (next: boolean) => {
 <template>
   <div class="sf-gallery-wrap" :class="['is-' + layout, 'is-ta-' + thumbsAlign, 'is-mfit-' + phoneFit, { 'has-hover-arrows': arrows?.ArrowHover, 'is-thumbs-left': layout === 'slider' && thumbsAt === 'left', 'is-thumbs-right': layout === 'slider' && thumbsAt === 'right', 'is-thumbs-inside': layout === 'slider' && (thumbsAt === 'inside' || thumbsAt === 'inside_right'), 'is-thumbs-end': thumbsAt === 'inside_right', 'is-fit-screen': layout === 'slider' && fit === 'screen', 'is-hug': hugging, 'is-scroll-down': layout === 'slider' && scroll === 'down', 'has-mh': Number(look.GalleryHeightMobile) > 0 }]" :style="frame">
     <div ref="track" class="sf-gallery" :class="'is-' + layout" @scroll.passive="watch">
-      <template v-if="images.length"><img v-for="(src, index) in images" :key="src" :src="src" :srcset="sets?.[index] || undefined" :sizes="sizes" :alt="index === 0 ? name : ''" :loading="index === 0 ? 'eager' : 'lazy'" :fetchpriority="index === 0 ? 'high' : undefined" decoding="async" role="button" tabindex="0" :aria-label="w('Agrandir la photo {a}', { a: index + 1 })" @click="emit('zoom', index)" @keydown.enter="emit('zoom', index)"></template>
+      <template v-if="slides.length"><template v-for="(item, n) in slides" :key="item.kind + item.src">
+        <video v-if="item.kind === 'file'" class="sf-gallery-film" muted loop playsinline :autoplay="n === 0" :preload="n === 0 ? 'auto' : 'metadata'" :aria-label="w('Vidéo du produit')"><source :src="item.src" :type="video?.MimeType || 'video/mp4'"></video>
+        <span v-else-if="item.kind === 'vimeo'" class="sf-gallery-film is-vimeo"><iframe :src="item.src" :title="w('Vidéo du produit')" :loading="n === 0 ? 'eager' : 'lazy'" allow="autoplay; fullscreen; picture-in-picture" /></span>
+        <img v-else :src="item.src" :srcset="sets?.[item.i] || undefined" :sizes="sizes" :alt="item.i === 0 ? name : ''" :loading="n === 0 ? 'eager' : 'lazy'" :fetchpriority="n === 0 ? 'high' : undefined" decoding="async" role="button" tabindex="0" :aria-label="w('Agrandir la photo {a}', { a: item.i + 1 })" @click="emit('zoom', item.i)" @keydown.enter="emit('zoom', item.i)">
+      </template></template>
       <span v-else class="sf-card-empty" aria-hidden="true" />
     </div>
-    <template v-if="layout === 'carousel' && images.length > per">
+    <template v-if="layout === 'carousel' && slides.length > per">
       <button v-if="at > 0" type="button" class="sf-gallery-nav is-prev" :style="arrow(false)" :aria-label="w('Photo précédente')" @click="go(at - 1)">‹</button>
       <button v-if="!atEnd" type="button" class="sf-gallery-nav is-next" :style="arrow(true)" :aria-label="w('Photo suivante')" @click="go(at + 1)">›</button>
     </template>
-    <div v-if="layout === 'slider' && images.length > 1 && (thumbsAt !== 'none' || thumbsPhone !== 'none')" class="sf-gallery-thumbs" :class="{ 'is-no-desk': thumbsAt === 'none', 'is-no-phone': thumbsPhone === 'none' }">
-      <button v-for="(src, index) in images" :key="src" type="button" :class="{ 'is-on': index === at }" :aria-label="w('Photo {a} sur {b}', { a: index + 1, b: images.length })" :aria-current="index === at ? 'true' : undefined" @click="go(index)"><img :src="src" alt="" loading="lazy"></button>
+    <div v-if="layout === 'slider' && slides.length > 1 && (thumbsAt !== 'none' || thumbsPhone !== 'none')" class="sf-gallery-thumbs" :class="{ 'is-no-desk': thumbsAt === 'none', 'is-no-phone': thumbsPhone === 'none' }">
+      <button v-for="(item, index) in slides" :key="item.kind + item.src" type="button" :class="{ 'is-on': index === at, 'is-film': item.kind !== 'img' }" :aria-label="item.kind === 'img' ? w('Photo {a} sur {b}', { a: item.i + 1, b: images.length }) : w('Vidéo du produit')" :aria-current="index === at ? 'true' : undefined" @click="go(index)"><img v-if="item.kind === 'img' || images.length" :src="item.kind === 'img' ? item.src : images[0]" alt="" loading="lazy"><span v-if="item.kind !== 'img'" class="sf-gallery-play" aria-hidden="true">▶</span></button>
     </div>
   </div>
 </template>

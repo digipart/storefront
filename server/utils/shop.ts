@@ -53,7 +53,18 @@ export async function shopApi<T = any>(event: H3Event, path: string, query: Reco
 export interface ShopVariant { Id: number, Label: string, Size: string, Color: string, Attributes: { Group: string, Name: string }[], Available: boolean, Quantity: number }
 export interface ShopProduct {
   Id: number, IdCategory: number, Name: string, Reference: string, Brand: string, Slug: string, Url: string, Canonical: string, Alternates: Record<string, string>, Images: string[], ImageSets: string[], Currency: string, Price: number, PriceOld: number, Discount: number, PriceTaxExcl: number, PriceOldTaxExcl: number, TaxExcl: boolean, PriceState: 'ok' | 'login' | 'pending' | 'business',
-  Description: string, DescriptionShort: string, SeoTitle: string, SeoDescription: string, Variants: ShopVariant[], Available: boolean, LookUrl?: string, Type?: string, GiftAmounts?: { Id: number, Label: string, Url: string, Current: boolean }[],
+  Description: string, DescriptionShort: string, SeoTitle: string, SeoDescription: string, Variants: ShopVariant[], Available: boolean, LookUrl?: string, Type?: string, Video?: ProductVideo | null, GiftAmounts?: { Id: number, Label: string, Url: string, Current: boolean }[],
+}
+
+/** The video of a product page: a file (S3 or the server of the shop) played by the page itself, or a Vimeo player; `Cover` = shown before the photos. */
+export interface ProductVideo { Type: 'file' | 'vimeo', Src: string, MimeType: string, Cover: boolean }
+
+/** What api/storefront/product-video.php answered, kept only when its address is a real one. */
+export function productVideo(raw: any): ProductVideo | null {
+  const src = String(raw?.Src || '')
+  if (raw?.Type === 'file' && /^https?:\/\/[^\s"'<>]+\.(mp4|m4v|mov|webm)$/i.test(src)) { return { Type: 'file', Src: src, MimeType: /^video\/[a-z0-9.+-]+$/i.test(String(raw.MimeType)) ? String(raw.MimeType) : 'video/mp4', Cover: raw.Cover === true } }
+  const found = src.match(/^https:\/\/player\.vimeo\.com\/video\/(\d{6,12})$/)
+  return raw?.Type === 'vimeo' && found ? { Type: 'vimeo', Src: 'https://player.vimeo.com/video/' + found[1], MimeType: '', Cover: raw.Cover === true } : null
 }
 
 /** A product of the product API as the theme draws it: one flat shape, whatever the API left empty. `prefix` = the language part of the addresses of the page ('' or '/en'). */
@@ -154,11 +165,15 @@ export function priced<T extends ShopProduct | null>(product: T, policy: { whole
   return { ...product, Price: product.PriceTaxExcl, PriceOld: product.PriceOldTaxExcl, TaxExcl: true }
 }
 
-/** The products that have a look (« Shop the look »: products associated with them in Digipart): their card and their page lead to it. Asked once and kept like every answer of Digipart. */
+/** The products that have a look (« Shop the look »: products associated with them in Digipart): their card and their page lead to it. And the video the shop put on the cover of the product
+ * (« Vidéo en couverture »), played by its card. Both lists are asked once and kept like every answer of Digipart. */
 async function withLook<T extends ShopProduct | null>(event: H3Event, product: T, prefix: string): Promise<T> {
   if (!product) { return product }
-  const ids: number[] = ((await digipart(event, 'looks.php', {}).catch(() => null))?.ProductIds as number[]) || []
-  return ids.includes(product.Id) ? { ...product, LookUrl: prefix + '/shop-the-look/' + product.Slug + '-' + product.Id } : product
+  const [looks, films] = await Promise.all([digipart(event, 'looks.php', {}).catch(() => null), digipart(event, 'product-video.php', {}).catch(() => null)])
+  const ids: number[] = (looks?.ProductIds as number[]) || []
+  const video = productVideo(films?.Videos?.[String(product.Id)])
+  const withVideo = video ? { ...product, Video: video } : product
+  return ids.includes(product.Id) ? { ...withVideo, LookUrl: prefix + '/shop-the-look/' + product.Slug + '-' + product.Id } : withVideo
 }
 
 // The products a request reads at the same moment (a grid, a section, the results of a search) are asked to Digipart in ONE question (api/storefront/product-batch.php, `Fields=card`:
