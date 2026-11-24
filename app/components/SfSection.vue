@@ -28,6 +28,8 @@ if (props.section.Type === 'code' && props.section.Personal) {
   })
 }
 onMounted(() => { if (props.section.Type === 'main_header') { document.addEventListener('click', closeLang) } })
+// the height of the header, for what sits on top of a page under it (the try-on button of a product)
+if (props.section.Type === 'main_header') { onMounted(() => watchEffect(() => document.documentElement.style.setProperty('--sf-header-h', (Number(props.section.Settings?.Height) || 72) + 'px'))) }
 onBeforeUnmount(() => document.removeEventListener('click', closeLang))
 const page = inject<Ref<any> | null>('sfPage', null)
 const product = inject<Ref<any> | null>('sfProduct', null)

@@ -1549,9 +1549,12 @@ html.sf-has-pbar .sf-buybar { bottom: var(--sf-pbar-h, 0px); }
 .sf-card-film { position: absolute; inset: 0; overflow: hidden; pointer-events: none; } .sf-card-film video { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .6s ease; } .sf-card-film.is-shown video { opacity: 1; }   /* the product video over the photo of a card */
 
 /* ---- virtual try-on (SfTryOnButton, SfTryOn): the button over the photos of a product, then a window above the page, in the colours of the theme ---- */
-.sf-tryon-launch { position: absolute; top: 16px; right: 16px; z-index: 3; }
+.sf-tryon-launch { position: absolute; top: calc(var(--sf-header-h, 72px) + 16px); right: 16px; z-index: 3; }   /* under the header, which may lie over the photos and show again on hover */
 .sf-tryon-btn { display: inline-flex; align-items: center; gap: 10px; padding: 0; border: 0; background: none; color: var(--t-text, #1e2129); font: inherit; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
-.sf-tryon-btn > span:first-child { padding: 4px 8px; background: rgba(255, 255, 255, .75); border-radius: 2px; }
+.sf-tryon-btn-label { padding: 4px 8px; background: rgba(255, 255, 255, .75); border-radius: 2px; opacity: 0; transform: translateX(6px); pointer-events: none; transition: opacity .15s, transform .15s; }
+/* the word shows only on hover with a mouse, so the photo stays clear; never on a touch screen */
+@media (hover: hover) and (pointer: fine) { .sf-tryon-btn:hover .sf-tryon-btn-label, .sf-tryon-btn:focus-visible .sf-tryon-btn-label { opacity: 1; transform: none; } }
+@media (hover: none), (pointer: coarse) { .sf-tryon-btn-label { display: none; } .sf-tryon-btn-icon { width: 36px; height: 36px; } }
 .sf-tryon-btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--t-bg, #fff); box-shadow: inset 0 0 0 1px var(--t-text, #1e2129); transition: background .15s, color .15s; }
 .sf-tryon-btn:hover .sf-tryon-btn-icon, .sf-tryon-btn:focus-visible .sf-tryon-btn-icon { background: var(--t-text, #1e2129); color: var(--t-bg, #fff); }
 .sf-tryon { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
