@@ -110,6 +110,8 @@ export default defineNuxtPlugin((nuxt) => {
         if (link || at?.closest?.('button, input, select, textarea, label, summary, video, [role="button"], [tabindex]')) { return }
       }
       if (editing && editing.node.contains(at)) { if (link) { event.preventDefault() } return }   // the cursor is placed in the text being written
+      // the menu of the header works in the preview: its button opens the panel (drawer, full screen, tiles) and the panel's own buttons work; a link of the menu is not followed
+      if (at?.closest?.('.sf-burger, .sf-drawer')) { if (link) { event.preventDefault(); event.stopPropagation() } return }
       const band = at?.closest?.('[data-section]') as Element | null
       if (!band) { return }
       event.preventDefault()

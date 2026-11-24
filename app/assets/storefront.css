@@ -1312,6 +1312,8 @@ html.sf-builder .sfb-drop { position: fixed; z-index: 2001; height: 3px; border-
 html.sf-builder .sfb-drop[hidden] { display: none; }
 html.sf-builder .sfb-handle { position: fixed; z-index: 2002; padding: 2px 8px; border-radius: 4px; background: var(--sfb-accent, #1b84ff); color: #fff; font: 600 11px/1.5 system-ui, sans-serif; cursor: grab; user-select: none; touch-action: none; white-space: nowrap; }
 html.sf-builder .sfb-handle[hidden] { display: none; }
+/* a banner or a column that is a link as a whole: in the builder (links not followed) its blocks are under the pointer again, to be selected, written and moved */
+html.sf-builder:not(.sf-builder-follow) .sf-hero > .sf-area-link ~ .sf-hero-copy, html.sf-builder:not(.sf-builder-follow) .sf-col.has-link > :not(.sf-area-link) { pointer-events: auto; }
 html.sf-builder-drag, html.sf-builder-drag * { cursor: grabbing !important; user-select: none; }
 
 /* a code section that could not be drawn, said in a preview only */
