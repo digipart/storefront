@@ -684,4 +684,8 @@ export default {
   'Ce produit n\'est plus disponible.': 'Dieses Produkt ist nicht mehr verfügbar.',
   'Essayer avec une autre photo': 'Mit einem anderen Foto anprobieren',
   'Essayez-le': 'Anprobieren',
+  'Site en maintenance': 'Website in Wartung',
+  'Site pas encore ouvert': 'Website noch nicht geöffnet',
+  'Les visiteurs voient la page de maintenance ; vous voyez le site car votre adresse IP est autorisée.': 'Besucher sehen die Wartungsseite; Sie sehen die Website, weil Ihre IP-Adresse freigegeben ist.',
+  'Les visiteurs voient la page « Bientôt disponible » ; vous voyez le site car votre adresse IP est autorisée.': 'Besucher sehen die Seite „Demnächst verfügbar“; Sie sehen die Website, weil Ihre IP-Adresse freigegeben ist.',
 }

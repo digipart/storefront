@@ -156,7 +156,14 @@ const columnPicture = (i: number) => {
     ...(align === 'center' || align === 'bottom' ? { display: 'flex', flexDirection: 'column', justifyContent: align === 'center' ? 'center' : 'flex-end' } : {}) }
 }
 const columnsReverse = computed(() => !!s.value.ReverseMobile && ratios(s.value.LayoutMobile, '1').length === 1)
-const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'announcement', 'custom_html', 'code', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart', 'main_search', 'main_404', 'main_look']
+// « Message de fermeture »: the page of « État du site » the closed site shows (its title, message, button, date, background, logo, networks), drawn in the design of the theme
+const closedOf = inject<Ref<any>>('sfClosedPage', ref(null))
+const closed = computed(() => (props.section.Type === 'closed_message' ? closedOf.value : null))
+const closedOn = (key: string) => s.value[key] !== false
+const closedCover = computed(() => (closed.value && closedOn('UseCover') ? closed.value.Cover || null : null))
+const closedLogo = computed(() => { const images = closed.value?.Logo?.Images || {}; const first = (Object.values(images)[0] as any[]) || []; return first[0] ? { src: first[0].Src, width: closed.value.Logo.Width } : null })
+const closedWhen = computed(() => (closed.value?.ShowReopenAt && closed.value.ReopenAt ? new Intl.DateTimeFormat(site.value?.Route?.LanguageIsoCode || 'fr', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Europe/Paris' }).format(new Date(closed.value.ReopenAt)) : ''))
+const known = ['hero', 'slideshow', 'banners', 'products', 'image_text', 'richtext', 'columns', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'announcement', 'custom_html', 'code', 'main_header', 'main_footer', 'main_page', 'contact_form', 'store_locator', 'whatsapp_signup', 'main_catalog', 'main_product', 'main_cart', 'main_search', 'main_404', 'main_look', 'closed_message']
 const { cart, show: showPanel } = useCart()
 const { customer, favorites, url: accountUrl, favoritesUrl } = useAccount()
 // the filters of a category (sizes, colours, price): chosen in a panel, kept in the address so a filtered list can be shared
@@ -328,7 +335,12 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
 </script>
 
 <template>
-  <section v-if="known.includes(type)" :class="band" :style="frame" :data-section="type">
+  <section v-if="known.includes(type)" :class="[band, { 'has-closed-cover': closedCover }]" :style="closedCover ? { ...frame, background: closedCover.BackgroundColor, color: closed.Style?.TextColor } : frame" :data-section="type">
+    <template v-if="closedCover">
+      <img v-if="closedCover.Type === 'image'" class="sf-closed-cover" :src="closedCover.ImageURL" alt="" fetchpriority="high">
+      <iframe v-else-if="closedCover.Type === 'video'" class="sf-closed-cover" :src="closedCover.VideoBackgroundURL" title="" allow="autoplay; fullscreen" tabindex="-1" aria-hidden="true" />
+      <span v-if="closedCover.Type !== 'color'" class="sf-closed-veil" :style="{ background: closedCover.OverlayColor, opacity: closedCover.OverlayOpacity / 100 }" />
+    </template>
     <div :class="wrap">
       <!-- a banner: a large picture or a video, with the blocks of the shop on it -->
       <div v-if="type === 'hero'" class="sf-hero" :class="{ 'is-screen': s.ScreenHeight, 'is-empty': !s.Image && !vimeo(s.Video) }" :style="picture">
@@ -378,6 +390,18 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
 
       <!-- sections whose own content is one block among the others -->
       <!-- the HTML the shop wrote (cleaned by Digipart: no script, frame, form or event) -->
+      <div v-else-if="type === 'closed_message'" class="sf-closed-message" :class="'is-' + (s.Align || 'center')">
+        <template v-if="closed">
+          <img v-if="closedOn('ShowLogo') && closedLogo" :src="closedLogo.src" :alt="site.Name" :style="{ width: closedLogo.width + 'px' }" class="sf-closed-logo">
+          <h1 v-if="closedOn('ShowTitle')" :style="{ fontSize: 'clamp(22px, 6vw, ' + (closed.Style?.TitleSize || 36) + 'px)', textTransform: closed.Style?.TitleUppercase ? 'uppercase' : undefined }">{{ closed.Title || site.Name }}</h1>
+          <p v-if="closedOn('ShowMessage') && closed.Message" :style="{ fontSize: (closed.Style?.MessageSize || 15) + 'px', textTransform: closed.Style?.MessageUppercase ? 'uppercase' : undefined }">{{ closed.Message }}</p>
+          <p v-if="closedOn('ShowDate') && closedWhen" class="sf-closed-date">{{ closedWhen }}</p>
+          <SfCountdown v-if="closedOn('Countdown') && closed.ShowReopenAt && closed.ReopenAt" :at="closed.ReopenAt" :size="Number(s.CountdownSize) || 36" :lang="site.Route?.LanguageIsoCode" />
+          <a v-if="closedOn('ShowButton') && closed.Button" :href="closed.Button.URL" class="sf-btn" :style="{ background: closed.Button.BackgroundColor, color: closed.Button.TextColor, fontSize: closed.Button.Size + 'px', textTransform: closed.Button.Uppercase ? 'uppercase' : undefined }">{{ closed.Button.Label }}</a>
+          <SfNewsletter v-if="closedOn('ShowNewsletter') && closed.NewsletterSignup" />
+          <SfSocial v-if="closedOn('ShowSocial') && closed.SocialLinks?.length" :list="closed.SocialLinks" shape="round" :size="40" />
+        </template>
+      </div>
       <div v-else-if="type === 'custom_html'" class="sf-custom" :style="align" v-html="customHtml" />
       <!-- a section the shop wrote in code (Liquid): drawn and cleaned by the server (server/utils/liquid.ts); in a preview, what went wrong is said in its place -->
       <div v-else-if="type === 'code'" class="sf-liquid" :style="{ textAlign: ['center', 'right'].includes(String(s.Align)) ? s.Align : undefined }">

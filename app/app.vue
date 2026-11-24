@@ -58,9 +58,13 @@ const orderLogo = computed(() => shopLogo(site.value))
 const choosing = computed(() => ['pays-et-langue', 'country-and-language'].includes(site.value?.Route?.Rest || ''))
 const closed = computed(() => !!site.value && !site.value.Preview && (status.value ? !status.value.IsLive && status.value.Bypass !== true : site.value.State !== 'online'))
 const closedPage = computed(() => (closed.value ? status.value?.Page || null : null))
+// a closed site seen anyway by an allowed address (staff): a bar on top of every page says so, so that nobody forgets to open it again
+const staffSees = computed(() => !!site.value && !site.value.Preview && !!status.value && !status.value.IsLive && status.value.Bypass === true)
 // the page of a closed site drawn in the site builder of Digipart (`ClosedDesign`: sections, as any page), in place of the page of the settings. A preview opened by the builder on that page
 // (`ClosedForced`) shows it whatever the state of the site.
 const closedDesign = computed(() => ((closed.value || site.value?.ClosedForced) && site.value?.ClosedDesign?.Sections?.length ? site.value.ClosedDesign : null))
+// the page of « État du site » the section « Message de fermeture » draws: the one the closed site shows, else (a preview of the builder) the one of the page being drawn
+provide('sfClosedPage', computed(() => closedPage.value || site.value?.ClosedPages?.[site.value?.ClosedDesign?.Key] || null))
 const cover = computed(() => closedPage.value?.Cover || null)
 const logo = computed(() => { const images = closedPage.value?.Logo?.Images || {}; const first = (Object.values(images)[0] as any[]) || []; return first[0] ? { src: first[0].Src, width: closedPage.value.Logo.Width } : null })
 const reopen = computed(() => (closedPage.value?.ShowReopenAt && closedPage.value.ReopenAt ? new Intl.DateTimeFormat(site.value.Route.LanguageIsoCode, { dateStyle: 'long', timeStyle: 'short', timeZone: 'Europe/Paris' }).format(new Date(closedPage.value.ReopenAt)) : ''))
@@ -109,9 +113,10 @@ if (import.meta.server && closed.value) {
       <h1 :style="{ fontSize: 'clamp(22px, 6vw, ' + closedPage.Style.TitleSize + 'px)', textTransform: closedPage.Style.TitleUppercase ? 'uppercase' : undefined }">{{ closedPage.Title || site.Name }}</h1>
       <p v-if="closedPage.Message" :style="{ fontSize: closedPage.Style.MessageSize + 'px', textTransform: closedPage.Style.MessageUppercase ? 'uppercase' : undefined }">{{ closedPage.Message }}</p>
       <p v-if="reopen" class="sf-closed-date">{{ reopen }}</p>
+      <SfCountdown v-if="reopen" :at="closedPage.ReopenAt" :size="32" :lang="site.Route.LanguageIsoCode" />
       <a v-if="closedPage.Button" :href="closedPage.Button.URL" class="sf-btn" :style="{ background: closedPage.Button.BackgroundColor, color: closedPage.Button.TextColor, fontSize: closedPage.Button.Size + 'px', textTransform: closedPage.Button.Uppercase ? 'uppercase' : undefined }">{{ closedPage.Button.Label }}</a>
       <SfNewsletter v-if="closedPage.NewsletterSignup" :lang="site.Route.LanguageIsoCode" />
-      <nav v-if="closedPage.SocialLinks?.length" class="sf-closed-social" aria-label="Réseaux sociaux"><a v-for="link in closedPage.SocialLinks" :key="link.Name" :href="link.URL" rel="noopener" target="_blank">{{ link.Name }}</a></nav>
+      <SfSocial v-if="closedPage.SocialLinks?.length" :list="closedPage.SocialLinks" shape="round" :size="40" />
     </div>
   </main>
   <main v-else-if="closed" class="sf-note">
@@ -119,6 +124,10 @@ if (import.meta.server && closed.value) {
     <p>{{ site.State === 'maintenance' ? 'Le site est en maintenance : nous revenons très vite.' : 'Le site ouvre bientôt.' }}</p>
   </main>
   <template v-else>
+    <div v-if="staffSees" class="sf-staff-bar" role="status">
+      <b>{{ words(site.Route.LanguageIsoCode, status.IsMaintenance ? 'Site en maintenance' : 'Site pas encore ouvert') }}</b>
+      <span>{{ words(site.Route.LanguageIsoCode, status.IsMaintenance ? 'Les visiteurs voient la page de maintenance ; vous voyez le site car votre adresse IP est autorisée.' : 'Les visiteurs voient la page « Bientôt disponible » ; vous voyez le site car votre adresse IP est autorisée.') }}</span>
+    </div>
     <!-- the order page keeps the visitor on the order: a slim bar instead of the menu, no footer -->
     <header v-if="ordering" class="sf-cohead"><a :href="site.Route.Prefix || '/'">‹ {{ words(site.Route.LanguageIsoCode, 'Continuer mes achats') }}</a><a :href="site.Route.Prefix || '/'" class="sf-logo"><img v-if="orderLogo" :src="orderLogo" :alt="site.Name"><template v-else>{{ site.Name }}</template></a><span /></header>
     <header v-else-if="site.Header && !choosing" ref="headerBox" :class="{ 'sf-sticky': stickyHeader, 'sf-over': overHero || overProduct, 'is-bare': overProduct, 'is-solid': (overHero || overProduct) && scrolled }"><SfSection v-for="section in site.Header.Sections" :key="section.Id" :section="section" /></header>

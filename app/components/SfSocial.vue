@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // The networks of the shop (the module Social Links of Digipart): icons, names or both, as the section says. Nothing is drawn when the shop gave no address.
-const props = defineProps<{ display?: string, shape?: string, size?: number, gap?: number }>()
+const props = defineProps<{ display?: string, shape?: string, size?: number, gap?: number, list?: { Name: string, URL: string }[] }>()
 const site = inject<Ref<any>>('sfSite')!
-const links = computed(() => (site.value?.SocialLinks || []).filter((link: any) => link.Url))
+// `list`: the networks a closed page of « État du site » shows (Name, URL), else the ones of the shop
+const links = computed(() => (props.list ? props.list.map(link => ({ Name: link.Name, Url: link.URL })) : site.value?.SocialLinks || []).filter((link: any) => link.Url))
 const show = computed(() => (['icons', 'names', 'both'].includes(String(props.display)) ? String(props.display) : 'icons'))
 // one path per network, drawn in the colour of the text (24 × 24)
 const ICONS: Record<string, string> = {

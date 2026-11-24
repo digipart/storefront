@@ -684,4 +684,8 @@ export default {
   'Ce produit n\'est plus disponible.': 'This product is no longer available.',
   'Essayer avec une autre photo': 'Try with another photo',
   'Essayez-le': 'Try it on',
+  'Site en maintenance': 'Site under maintenance',
+  'Site pas encore ouvert': 'Site not open yet',
+  'Les visiteurs voient la page de maintenance ; vous voyez le site car votre adresse IP est autorisée.': 'Visitors see the maintenance page; you see the site because your IP address is allowed.',
+  'Les visiteurs voient la page « Bientôt disponible » ; vous voyez le site car votre adresse IP est autorisée.': 'Visitors see the « Coming soon » page; you see the site because your IP address is allowed.',
 }

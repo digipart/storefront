@@ -256,6 +256,22 @@ iframe.sf-closed-cover { top: 50%; left: 50%; width: max(100%, 177.78vh); height
 .sf-closed-date { font-weight: 600; }
 .sf-closed .sf-news { width: min(440px, 100%); }
 .sf-closed-social { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; font-size: 13px; }
+.sf-closed .sf-social { justify-content: center; }
+/* the countdown to the reopening (SfCountdown) */
+.sf-countdown { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(14px, 3vw, 28px); }
+.sf-countdown-cell { display: grid; justify-items: center; line-height: 1; }
+.sf-countdown-cell b { font-size: var(--cd, 36px); font-weight: 700; font-variant-numeric: tabular-nums; }
+.sf-countdown-cell small { margin-top: 6px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
+/* « Message de fermeture »: the page of « État du site » as a section of the builder */
+.sf-band.has-closed-cover { position: relative; overflow: hidden; }
+.sf-band.has-closed-cover > .sf-wrap { position: relative; }
+.sf-closed-message { display: flex; flex-direction: column; align-items: center; gap: 18px; max-width: 640px; margin: 0 auto; text-align: center; }
+.sf-closed-message.is-left { align-items: flex-start; margin-left: 0; text-align: left; }
+.sf-closed-message.is-right { align-items: flex-end; margin-right: 0; text-align: right; }
+.sf-closed-message h1 { margin: 0; font-family: var(--t-font-heading, inherit); line-height: 1.1; }
+.sf-closed-message p { margin: 0; white-space: pre-line; }
+.sf-closed-message .sf-news { width: min(440px, 100%); }
+.sf-closed-message .sf-countdown { justify-content: inherit; }
 
 /* the cart: its panel, its page, its lines */
 .sf-cartlink { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
@@ -1662,3 +1678,7 @@ html.sf-has-pbar .sf-buybar { bottom: var(--sf-pbar-h, 0px); }
 .sf-mega-film { position: relative; overflow: hidden; aspect-ratio: var(--mg-ratio, 4 / 5); background: #1e2129; }
 .sf-mega-film iframe { position: absolute; top: 50%; left: 50%; width: 177.78%; height: 177.78%; border: 0; transform: translate(-50%, -50%); pointer-events: none; }
 .sf-navfull-pic.sf-mega-film { aspect-ratio: auto; min-height: 60vh; }
+
+/* a closed site seen by an allowed address: a reminder on top of every page (app.vue) */
+.sf-staff-bar { position: relative; z-index: 60; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 10px; padding: 8px 16px; background: #c2410c; color: #fff; font-size: 13px; line-height: 1.4; text-align: center; }
+.sf-staff-bar b { font-weight: 700; letter-spacing: .02em; }
