@@ -81,8 +81,9 @@ export async function drawCode (template: string, objects: Record<string, unknow
 /**
  * A design with its code sections drawn: each section of type `code` receives `Html` (what its file draws for this page). In a preview, a section that could not be drawn says why (`Error`).
  * `objects`: what the page is about (Product, Category, Page), as the API gives it.
+ * `who`: whose Customer / Cart / Orders / Loyalty a template sees — `guest` (pages kept for everyone; the section is marked `Personal` and redrawn in the browser), `visitor` (this request only) or `sample` (builder).
  */
-export async function withCode<T extends { Sections?: any[] } | null | undefined> (event: H3Event, design: T, objects: Record<string, unknown> = {}): Promise<T> {
+export async function withCode<T extends { Sections?: any[] } | null | undefined> (event: H3Event, design: T, objects: Record<string, unknown> = {}, who: 'guest' | 'visitor' | 'sample' = 'guest'): Promise<T> {
   const sections = design && Array.isArray(design.Sections) ? design.Sections : []
   if (!sections.some((section: any) => section?.Type === 'code')) { return design }
   const preview = previewQuery(event), lang = langOf(event)
@@ -131,8 +132,10 @@ export async function withCode<T extends { Sections?: any[] } | null | undefined
         Products[setting.Key] = id > 0 ? await listOf({ Mode: 'category', IdCategory: id, Limit: 12 }) : []
       }
     }
-    const out = await drawCode(code.Template, { ...objects, ...(await productsFor(code.Template)), Site, Section: { Id: String(section.Id || ''), File: file, Settings, Blocks, Products, Align: ['center', 'right'].includes(String(section.Settings?.Align)) ? String(section.Settings.Align) : 'left' } })
-    return { ...section, Html: out.Html, Error: Object.keys(preview).length ? out.Error : '' }
+    const personal = PERSONAL.test(code.Template)
+    const mine = !personal ? {} : who === 'visitor' ? await personalObjects(event, code.Template, lang.lang, lang.prefix) : who === 'sample' ? sampleObjects(lang.lang) : guestObjects()
+    const out = await drawCode(code.Template, { ...objects, ...(await productsFor(code.Template)), ...mine, Site, Section: { Id: String(section.Id || ''), File: file, Settings, Blocks, Products, Align: ['center', 'right'].includes(String(section.Settings?.Align)) ? String(section.Settings.Align) : 'left' } })
+    return { ...section, Html: out.Html, Error: Object.keys(preview).length ? out.Error : '', ...(personal && who === 'guest' ? { Personal: true } : {}) }
   }))
   return { ...design, Sections: drawn } as T
 }

@@ -7,6 +7,26 @@ const langHref = useLanguageHref()
 // the language menu of a phone closes on a touch elsewhere
 const langBox = ref<HTMLDetailsElement | null>(null)
 const closeLang = (event: Event) => { if (langBox.value?.open && !langBox.value.contains(event.target as Node)) { langBox.value.open = false } }
+// a code section that uses Customer, Cart, Orders or Loyalty: the page draws it as a guest, the browser asks for this visitor's version (never kept for others)
+const personalHtml = ref<string | null>(null)
+if (props.section.Type === 'code' && props.section.Personal) {
+  const pageOf = inject<Ref<any>>('sfPage', ref(null)), productOf = inject<Ref<any>>('sfProduct', ref(null)), catalogOf = inject<Ref<any>>('sfCatalog', ref(null))
+  const pageRoute = useRoute()
+  const customerState = useState<any>('sf-customer', () => null), cartState = useState<any>('sf-cart', () => ({ Count: 0 }))
+  const askPersonal = async () => {
+    const here = site.value?.Route || {}
+    const preview = typeof pageRoute.query.preview === 'string' ? String(pageRoute.query.preview) : ''
+    const context = { ...(productOf.value ? { Product: productOf.value } : {}), ...(catalogOf.value?.Category ? { Category: catalogOf.value.Category } : {}), ...(pageOf.value ? { Page: pageOf.value } : {}) }
+    try {
+      const answer = await $fetch<any>('/api/storefront/code-personal', { method: 'POST', query: { lang: here.LanguageIsoCode || '', prefix: here.Prefix || '', ...(preview ? { preview } : {}) }, headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ Section: { Id: props.section.Id, Settings: props.section.Settings }, Context: context }) })
+      personalHtml.value = typeof answer?.Html === 'string' ? answer.Html : null
+    } catch { /* the guest version stays */ }
+  }
+  onMounted(() => {
+    askPersonal()
+    watch(() => [customerState.value?.Id || customerState.value?.Email || '', cartState.value?.Count || 0, cartState.value?.ToPay || 0].join('|'), askPersonal)
+  })
+}
 onMounted(() => { if (props.section.Type === 'main_header') { document.addEventListener('click', closeLang) } })
 onBeforeUnmount(() => document.removeEventListener('click', closeLang))
 const page = inject<Ref<any> | null>('sfPage', null)
@@ -359,7 +379,8 @@ onBeforeUnmount(() => { if (typeof window !== 'undefined') { keepList(); window.
       <div v-else-if="type === 'custom_html'" class="sf-custom" :style="align" v-html="customHtml" />
       <!-- a section the shop wrote in code (Liquid): drawn and cleaned by the server (server/utils/liquid.ts); in a preview, what went wrong is said in its place -->
       <div v-else-if="type === 'code'" class="sf-liquid" :style="{ textAlign: ['center', 'right'].includes(String(s.Align)) ? s.Align : undefined }">
-        <div v-if="section.Html" v-html="section.Html" />
+        <div v-if="personalHtml !== null" v-html="personalHtml" />
+        <div v-else-if="section.Html" v-html="section.Html" />
         <p v-else-if="section.Error" class="sf-liquid-error">{{ section.Error }}</p>
       </div>
       <div v-else-if="['richtext', 'products', 'lookbook', 'stories', 'reviews', 'newsletter', 'social', 'contact_form', 'store_locator'].includes(type)" :style="align">

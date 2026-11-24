@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const given = body?.Section
   if (!given || typeof given !== 'object' || typeof given.Settings !== 'object') { return { Html: '', Error: 'No section.' } }
   const section = { Id: String(given.Id || '').slice(0, 40), Type: 'code', Settings: given.Settings }
-  const drawn: any = await withCode(event, { Sections: [section] })
+  const drawn: any = await withCode(event, { Sections: [section] }, {}, 'sample')   // a made-up signed-in customer for Customer, Cart, Orders, Loyalty
   const out = drawn?.Sections?.[0] || {}
   return { Html: String(out.Html || ''), Error: String(out.Error || '') }
 })
