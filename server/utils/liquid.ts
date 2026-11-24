@@ -131,7 +131,7 @@ export async function withCode<T extends { Sections?: any[] } | null | undefined
         Products[setting.Key] = id > 0 ? await listOf({ Mode: 'category', IdCategory: id, Limit: 12 }) : []
       }
     }
-    const out = await drawCode(code.Template, { ...objects, ...(await productsFor(code.Template)), Site, Section: { Id: String(section.Id || ''), File: file, Settings, Blocks, Products } })
+    const out = await drawCode(code.Template, { ...objects, ...(await productsFor(code.Template)), Site, Section: { Id: String(section.Id || ''), File: file, Settings, Blocks, Products, Align: ['center', 'right'].includes(String(section.Settings?.Align)) ? String(section.Settings.Align) : 'left' } })
     return { ...section, Html: out.Html, Error: Object.keys(preview).length ? out.Error : '' }
   }))
   return { ...design, Sections: drawn } as T
