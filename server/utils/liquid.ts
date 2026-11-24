@@ -88,6 +88,21 @@ export async function withCode<T extends { Sections?: any[] } | null | undefined
   const preview = previewQuery(event), lang = langOf(event)
   const site = await digipart<any>(event, '', { ...preview, LanguageIsoCode: lang.lang }).catch(() => null)
   const Site = { Name: String(site?.Name || ''), Url: siteOrigin(event) + (lang.prefix || '') + '/', LanguageIsoCode: lang.lang, Currency: visitorCurrency(event), CurrencySigns: await currencySigns(event) }
+  // lists of products, read only when a template uses them (`Products.Latest`, `Products.Category`, `Section.Products.<Key>`): each product as the API gives it, in the shape of Product
+  const priceBase = site?.PriceBaseType || 'retail'
+  const asProduct = (p: any) => ({ Id: p.Id, Name: p.Name, Reference: p.Reference, Brand: p.Brand, Url: p.Url, Images: p.Images, Image: p.Images?.[0] || '', Price: p.Price, PriceOld: p.PriceOld, Discount: p.Discount, PriceTaxExcl: p.PriceTaxExcl, Currency: p.Currency, Available: p.Available })
+  const listOf = async (query: Record<string, string | number>): Promise<any[]> => {
+    const ids: number[] = ((await digipart<any>(event, 'products.php', query).catch(() => null))?.ProductIds as number[]) || []
+    const loaded = await Promise.all(ids.slice(0, 24).map(id => loadProduct(event, id, lang.lang, lang.prefix, visitorCurrency(event), priceBase).catch(() => null)))
+    return loaded.filter(Boolean).map(asProduct)
+  }
+  const shared: Record<string, Promise<any[]>> = {}
+  const productsFor = async (template: string): Promise<Record<string, unknown>> => {
+    if (!/\bProducts\.(Latest|Category)\b/.test(template)) { return {} }
+    if (/\bProducts\.Latest\b/.test(template)) { shared.Latest ??= listOf({ Mode: 'latest', Limit: 12 }) }
+    if (/\bProducts\.Category\b/.test(template)) { shared.Category ??= Number((objects as any).Category?.Id) > 0 ? listOf({ Mode: 'category', IdCategory: Number((objects as any).Category.Id), Limit: 24 }) : Promise.resolve([]) }
+    return { Products: { Latest: await (shared.Latest || []), Category: await (shared.Category || []) } }
+  }
   const drawn = await Promise.all(sections.map(async (section: any) => {
     if (section?.Type !== 'code') { return section }
     const file = String(section.Settings?.File || '')
@@ -108,7 +123,15 @@ export async function withCode<T extends { Sections?: any[] } | null | undefined
       const kind = kinds.find(one => one?.Type === item?.Type)
       return kind ? { Id: String(item.Id || ''), Type: String(kind.Type), Settings: codeSettings(kind, { ...(item.Values || {}), ...translated(item, kind) }) } : null
     }).filter(Boolean)
-    const out = await drawCode(code.Template, { ...objects, Site, Section: { Id: String(section.Id || ''), File: file, Settings, Blocks } })
+    // the products of each « category » setting of the section: {% for product in Section.Products.MyCategory %}
+    const Products: Record<string, unknown> = {}
+    if (/\bSection\.Products\b/.test(code.Template)) {
+      for (const setting of (code.Schema?.Settings || []).filter((one: any) => one?.Type === 'category').slice(0, 4)) {
+        const id = Number(Settings[setting.Key]) || 0
+        Products[setting.Key] = id > 0 ? await listOf({ Mode: 'category', IdCategory: id, Limit: 12 }) : []
+      }
+    }
+    const out = await drawCode(code.Template, { ...objects, ...(await productsFor(code.Template)), Site, Section: { Id: String(section.Id || ''), File: file, Settings, Blocks, Products } })
     return { ...section, Html: out.Html, Error: Object.keys(preview).length ? out.Error : '' }
   }))
   return { ...design, Sections: drawn } as T

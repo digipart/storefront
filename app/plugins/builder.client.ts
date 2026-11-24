@@ -13,6 +13,7 @@
 //   under the cursor (a `refresh` waits for the end);
 // - the bar of the selected section is drawn by the builder itself, over this frame: the site tells where the section is (`box`) and, while it is dragged there, where it would be dropped
 //   (`drag`, `drop`, then `move` with `before` / `after`). No frame is drawn around a section; a selected block has a thin one.
+// - a block, or a column of a section of columns, is moved on the page itself by the handle drawn over it (`moveBlock`, `moveColumn`).
 export default defineNuxtPlugin((nuxt) => {
   const route = useRoute()
   if (route.query.builder === undefined || window.parent === window) { return }
@@ -194,6 +195,93 @@ export default defineNuxtPlugin((nuxt) => {
       if (done && target.before !== last.section && target.after !== last.section && (target.before || target.after)) { tell({ type: 'move', section: last.section, before: target.before, after: target.after }) }
       target = { before: '', after: '' }
     }
+    // A block or a column moved on the site itself: over a block (or a column of a section of columns) a handle shows; dragged from it, a line shows where it would land, and the builder is told
+    // (`moveBlock`: the block, the block it goes before or none, its column; `moveColumn`: from one place to another). The builder makes the change and sends the page back (`design`).
+    const handle = document.createElement('div')
+    handle.className = 'sfb-handle'
+    handle.hidden = true
+    document.body.appendChild(handle)
+    let hovered: { kind: 'block' | 'column', node: HTMLElement, band: HTMLElement } | null = null
+    let moving: { kind: 'block' | 'column', node: HTMLElement, band: HTMLElement, part: string, section: string, block: string, col: number } | null = null
+    let drop: Record<string, unknown> | null = null
+    let swallow = false
+    const colOf = (node: Element | null): number => { const col = node?.closest('.sf-col'); return col ? Number(idOf(col, 'sf-col-')) || 0 : 0 }
+    const partOf = (band: Element) => (band.closest('header') ? 'header' : band.closest('footer') ? 'footer' : 'page')
+    const blocksIn = (box: Element, except: Element | null) => (Array.from(box.querySelectorAll('[class*="sf-b-"]')) as HTMLElement[]).filter(node => node !== except && !!idOf(node, 'sf-b-') && !node.parentElement?.closest('[class*="sf-b-"]') && (!except || !except.contains(node)))
+    const showHandle = (target: typeof hovered) => {
+      hovered = target
+      if (!target || follow || editing || moving) { handle.hidden = true; return }
+      const box = target.node.getBoundingClientRect()
+      handle.textContent = target.kind === 'column' ? '⠿ Colonne ' + colOf(target.node) : '⠿'
+      handle.title = target.kind === 'column' ? 'Glisser pour changer la colonne de place' : 'Glisser pour déplacer le bloc'
+      handle.hidden = false
+      handle.style.top = Math.max(0, box.top + (target.kind === 'column' ? 6 : -10)) + 'px'
+      handle.style.left = (target.kind === 'column' ? box.left + box.width / 2 - handle.offsetWidth / 2 : Math.max(0, box.left - 12)) + 'px'
+    }
+    document.addEventListener('mousemove', (event) => {
+      if (moving || event.target === handle) { return }
+      const at = event.target as Element | null
+      const band = at?.closest?.('[data-section]') as HTMLElement | null
+      if (!band) { showHandle(null); return }
+      const block = at?.closest?.('[class*="sf-b-"]') as HTMLElement | null
+      if (block && band.contains(block) && idOf(block, 'sf-b-')) { showHandle({ kind: 'block', node: block, band }); return }
+      const column = at?.closest?.('.sf-col') as HTMLElement | null
+      showHandle(column && band.contains(column) && band.querySelectorAll('.sf-col').length > 1 ? { kind: 'column', node: column, band } : null)
+    }, { passive: true })
+    window.addEventListener('scroll', () => { if (!moving) { handle.hidden = true } }, { passive: true })
+    const lineAt = (top: number, left: number, width: number, height: number) => {
+      if (!line) { line = document.createElement('div'); line.className = 'sfb-drop'; document.body.appendChild(line); document.documentElement.classList.add('sf-builder-drag') }
+      line.style.top = top + 'px'; line.style.left = left + 'px'; line.style.width = width + 'px'; line.style.height = height + 'px'
+    }
+    handle.addEventListener('pointerdown', (event) => {
+      if (!hovered || follow) { return }
+      event.preventDefault()
+      const { kind, node, band } = hovered
+      moving = { kind, node, band, part: partOf(band), section: idOf(band, 'sf-i-'), block: kind === 'block' ? idOf(node, 'sf-b-') : '', col: colOf(node) }
+      handle.setPointerCapture(event.pointerId)
+      node.style.opacity = '.45'
+    })
+    handle.addEventListener('pointermove', (event) => {
+      if (!moving) { return }
+      const x = event.clientX, y = event.clientY
+      if (y < 60) { window.scrollBy(0, -16) } else if (y > window.innerHeight - 60) { window.scrollBy(0, 16) }
+      drop = null
+      if (moving.kind === 'column') {
+        const columns = Array.from(moving.band.querySelectorAll('.sf-col')) as HTMLElement[]
+        const stacked = columns.length > 1 && Math.abs(columns[0]!.getBoundingClientRect().left - columns[1]!.getBoundingClientRect().left) < 4
+        let spot = columns.length + 1
+        for (const column of columns) { const box = column.getBoundingClientRect(); if (stacked ? y < box.top + box.height / 2 : x < box.left + box.width / 2) { spot = colOf(column); break } }
+        const from = moving.col, to = from < spot ? spot - 1 : spot
+        const edge = columns.find(column => colOf(column) === spot) || columns[columns.length - 1]!
+        const box = edge.getBoundingClientRect(), atEnd = spot > columns.length
+        if (stacked) { lineAt(atEnd ? box.bottom - 1 : box.top - 1, box.left, box.width, 3) } else { lineAt(box.top, atEnd ? box.right - 1 : box.left - 2, 3, box.height) }
+        if (to !== from) { drop = { type: 'moveColumn', part: moving.part, section: moving.section, from, to } }
+        return
+      }
+      // a block: the column under the pointer (a section of columns) or the whole section, then the block it goes before
+      const under = document.elementFromPoint(x, y)
+      const column = moving.band.querySelectorAll('.sf-col').length ? (under?.closest('.sf-col') as HTMLElement | null) : null
+      if (moving.band.querySelectorAll('.sf-col').length && (!column || !moving.band.contains(column))) { line?.remove(); line = null; return }
+      const list = blocksIn(column || moving.band, moving.node)
+      let before: HTMLElement | null = null
+      for (const node of list) { const box = node.getBoundingClientRect(); if (y < box.top + box.height / 2 && !(y > box.top && x > box.right)) { before = node; break } }
+      const last = list[list.length - 1]
+      const box = (before || last || column || moving.band).getBoundingClientRect()
+      lineAt(before ? box.top - 2 : (last ? box.bottom + 1 : box.top + 8), box.left, box.width, 3)
+      drop = { type: 'moveBlock', part: moving.part, section: moving.section, block: moving.block, before: before ? idOf(before, 'sf-b-') : '', col: column ? colOf(column) : 0 }
+    })
+    const endDrag = (done: boolean) => {
+      if (!moving) { return }
+      moving.node.style.opacity = ''
+      line?.remove(); line = null
+      document.documentElement.classList.remove('sf-builder-drag')
+      if (done && drop && !(drop.type === 'moveBlock' && drop.before === moving.block)) { tell(drop); swallow = true; setTimeout(() => { swallow = false }, 300) }
+      moving = null; drop = null; handle.hidden = true
+    }
+    handle.addEventListener('pointerup', () => endDrag(true))
+    handle.addEventListener('pointercancel', () => endDrag(false))
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && moving) { endDrag(false) } })
+    document.addEventListener('click', (event) => { if (swallow) { event.preventDefault(); event.stopPropagation() } }, true)
     tell({ type: 'ready', path: window.location.pathname })
   })
   // each time the page is drawn again (a refresh after a save), the builder is told: it puts its outline back on the selected section

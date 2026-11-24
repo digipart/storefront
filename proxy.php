@@ -42,7 +42,7 @@ if ($answer === false) {
 $size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
 http_response_code((int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE));
 foreach (explode("\r\n", substr($answer, 0, $size)) as $line) {
-    if (preg_match('/^(content-type|content-encoding|cache-control|etag|location|set-cookie|vary|last-modified|x-robots-tag|link|referrer-policy|server-timing):/i', $line) === 1) {
+    if (preg_match('/^(content-type|content-encoding|cache-control|etag|location|set-cookie|vary|last-modified|x-robots-tag|link|referrer-policy|server-timing|access-control-allow-origin):/i', $line) === 1) {
         header($line, false);
     }
 }
